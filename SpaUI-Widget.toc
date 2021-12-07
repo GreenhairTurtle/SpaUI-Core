@@ -11,3 +11,5 @@
 
 ## X-WebSite: https://github.com/GreenhairTurtle/SpaUI-Widget
 ## X-Credit: Kurapica
+
+RecyclerView.lua
