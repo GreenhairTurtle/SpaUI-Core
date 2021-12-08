@@ -1,6 +1,8 @@
 PLoop(function()
 
-    namespace "SpaUI.Widget"
+    namespace "SpaUI.Widget.RecyclerView"
 
-    
+    __Sealed__()
+    class "RecyclerView"(function()
+    end)
 end)
