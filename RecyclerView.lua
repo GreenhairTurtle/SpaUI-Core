@@ -1,6 +1,13 @@
+-----------------------------------------------------------
+--         Warcraft version of Android recyclerView      --
+-----------------------------------------------------------
 Scorpio "SpaUI.Widget.RecyclerView" ""
 
 namespace "SpaUI.Widget.RecyclerView"
+
+-----------------------------------------------------------
+--                     ScrollBar                         --
+-----------------------------------------------------------
 
 -- 修改自Scorpio.Widget.UIPanelScrollFrame.UIPanelScrollBar
 -- 无视ValueSetp的ScrollBar，每次滚动只移动1，对应列表1个item
@@ -169,6 +176,94 @@ class "HorizontalScrollBar" { ScrollBar }
 
 __Sealed__()
 class "VerticalScrollBar"   { ScrollBar }
+
+
+-----------------------------------------------------------
+--                      Adapter                          --
+-----------------------------------------------------------
+
+__Sealed__()
+class "ViewHolder"(function()
+
+    property "ItemView"             {
+        type                        = -LayoutFrame
+    }
+
+    property "ItemViewType"         {
+        type                        = Number
+    }
+
+    property "Position"             {
+        type                        = NaturalNumber
+    }
+
+end)
+
+__Sealed__()
+class "Adapter"(function()
+    
+    __Arguments__{ NaturalNumber }
+    __Return__{ Number }
+    function GetItemViewType(self, position)
+        return 0
+    end
+
+    __Abstract__()
+    __Return__{ NaturalNumber }
+    function GetItemCount(self)
+    end
+
+    __Final__()
+    __Arguments__{ -LayoutFrame, Number }
+    function CreateViewHolder(self, parent, viewType)
+        local holder = OnCreateViewHolder(self, parent, viewType)
+        holder.ItemViewType = viewType
+        return holder
+    end
+
+    __Abstract__()
+    __Arguments__{ -LayoutFrame, Number }
+    function OnCreateViewHoler(self, parent, viewType)
+    end
+
+    __Final__()
+    __Arguments__{ -ViewHolder, NaturalNumber }
+    function BindViewHolder(self, holder, position)
+        holder.Position = position
+        OnBindViewHolder(self, holder, position)
+    end
+
+    __Abstract__()
+    __Arguments__{ -ViewHolder, NaturalNumber }
+    function OnBindViewHolder(self, holder, position)
+    end
+
+end)
+
+-----------------------------------------------------------
+--                  Decoration                           --
+-----------------------------------------------------------
+
+__Sealed__()
+class "ItemDecoration"(function()
+
+    -- return item margin
+    __Abstract__()
+    function GetItemMargins()
+        return 0, 0, 0, 0
+    end
+
+end)
+
+-----------------------------------------------------------
+--                  LayoutManager                        --
+-----------------------------------------------------------
+
+__Sealed__()
+class "LayoutManager"(function()
+
+
+end)
 
 __Sealed__()
 class "RecyclerView"(function()
