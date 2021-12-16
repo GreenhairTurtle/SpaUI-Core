@@ -1,9 +1,16 @@
+---@diagnostic disable: undefined-global
 -----------------------------------------------------------
 --         Warcraft version of Android recyclerView      --
 -----------------------------------------------------------
 Scorpio "SpaUI.Widget.RecyclerView" ""
 
 namespace "SpaUI.Widget.RecyclerView"
+
+class "ItemDecoration" {}
+
+class "ItemView" { Frame }
+
+class "RecyclerView" { ScrollFrame }
 
 -----------------------------------------------------------
 --                     ScrollBar                         --
@@ -204,14 +211,13 @@ __Sealed__()
 class "Adapter"(function()
     
     __Arguments__{ NaturalNumber }
-    __Return__{ Number }
     function GetItemViewType(self, position)
         return 0
     end
 
-    __Return__{ NaturalNumber }
     __Abstract__()
     function GetItemCount(self)
+        return 0
     end
 
     __Arguments__{ LayoutFrame, Number }
@@ -242,16 +248,60 @@ class "Adapter"(function()
 end)
 
 -----------------------------------------------------------
---                  Decoration                           --
+--          Decoration and item view                     --
+--Each recyclerView can contain multiple item decoration --
 -----------------------------------------------------------
+
+__Sealed__()
+class "ItemView"(function()
+
+    property "DecorationViewMap"    {
+        default                     = {},
+        set                         = false
+    }
+
+    -- Get view which belongs to the item decoration
+    -- view will be generated if it is not exists
+    __Arguments__{ ItemDecoration, NEString, -UIObject }
+    function GetDecorationView(self, itemDecoration, name, clazz)
+        local viewMap = self.DecorationViewMap
+        local decorationViews = viewMap[itemDecoration]
+        if not decorationViews then
+            decorationViews = {}
+            viewMap[itemDecoration] = decorationViews
+        end
+
+        -- @todo
+        name = name .. tostring(itemDecoration)
+        local view = decorationViews[name]
+        if not view then
+            view = clazz(name, self)
+            decorationViews[name] = view
+        end
+
+        return view
+    end
+    
+end)
 
 __Sealed__()
 class "ItemDecoration"(function()
 
-    -- return item margin
+    -- return item margins
+    -- must be left, top, right, bottom order
     __Abstract__()
     function GetItemMargins()
         return 0, 0, 0, 0
+    end
+
+    __Arguments__{ RecyclerView, ItemView, Number }
+    __Abstract__()
+    function DrawBackground(recyclerView, itemView, position)
+    end
+
+    __Arguments__{ RecyclerView }
+    __Abstract__()
+    function DrawOver(recyclerView)
     end
 
 end)
@@ -263,12 +313,56 @@ end)
 __Sealed__()
 class "LayoutManager"(function()
 
+    property "RecylerView"          {
+        type                        = RecyclerView
+    }
+
+
 
 end)
 
+-----------------------------------------------------------
+--                    RecyclerView                       --
+-----------------------------------------------------------
+
 __Sealed__()
 class "RecyclerView"(function()
-    inherit "ScrollFrame"
+
+    property "Orientation"          {
+        type                        = Orientation,
+        default                     = Orientation.VERTICAL
+    }
+
+    property "LayoutManager"        {
+        type                        = LayoutManager,
+        get                         = function(self) return self.__LayoutManager end,
+        set                         = function(self, layoutManager)
+            if self.__LayoutManager then
+               self.__LayoutManager.RecyclerView = nil
+            end
+            self.__LayoutManager = layoutManager
+            if layoutManager then
+                layoutManager.RecyclerView = self
+            end
+        end
+    }
+
+    property "Adapter"              {
+        type                        = Adapter,
+        handler                     = function(self, adapter)
+            -- @todo
+        end
+    }
+
+    __Template__{
+        ScrollBar       = ScrollBar,
+        ScrollChild     = Frame
+    }
+    function __ctor(self)
+        local scrollBar = self:GetChild("ScrollBar")
+        scrollBar:SetOrientation(self.Orientation)
+    end
+
 end)
 
 
