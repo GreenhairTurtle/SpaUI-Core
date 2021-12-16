@@ -116,6 +116,7 @@ class "ScrollBar"(function()
     end
 
     -- @Override
+    __Final__()
     function SetValueStep(self, step)
         -- do nothing
     end
@@ -208,33 +209,33 @@ class "Adapter"(function()
         return 0
     end
 
-    __Abstract__()
     __Return__{ NaturalNumber }
+    __Abstract__()
     function GetItemCount(self)
     end
 
+    __Arguments__{ LayoutFrame, Number }
     __Final__()
-    __Arguments__{ -LayoutFrame, Number }
     function CreateViewHolder(self, parent, viewType)
         local holder = OnCreateViewHolder(self, parent, viewType)
         holder.ItemViewType = viewType
         return holder
     end
 
+    __Arguments__{ LayoutFrame, Number }
     __Abstract__()
-    __Arguments__{ -LayoutFrame, Number }
     function OnCreateViewHoler(self, parent, viewType)
     end
 
+    __Arguments__{ ViewHolder, NaturalNumber }
     __Final__()
-    __Arguments__{ -ViewHolder, NaturalNumber }
     function BindViewHolder(self, holder, position)
         holder.Position = position
         OnBindViewHolder(self, holder, position)
     end
 
+    __Arguments__{ ViewHolder, NaturalNumber }
     __Abstract__()
-    __Arguments__{ -ViewHolder, NaturalNumber }
     function OnBindViewHolder(self, holder, position)
     end
 
