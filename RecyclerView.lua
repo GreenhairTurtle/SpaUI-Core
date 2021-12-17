@@ -355,12 +355,13 @@ class "RecyclerView"(function()
     }
 
     __Template__{
-        ScrollBar       = ScrollBar,
-        ScrollChild     = Frame
+        VerticalScrollBar           = ScrollBar,
+        HorizontalScrollBar         = ScrollBar,
+        ScrollChild                 = Frame
     }
     function __ctor(self)
-        local scrollBar = self:GetChild("ScrollBar")
-        scrollBar:SetOrientation(self.Orientation)
+        local scrollChild = self:GetChild("ScrollChild")
+        self:SetScrollChild(scrollChild)
     end
 
 end)
