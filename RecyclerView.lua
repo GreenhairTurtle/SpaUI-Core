@@ -157,6 +157,8 @@ class "ScrollBar"(function()
         ScrollDownButton        = Button,
     }
     function __ctor(self)
+        self:SetAlpha(0)
+
         local scrollUpButton    = self:GetChild("ScrollUpButton")
         local scrollDownButton  = self:GetChild("ScrollDownButton")
         
@@ -328,9 +330,14 @@ end)
 __Sealed__()
 class "RecyclerView"(function()
 
+    -------------------------------------------------------
+    --                    Property                       --
+    -------------------------------------------------------
+
     property "Orientation"          {
         type                        = Orientation,
-        default                     = Orientation.VERTICAL
+        default                     = Orientation.VERTICAL,
+        handler                     = "OnOrientationChanged"
     }
 
     property "LayoutManager"        {
@@ -354,6 +361,35 @@ class "RecyclerView"(function()
         end
     }
 
+    -------------------------------------------------------
+    --                    Functions                      --
+    -------------------------------------------------------
+
+    function OnOrientationChanged(self)
+        local scrollChild = self:GetChild("ScrollChild")
+        scrollChild:ClearAllPoints()
+        local verticalScrollBar = self:GetChild("VerticalScrollBar")
+        local horizontalScrollBar = self:GetChild("HorizontalScrollBar")
+        verticalScrollBar:SetMinMaxValues(0, 1000)
+        verticalScrollBar:SetValue(50)
+
+        if self.Orientation == Orientation.VERTICAL then
+            scrollChild:SetPoint("TOPLEFT")
+            scrollChild:SetPoint("RIGHT", verticalScrollBar, "LEFT", -2, 0)
+            scrollChild:SetPoint("BOTTOM")
+            verticalScrollBar:Show()
+            horizontalScrollBar:Hide()
+        elseif self.Orientation == Orientation.HORIZONTAL then
+            scrollChild:SetPoint("TOPLEFT")
+            scrollChild:SetPoint("BOTTOMLEFT", 0, horizontalScrollBar:GetHeight() + 2)
+            scrollChild:SetWidth(1)
+            verticalScrollBar:Hide()
+            horizontalScrollBar:Show()
+        end
+        print(verticalScrollBar:IsShown())
+        print(verticalScrollBar:GetSize())
+    end
+
     __Template__{
         VerticalScrollBar           = ScrollBar,
         HorizontalScrollBar         = ScrollBar,
@@ -362,6 +398,8 @@ class "RecyclerView"(function()
     function __ctor(self)
         local scrollChild = self:GetChild("ScrollChild")
         self:SetScrollChild(scrollChild)
+        
+        self:OnOrientationChanged()
     end
 
 end)
@@ -580,5 +618,39 @@ Style.UpdateSkin("Default", {
                 alphamode                       = "ADD",
             }
         }
+    },
+
+    [RecyclerView]                              = {
+
+        VerticalScrollBar                       = {
+            location                            = {
+                Anchor("TOPRIGHT", -2, -18),
+                Anchor("BOTTOMRIGHT", -2, 18)
+            }
+        },
+
+        HorizontalScrollBar                     = {
+            location                            = {
+                Anchor("BOTTOMLEFT", 18, 2),
+                Anchor("BOTTOMRIGHT", -18, 2)
+            }
+        }
     }
 })
+
+
+TestRecyclerView = RecyclerView("TestRecyclerView")
+TestRecyclerView:SetPoint("CENTER")
+TestRecyclerView:SetSize(500, 850)
+
+Delay(2, function()
+    print(TestRecyclerView:GetSize())
+    print(TestRecyclerView.VerticalScrollBar:GetSize())
+    print(TestRecyclerView.ScrollChild:GetSize())
+end)
+
+local content = FontString("Content", TestRecyclerView.ScrollChild)
+content:SetFontObject(GameFontNormalHuge)
+content:SetPoint("TOPLEFT")
+content:SetPoint("TOPRIGHT")
+content:SetText("测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n")
