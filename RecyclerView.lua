@@ -49,7 +49,13 @@ class "ScrollBar"(function()
     local function OnValueChanged(self, value)
         Show(self)
         RefreshScrollButtonStates(self)
-        -- self:GetParent():SetVerticalScroll(value)
+
+        local orientation = self:GetOrientation()
+        if orientation == Orientation.HORIZONTAL then
+            self:GetParent():SetHorizontalScroll(value)
+        elseif orientation == Orientation.VERTICAL then
+            self:GetParent():SetVerticalScroll(value)
+        end
     end
 
     local function OnMouseWheel(self, delta)
@@ -143,7 +149,7 @@ class "ScrollBar"(function()
     -- 渐隐时间
     property "FadeoutDuration"  {
         type                    = Number,
-        default                 = 5
+        default                 = 2.5
     }
 
     -- 渐隐延迟
@@ -366,40 +372,49 @@ class "RecyclerView"(function()
     -------------------------------------------------------
 
     function OnOrientationChanged(self)
-        local scrollChild = self:GetChild("ScrollChild")
-        scrollChild:ClearAllPoints()
         local verticalScrollBar = self:GetChild("VerticalScrollBar")
         local horizontalScrollBar = self:GetChild("HorizontalScrollBar")
-        verticalScrollBar:SetMinMaxValues(0, 1000)
-        verticalScrollBar:SetValue(50)
 
         if self.Orientation == Orientation.VERTICAL then
-            scrollChild:SetPoint("TOPLEFT")
-            scrollChild:SetPoint("RIGHT", verticalScrollBar, "LEFT", -2, 0)
-            scrollChild:SetPoint("BOTTOM")
             verticalScrollBar:Show()
             horizontalScrollBar:Hide()
         elseif self.Orientation == Orientation.HORIZONTAL then
-            scrollChild:SetPoint("TOPLEFT")
-            scrollChild:SetPoint("BOTTOMLEFT", 0, horizontalScrollBar:GetHeight() + 2)
-            scrollChild:SetWidth(1)
             verticalScrollBar:Hide()
             horizontalScrollBar:Show()
         end
-        print(verticalScrollBar:IsShown())
-        print(verticalScrollBar:GetSize())
+    end
+
+    local function OnVerticalScroll(self, offset)
+    end
+
+    local function OnScrollRangeChanged(self, xrange, yrange)
+        -- local verticalScrollBar = self:GetChild("VerticalScrollBar")
+        -- local horizontalScrollBar = self:GetChild("HorizontalScrollBar")
+
+        -- yrange = math.floor(yrange or self:GetVerticalScrollRange())
+        -- verticalScrollBar:SetMinMaxValues(0, yrange)
+        -- verticalScrollBar:SetValue(math.min(verticalScrollBar:GetValue(), yrange))
+
+        -- xrange = math.floor(xrange or self:GetHorizontalScrollRange())
+        -- horizontalScrollBar:SetMinMaxValues(0, xrange)
+        -- horizontalScrollBar:SetValue(math.min(horizontalScrollBar:GetValue(), xrange))
     end
 
     __Template__{
-        VerticalScrollBar           = ScrollBar,
-        HorizontalScrollBar         = ScrollBar,
+        VerticalScrollBar           = VerticalScrollBar,
+        HorizontalScrollBar         = HorizontalScrollBar,
         ScrollChild                 = Frame
     }
     function __ctor(self)
         local scrollChild = self:GetChild("ScrollChild")
         self:SetScrollChild(scrollChild)
+        scrollChild:SetPoint("TOPLEFT")
+        scrollChild:SetSize(1, 1)
         
         self:OnOrientationChanged()
+
+        self.OnVerticalScroll = self.OnVerticalScroll + OnVerticalScroll
+        self.OnScrollRangeChanged = self.OnScrollRangeChanged + OnScrollRangeChanged
     end
 
 end)
@@ -412,8 +427,7 @@ Style.UpdateSkin("Default", {
 
     [VerticalScrollBar]                         = {
         width                                   = 16,
-
-        ThumbTexture                            = {
+        thumbTexture                            = {
             file                                = [[Interface\Buttons\UI-ScrollBar-Knob]],
             texCoords                           = RectType(0.20, 0.80, 0.125, 0.875),
             size                                = Size(18, 24),
@@ -477,8 +491,7 @@ Style.UpdateSkin("Default", {
     [HorizontalScrollBar]                       = {
         height                                  = 16,
         orientation                             = "HORIZONTAL",
-
-        ThumbTexture                            = {
+        thumbTexture                            = {
             file                                = [[Interface\Buttons\UI-ScrollBar-Knob]],
             texCoords                           = {
                 ULx                             = 0.8,
@@ -643,14 +656,18 @@ TestRecyclerView = RecyclerView("TestRecyclerView")
 TestRecyclerView:SetPoint("CENTER")
 TestRecyclerView:SetSize(500, 850)
 
-Delay(2, function()
-    print(TestRecyclerView:GetSize())
-    print(TestRecyclerView.VerticalScrollBar:GetSize())
-    print(TestRecyclerView.ScrollChild:GetSize())
-end)
 
 local content = FontString("Content", TestRecyclerView.ScrollChild)
 content:SetFontObject(GameFontNormalHuge)
+content:SetJustifyH("LEFT")
 content:SetPoint("TOPLEFT")
-content:SetPoint("TOPRIGHT")
-content:SetText("测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n")
+local str = ""
+for i = 1, 300 do
+    str = str .. "测试" .. i .. "\n"
+end
+content:SetText(str)
+
+TestRecyclerView.VerticalScrollBar:SetMinMaxValues(0, 1000)
+
+-- print(TestRecyclerView:GetVerticalScroll())
+-- TestRecyclerView:SetVerticalScroll(100)
