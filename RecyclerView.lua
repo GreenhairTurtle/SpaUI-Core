@@ -97,9 +97,6 @@ class "ScrollBar"(function()
         Show(self)
     end
 
-    local function OnLeave(self)
-    end
-
     local function IsMouseOver(self)
         if self:IsMouseOver() then return true end
 
@@ -182,7 +179,6 @@ class "ScrollBar"(function()
         self.OnValueChanged     = self.OnValueChanged + OnValueChanged
         self.OnMouseWheel       = self.OnMouseWheel + OnMouseWheel
         self.OnEnter            = self.OnEnter + OnEnter
-        self.OnLeave            = self.OnLeave + OnLeave
     end
 
 end)
@@ -201,8 +197,8 @@ class "VerticalScrollBar"   { ScrollBar }
 __Sealed__()
 class "ViewHolder"(function()
 
-    property "ItemView"             {
-        type                        = -LayoutFrame
+    property "ContentView"          {
+        type                        = LayoutFrame
     }
 
     property "ItemViewType"         {
@@ -223,6 +219,7 @@ class "Adapter"(function()
         return 0
     end
 
+    -- 获取item数量，必须是自然数
     __Abstract__()
     function GetItemCount(self)
         return 0
@@ -236,6 +233,7 @@ class "Adapter"(function()
         return holder
     end
 
+    -- 必须返回ViewHolder并且对其设置Content view
     __Arguments__{ LayoutFrame, Number }
     __Abstract__()
     function OnCreateViewHoler(self, parent, viewType)
@@ -252,7 +250,7 @@ class "Adapter"(function()
     __Abstract__()
     function OnBindViewHolder(self, holder, position)
     end
-
+    
 end)
 
 -----------------------------------------------------------
@@ -262,41 +260,19 @@ end)
 
 __Sealed__()
 class "ItemView"(function()
+    inherit "Frame"
 
-    property "DecorationViewMap"    {
-        default                     = {},
-        set                         = false
+    property "ViewHolder"           {
+        type                        = ViewHolder
     }
 
-    -- Get view which belongs to the item decoration
-    -- view will be generated if it is not exists
-    __Arguments__{ ItemDecoration, NEString, -UIObject }
-    function GetDecorationView(self, itemDecoration, name, clazz)
-        local viewMap = self.DecorationViewMap
-        local decorationViews = viewMap[itemDecoration]
-        if not decorationViews then
-            decorationViews = {}
-            viewMap[itemDecoration] = decorationViews
-        end
-
-        -- @todo
-        name = name .. tostring(itemDecoration)
-        local view = decorationViews[name]
-        if not view then
-            view = clazz(name, self)
-            decorationViews[name] = view
-        end
-
-        return view
-    end
-    
 end)
 
 __Sealed__()
 class "ItemDecoration"(function()
 
-    -- return item margins
-    -- must be left, top, right, bottom order
+    -- 返回每项item的间距
+    -- left, right, top, bottom
     __Abstract__()
     function GetItemMargins()
         return 0, 0, 0, 0
@@ -325,6 +301,26 @@ class "LayoutManager"(function()
         type                        = RecyclerView
     }
 
+    -- @param: position: item位置,第一个显示在RecyclerView可视范围内的item位置
+    -- @param: offset: 当前滚动位置
+    function Layout(self, position, offset)
+        local startPosition = math.max(position - 1, 1)
+        for i = 1, #self.RecyclerView.__ItemViews do
+            local itemView = self.RecyclerView.__ItemViews[index]
+            --@todo
+        end
+    end
+
+    function NotifyDataSetChanged(self)
+
+    end
+
+    function ScrollToPosition(self)
+
+    end
+
+    function Destroy(self)
+    end
 
 
 end)
@@ -351,7 +347,7 @@ class "RecyclerView"(function()
         get                         = function(self) return self.__LayoutManager end,
         set                         = function(self, layoutManager)
             if self.__LayoutManager then
-               self.__LayoutManager.RecyclerView = nil
+               self.__LayoutManager:Destroy()
             end
             self.__LayoutManager = layoutManager
             if layoutManager then
@@ -362,9 +358,7 @@ class "RecyclerView"(function()
 
     property "Adapter"              {
         type                        = Adapter,
-        handler                     = function(self, adapter)
-            -- @todo
-        end
+        handler                     = "OnAdapterChanged"
     }
 
     -------------------------------------------------------
@@ -384,20 +378,51 @@ class "RecyclerView"(function()
         end
     end
 
-    local function OnVerticalScroll(self, offset)
+    function OnAdapterChanged(self)
+        local adapter = self.Adapter
+        if adapter then
+            local scrollBar = self:GetScrollBar()
+            scrollBar:SetMinMaxValues(0, adapter:GetItemCount())
+            scrollBar:SetValue(0)
+        end
+
+        if self.LayoutManager then
+            self.LayoutManager:NotifyDataSetChanged()
+        end
     end
 
-    local function OnScrollRangeChanged(self, xrange, yrange)
-        -- local verticalScrollBar = self:GetChild("VerticalScrollBar")
-        -- local horizontalScrollBar = self:GetChild("HorizontalScrollBar")
+    -- 跳转到指定item
+    __Arguments__{ NaturalNumber }
+    function ScrollToPosition(self, position)
+        if self.LayoutManager then
+            self.LayoutManager:ScrollToPosition(position)
+        end
+    end
 
-        -- yrange = math.floor(yrange or self:GetVerticalScrollRange())
-        -- verticalScrollBar:SetMinMaxValues(0, yrange)
-        -- verticalScrollBar:SetValue(math.min(verticalScrollBar:GetValue(), yrange))
+    -- 获取Scrollbar
+    function GetScrollBar(self)
+        if self.Orientation == Orientation.HORIZONTAL then
+            return self:GetChild("HorizontalScrollBar")
+        elseif self.Orientation == Orientation.VERTICAL then
+            return self:GetChild("VerticalScrollBar")
+        end
+    end
 
-        -- xrange = math.floor(xrange or self:GetHorizontalScrollRange())
-        -- horizontalScrollBar:SetMinMaxValues(0, xrange)
-        -- horizontalScrollBar:SetValue(math.min(horizontalScrollBar:GetValue(), xrange))
+    -- 获取内容长度
+    function GetContentLength(self)
+        if self.Orientation == Orientation.HORIZONTAL then
+            return self:GetChild("ScrollChild"):GetWidth()
+        elseif self.Orientation == Orientation.VERTICAL then
+            return self:GetChild("ScrollChild"):GetHeight()
+        end
+    end
+
+    -- 回收所有ItemViews
+    function RecycleAllViews(self)
+        
+    end
+
+    local function OnVerticalScroll(self, offset)
     end
 
     __Template__{
@@ -406,6 +431,9 @@ class "RecyclerView"(function()
         ScrollChild                 = Frame
     }
     function __ctor(self)
+        self.__ItemViews = {}
+        self.__ItemViewCaches = {}
+
         local scrollChild = self:GetChild("ScrollChild")
         self:SetScrollChild(scrollChild)
         scrollChild:SetPoint("TOPLEFT")
@@ -414,7 +442,6 @@ class "RecyclerView"(function()
         self:OnOrientationChanged()
 
         self.OnVerticalScroll = self.OnVerticalScroll + OnVerticalScroll
-        self.OnScrollRangeChanged = self.OnScrollRangeChanged + OnScrollRangeChanged
     end
 
 end)
@@ -650,24 +677,3 @@ Style.UpdateSkin("Default", {
         }
     }
 })
-
-
-TestRecyclerView = RecyclerView("TestRecyclerView")
-TestRecyclerView:SetPoint("CENTER")
-TestRecyclerView:SetSize(500, 850)
-
-
-local content = FontString("Content", TestRecyclerView.ScrollChild)
-content:SetFontObject(GameFontNormalHuge)
-content:SetJustifyH("LEFT")
-content:SetPoint("TOPLEFT")
-local str = ""
-for i = 1, 300 do
-    str = str .. "测试" .. i .. "\n"
-end
-content:SetText(str)
-
-TestRecyclerView.VerticalScrollBar:SetMinMaxValues(0, 1000)
-
--- print(TestRecyclerView:GetVerticalScroll())
--- TestRecyclerView:SetVerticalScroll(100)
