@@ -250,6 +250,22 @@ class "Adapter"(function()
     __Abstract__()
     function OnBindViewHolder(self, holder, position)
     end
+
+    __Arguments__{ ViewHolder }
+    function RecyclerViewHoder(self, viewHolder)
+        viewHolder.ContentView:SetParent(nil)
+        
+        local viewHolderCache = self.__ViewHolderCaches[viewHolder.ItemViewType]
+        if not viewHolderCache then
+            viewHolderCache = {}
+            self.__ViewHolderCaches[viewHolder.ItemViewType] = viewHolderCache
+        end
+        tinsert(viewHolderCache, viewHolder)
+    end
+
+    function __ctor(self)
+        self.__ViewHolderCaches = {}
+    end
     
 end)
 
@@ -305,18 +321,15 @@ class "LayoutManager"(function()
     -- @param: offset: 当前滚动位置
     function Layout(self, position, offset)
         local startPosition = math.max(position - 1, 1)
-        for i = 1, #self.RecyclerView.__ItemViews do
-            local itemView = self.RecyclerView.__ItemViews[index]
-            --@todo
-        end
-    end
-
-    function NotifyDataSetChanged(self)
 
     end
 
-    function ScrollToPosition(self)
+    function RequestLayout(self)
 
+    end
+
+    function ScrollToPosition(self, position)
+        self:Layout(position, 0)
     end
 
     function Destroy(self)
@@ -369,25 +382,32 @@ class "RecyclerView"(function()
         local verticalScrollBar = self:GetChild("VerticalScrollBar")
         local horizontalScrollBar = self:GetChild("HorizontalScrollBar")
 
-        if self.Orientation == Orientation.VERTICAL then
-            verticalScrollBar:Show()
-            horizontalScrollBar:Hide()
-        elseif self.Orientation == Orientation.HORIZONTAL then
+        if self.Adapter then
+            if self.Orientation == Orientation.VERTICAL then
+                verticalScrollBar:Show()
+                horizontalScrollBar:Hide()
+            elseif self.Orientation == Orientation.HORIZONTAL then
+                verticalScrollBar:Hide()
+                horizontalScrollBar:Show()
+            end
+        else
             verticalScrollBar:Hide()
-            horizontalScrollBar:Show()
+            horizontalScrollBar:Hide()
         end
     end
 
-    function OnAdapterChanged(self)
-        local adapter = self.Adapter
-        if adapter then
-            local scrollBar = self:GetScrollBar()
-            scrollBar:SetMinMaxValues(0, adapter:GetItemCount())
+    function OnAdapterChanged(self, newAdapter, oldAdapter)
+        local scrollBar = self:GetScrollBar()
+        if newAdapter then
+            scrollBar:SetMinMaxValues(0, newAdapter:GetItemCount())
             scrollBar:SetValue(0)
+            scrollBar:Show()
+        else
+            scrollBar:Hide()
         end
 
         if self.LayoutManager then
-            self.LayoutManager:NotifyDataSetChanged()
+            self.LayoutManager:RequestLayout()
         end
     end
 
@@ -418,8 +438,26 @@ class "RecyclerView"(function()
     end
 
     -- 回收所有ItemViews
-    function RecycleAllViews(self)
-        
+    function RecycleItemViews(self)
+        for i = #self.__ItemViews, 1, -1 do
+            self:RecycleItemView(i)
+        end
+    end
+    
+    function RecycleItemView(self, index)
+        local itemView = self.__ItemViews[index]
+        if itemView then
+            if self.Adapter then
+                self.Adapter:RecyclerViewHoder(itemView.ViewHolder)
+            end
+            itemView.ViewHolder = nil
+            tinsert(self.__ItemViewCaches, itemView)
+            tremove(self.__ItemViews, index)
+        end
+    end
+
+    function GetItemView(self, index)
+
     end
 
     local function OnVerticalScroll(self, offset)

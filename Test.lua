@@ -1,17 +1,19 @@
-Scorpio "Test" ""
+local data = {}
+for i = 1, 10 do
+    data[i] = "测试" .. i
+end
 
-import "SpaUI.Widget.RecyclerView"
+local count = 1
+for i = 10, 1, -1 do
+    print(i, data[i], #data)
+    if count%2 == 0 then
+        table.remove(data, i)
+    end
+    count = count + 1
+end
 
-print(RecyclerView)
+print("====")
 
-if not TestRecyclerView then
-    TestRecyclerView = RecyclerView("TestRecyclerView")
-    -- TestRecyclerView:SetPoint("CENTER")
-    -- TestRecyclerView:SetSize(200, 350)
-
-    -- local content = FontString("Content", TestRecyclerView.ScrollChild)
-    -- content:SetFontObject(GameFontNormalHuge)
-    -- content:SetPoint("TOPLEFT")
-    -- content:SetPoint("TOPRIGHT")
-    -- content:SetText("测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n测试\n")
+for k, v in ipairs(data) do
+    print(k, v)
 end
