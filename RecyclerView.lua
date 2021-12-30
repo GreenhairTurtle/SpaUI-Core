@@ -253,6 +253,8 @@ class "Adapter"(function()
 
     __Arguments__{ ViewHolder }
     function RecyclerViewHoder(self, viewHolder)
+        viewHolder.ContentView:Hide()
+        viewHolder.ContentView:ClearAllPoints()
         viewHolder.ContentView:SetParent(nil)
         
         local viewHolderCache = self.__ViewHolderCaches[viewHolder.ItemViewType]
@@ -280,6 +282,22 @@ class "ItemView"(function()
 
     property "ViewHolder"           {
         type                        = ViewHolder
+    }
+
+    property "PaddingTop"           {
+        type                        = Number
+    }
+
+    property "PaddingLeft"          {
+        type                        = Number
+    }
+
+    property "PaddingRight"         {
+        type                        = Number
+    }
+
+    property "PaddingBottom"        {
+        type                        = Number
     }
 
 end)
@@ -317,15 +335,29 @@ class "LayoutManager"(function()
         type                        = RecyclerView
     }
 
-    -- @param: position: item位置,第一个显示在RecyclerView可视范围内的item位置
+    -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
     -- @param: offset: 当前滚动位置
     function Layout(self, position, offset)
-        local startPosition = math.max(position - 1, 1)
+        local recyclerView = self.RecyclerView
+        if not recyclerView then return end
 
+        local adapter = recyclerView.Adapter
+        if not adapter then return end
+
+        local startPosition = math.max(position - 1, 1)
+        local itemViewIndex, contentHeight = 1, 0
+
+        while condition do
+            
+        end
     end
 
     function RequestLayout(self)
-
+        local recyclerView = self.RecyclerView
+        if recyclerView then
+            recyclerView:RecycleItemViews()
+            self:Layout(0, 0)
+        end
     end
 
     function ScrollToPosition(self, position)
@@ -425,15 +457,6 @@ class "RecyclerView"(function()
             return self:GetChild("HorizontalScrollBar")
         elseif self.Orientation == Orientation.VERTICAL then
             return self:GetChild("VerticalScrollBar")
-        end
-    end
-
-    -- 获取内容长度
-    function GetContentLength(self)
-        if self.Orientation == Orientation.HORIZONTAL then
-            return self:GetChild("ScrollChild"):GetWidth()
-        elseif self.Orientation == Orientation.VERTICAL then
-            return self:GetChild("ScrollChild"):GetHeight()
         end
     end
 
