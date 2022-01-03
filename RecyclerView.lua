@@ -189,88 +189,6 @@ class "HorizontalScrollBar" { ScrollBar }
 __Sealed__()
 class "VerticalScrollBar"   { ScrollBar }
 
-
------------------------------------------------------------
---                      Adapter                          --
------------------------------------------------------------
-
-__Sealed__()
-class "ViewHolder"(function()
-
-    property "ContentView"          {
-        type                        = LayoutFrame
-    }
-
-    property "ItemViewType"         {
-        type                        = Number
-    }
-
-    property "Position"             {
-        type                        = NaturalNumber
-    }
-
-end)
-
-__Sealed__()
-class "Adapter"(function()
-    
-    __Arguments__{ NaturalNumber }
-    function GetItemViewType(self, position)
-        return 0
-    end
-
-    -- 获取item数量，必须是自然数
-    __Abstract__()
-    function GetItemCount(self)
-        return 0
-    end
-
-    __Arguments__{ LayoutFrame, Number }
-    __Final__()
-    function CreateViewHolder(self, parent, viewType)
-        local holder = OnCreateViewHolder(self, parent, viewType)
-        holder.ItemViewType = viewType
-        return holder
-    end
-
-    -- 必须返回ViewHolder并且对其设置Content view
-    __Arguments__{ LayoutFrame, Number }
-    __Abstract__()
-    function OnCreateViewHoler(self, parent, viewType)
-    end
-
-    __Arguments__{ ViewHolder, NaturalNumber }
-    __Final__()
-    function BindViewHolder(self, holder, position)
-        holder.Position = position
-        OnBindViewHolder(self, holder, position)
-    end
-
-    __Arguments__{ ViewHolder, NaturalNumber }
-    __Abstract__()
-    function OnBindViewHolder(self, holder, position)
-    end
-
-    __Arguments__{ ViewHolder }
-    function RecyclerViewHoder(self, viewHolder)
-        viewHolder.ContentView:Hide()
-        viewHolder.ContentView:ClearAllPoints()
-        viewHolder.ContentView:SetParent(nil)
-        
-        local viewHolderCache = self.__ViewHolderCaches[viewHolder.ItemViewType]
-        if not viewHolderCache then
-            viewHolderCache = {}
-            self.__ViewHolderCaches[viewHolder.ItemViewType] = viewHolderCache
-        end
-        tinsert(viewHolderCache, viewHolder)
-    end
-
-    function __ctor(self)
-        self.__ViewHolderCaches = {}
-    end
-    
-end)
-
 -----------------------------------------------------------
 --          Decoration and item view                     --
 --Each recyclerView can contain multiple item decoration --
@@ -282,22 +200,6 @@ class "ItemView"(function()
 
     property "ViewHolder"           {
         type                        = ViewHolder
-    }
-
-    property "PaddingTop"           {
-        type                        = Number
-    }
-
-    property "PaddingLeft"          {
-        type                        = Number
-    }
-
-    property "PaddingRight"         {
-        type                        = Number
-    }
-
-    property "PaddingBottom"        {
-        type                        = Number
     }
 
 end)
@@ -325,6 +227,121 @@ class "ItemDecoration"(function()
 end)
 
 -----------------------------------------------------------
+--                      Adapter                          --
+-----------------------------------------------------------
+
+__Sealed__()
+class "ViewHolder"(function()
+
+    property "ContentView"          {
+        type                        = LayoutFrame
+    }
+
+    property "ItemViewType"         {
+        type                        = Number
+    }
+
+    property "Position"             {
+        type                        = NaturalNumber
+    }
+
+end)
+
+__Sealed__()
+class "Adapter"(function()
+
+    property "Data"                 {
+        type                        = List
+    }
+    
+    __Arguments__{ NaturalNumber }
+    function GetItemViewType(self, position)
+        return 0
+    end
+
+    -- 获取item数量，必须是自然数
+    __Abstract__()
+    function GetItemCount(self)
+        return 0
+    end
+
+    __Arguments__{ LayoutFrame, Number }
+    __Final__()
+    function CreateViewHolder(self, parent, viewType)
+        local holder = ViewHolder()
+        holder.ContentView = self:OnCreateView(parent, viewType)
+        holder.ItemViewType = viewType
+        return holder
+    end
+
+    -- 返回列表view
+    __Arguments__{ LayoutFrame, Number }
+    __Abstract__()
+    function OnCreateView(self, parent, viewType)
+    end
+
+    __Arguments__{ ViewHolder, NaturalNumber }
+    __Final__()
+    function BindViewHolder(self, holder, position)
+        holder.Position = position
+        OnBindViewHolder(self, holder, position)
+    end
+
+    __Arguments__{ ViewHolder, NaturalNumber }
+    __Abstract__()
+    function OnBindViewHolder(self, holder, position)
+    end
+
+    __Arguments__{ ItemView }
+    function RecyclerViewHoder(self, itemView)
+        local viewHolder = itemView.ViewHolder
+        if not viewHolder then return end
+
+        viewHolder.ContentView:Hide()
+        viewHolder.ContentView:ClearAllPoints()
+        viewHolder.ContentView:SetParent(nil)
+        
+        local viewHolderCache = self.__ViewHolderCaches[viewHolder.ItemViewType]
+        if not viewHolderCache then
+            viewHolderCache = {}
+            self.__ViewHolderCaches[viewHolder.ItemViewType] = viewHolderCache
+        end
+        tinsert(viewHolderCache, viewHolder)
+
+        itemView.ViewHolder = nil
+    end
+
+    local function GetViewHolderFromCache(self, itemViewType)
+        if self.__ViewHolderCaches[itemViewType] then
+            return tremove(self.__ViewHolderCaches[itemViewType])
+        end
+    end
+
+    __Arguments__{ ItemView, NaturalNumber }
+    function AttachItemView(self, itemView, position)
+        local viewHolder = itemView.ViewHolder
+        local itemViewType = self:GetItemViewType(position)
+
+        if not viewHolder then
+            viewHolder = GetViewHolderFromCache(self, itemViewType)
+            if viewHolder then
+                viewHolder.ContentView:SetParent(itemView)
+                viewHolder.ContentView:Show()
+            else
+                viewHolder = self:CreateViewHolder(itemView, itemViewType)
+            end
+        end
+
+        self:BindViewHolder(viewHolder, position)
+    end
+
+    function __ctor(self)
+        self.__ViewHolderCaches = {}
+    end
+    
+end)
+
+-----------------------------------------------------------
 --                  LayoutManager                        --
 -----------------------------------------------------------
 
@@ -337,6 +354,24 @@ class "LayoutManager"(function()
 
     -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
     -- @param: offset: 当前滚动位置
+    __Abstract__()
+    function Layout(self, position, offset)
+    end
+
+    function RequestLayout(self)
+        self:Layout(0, 0)
+    end
+
+    function ScrollToPosition(self, position)
+        self:Layout(position, 0)
+    end
+
+end)
+
+__Sealed()
+class "LinearLayoutManager"(function()
+    inherit "LayoutManager"
+
     function Layout(self, position, offset)
         local recyclerView = self.RecyclerView
         if not recyclerView then return end
@@ -345,29 +380,34 @@ class "LayoutManager"(function()
         if not adapter then return end
 
         local startPosition = math.max(position - 1, 1)
-        local itemViewIndex, contentHeight = 1, 0
+        local itemCount = adapter:GetItemCount()
+        if startPosition > itemCount then return end
+        
+        local itemViewIndex, contentLength, orientation = 1, 0, recyclerView.Orientation
+        local relativePoint = orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
 
-        while condition do
+        while contentLength <= recyclerView:GetHeight() and startPosition <= itemCount do
+            local itemView = recyclerView:GetItemView(itemViewIndex)
+            local lastItemView = itemViewIndex > 1 and recyclerView:GetItemView(itemViewIndex - 1) or nil
+
+            adapter:AttachItemView(itemView, startPosition)
+            local itemLength = recyclerView:UpdateItemViewSize()
+            itemView:ClearAllPoints()
+            itemView:SetPoint("TOPLEFT", lastItemView, itemViewIndex == 1 and "TOPLEFT" or relativePoint)
+
+            itemViewIndex = itemViewIndex + 1
+            startPosition = startPosition + 1
+            contentLength = contentLength + itemLength
+        end
+
+        recyclerView:HideItemViewFromIndex(itemViewIndex)
+        
+        -- @todo set offset
+        local itemView = recyclerView:GetItemView(0)
+        if itemView then
             
         end
     end
-
-    function RequestLayout(self)
-        local recyclerView = self.RecyclerView
-        if recyclerView then
-            recyclerView:RecycleItemViews()
-            self:Layout(0, 0)
-        end
-    end
-
-    function ScrollToPosition(self, position)
-        self:Layout(position, 0)
-    end
-
-    function Destroy(self)
-    end
-
-
 end)
 
 -----------------------------------------------------------
@@ -426,10 +466,14 @@ class "RecyclerView"(function()
             verticalScrollBar:Hide()
             horizontalScrollBar:Hide()
         end
+        -- @todo
     end
 
     function OnAdapterChanged(self, newAdapter, oldAdapter)
         local scrollBar = self:GetScrollBar()
+
+        self:RecyclerItemViews(oldAdapter)
+
         if newAdapter then
             scrollBar:SetMinMaxValues(0, newAdapter:GetItemCount())
             scrollBar:SetValue(0)
@@ -460,27 +504,69 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 刷新ItemView的size
+    function UpdateItemViewSize(itemView)
+    end
+
     -- 回收所有ItemViews
-    function RecycleItemViews(self)
-        for i = #self.__ItemViews, 1, -1 do
-            self:RecycleItemView(i)
+    function RecycleItemViews(self, adapter)
+        for i = 1, #self.__ItemViews do
+            self:RecycleItemView(adapter, i)
         end
     end
     
-    function RecycleItemView(self, index)
+    function RecycleItemView(self, adapter, index)
         local itemView = self.__ItemViews[index]
         if itemView then
-            if self.Adapter then
-                self.Adapter:RecyclerViewHoder(itemView.ViewHolder)
+            if adapter then
+                adapter:RecyclerViewHoder(itemView)
             end
-            itemView.ViewHolder = nil
-            tinsert(self.__ItemViewCaches, itemView)
-            tremove(self.__ItemViews, index)
+            itemView:Hide()
+            itemView:ClearAllPoints()
         end
     end
 
-    function GetItemView(self, index)
+    local function CreateItemView(self, index)
+        local itemView = ItemView("ItemView" .. index, self:GetChild("ScrollChild"))
+        return itemView
+    end
 
+    -- 获取指定index的ItemView
+    function GetItemView(self, index)
+        if index <= 0 then
+            error("GetItemView index 必须大于 0", 2)
+        end
+        if index > #self.__ItemViews + 1 then
+            error("GetItemView index 最多只能比现有的ItemViews数量 +1 ", 2)
+        end
+
+        local itemView = self.__ItemViews[index]
+        if not itemView then
+            itemView = CreateItemView(self, index)
+        end
+
+        self.__ItemViews[index] = itemView
+
+        return itemView
+    end
+
+    function HideItemViewFromIndex(self, index)
+        for i = index, #self.__ItemViews do
+            local itemView = self.__ItemViews[index]
+            itemView:Hide()
+        end
+    end
+
+    -- 获取可见的ItemView count
+    -- 注意：只的是IsShown()，并不一定是视觉可见
+    function GetVisibleItemViewCount(self)
+        local count = 0
+        for _, itemView in ipairs(self.__ItemViews) do
+            if itemView:IsShown() then
+                count = count + 1
+            end
+        end
+        return count
     end
 
     local function OnVerticalScroll(self, offset)
@@ -493,7 +579,6 @@ class "RecyclerView"(function()
     }
     function __ctor(self)
         self.__ItemViews = {}
-        self.__ItemViewCaches = {}
 
         local scrollChild = self:GetChild("ScrollChild")
         self:SetScrollChild(scrollChild)
@@ -544,7 +629,7 @@ Style.UpdateSkin("Default", {
                 file                            = [[Interface\Buttons\UI-ScrollBar-ScrollUpButton-Highlight]],
                 texCoords                       = RectType(0.20, 0.80, 0.25, 0.75),
                 setAllPoints                    = true,
-                alphamode                       = "ADD",
+                alphaMode                       = "ADD",
             }
         },
 
@@ -571,7 +656,7 @@ Style.UpdateSkin("Default", {
                 file                            = [[Interface\Buttons\UI-ScrollBar-ScrollDownButton-Highlight]],
                 texCoords                       = RectType(0.20, 0.80, 0.25, 0.75),
                 setAllPoints                    = true,
-                alphamode                       = "ADD",
+                alphaMode                       = "ADD",
             }
         }
     },
@@ -653,7 +738,7 @@ Style.UpdateSkin("Default", {
                     LRy                         = 0.75
                 },
                 setAllPoints                    = true,
-                alphamode                       = "ADD",
+                alphaMode                       = "ADD",
             }
         },
 
@@ -716,7 +801,7 @@ Style.UpdateSkin("Default", {
                     LRy                         = 0.75
                 },
                 setAllPoints                    = true,
-                alphamode                       = "ADD",
+                alphaMode                       = "ADD",
             }
         }
     },
@@ -725,15 +810,15 @@ Style.UpdateSkin("Default", {
 
         VerticalScrollBar                       = {
             location                            = {
-                Anchor("TOPRIGHT", -2, -18),
-                Anchor("BOTTOMRIGHT", -2, 18)
+                Anchor("TOPLEFT", 2, -18, nil, "TOPRIGHT"),
+                Anchor("BOTTOMLEFT", 2, 18, nil, "BOTTOMRIGHT")
             }
         },
 
         HorizontalScrollBar                     = {
             location                            = {
-                Anchor("BOTTOMLEFT", 18, 2),
-                Anchor("BOTTOMRIGHT", -18, 2)
+                Anchor("TOPLEFT", 18, -2, nil, "BOTTOMLEFT"),
+                Anchor("TOPRIGHT", 18, 2, nil, "BOTTOMRIGHT")
             }
         }
     }
