@@ -190,6 +190,27 @@ __Sealed__()
 class "VerticalScrollBar"   { ScrollBar }
 
 -----------------------------------------------------------
+--                  ViewHolder                           --
+-----------------------------------------------------------
+
+__Sealed__()
+class "ViewHolder"(function()
+
+    property "ContentView"          {
+        type                        = LayoutFrame
+    }
+
+    property "ItemViewType"         {
+        type                        = Integer
+    }
+
+    property "Position"             {
+        type                        = NaturalNumber
+    }
+
+end)
+
+-----------------------------------------------------------
 --          Decoration and item view                     --
 --Each recyclerView can contain multiple item decoration --
 -----------------------------------------------------------
@@ -201,6 +222,19 @@ class "ItemView"(function()
     property "ViewHolder"           {
         type                        = ViewHolder
     }
+
+    __Arguments__{ Orientation }
+    function GetContentLength(self, orientation)
+        local length = 0
+        if self.ViewHolder and self.ViewHolder.ContentView then
+            if orientation == Orientation.VERTICAL then
+                length = self.ViewHolder.ContentView:GetHeight()
+            elseif orientation == Orientation.HORIZONTAL then
+                length = self.ViewHolder.ContentView:GetWidth()
+            end
+        end
+        return length
+    end
 
 end)
 
@@ -214,14 +248,14 @@ class "ItemDecoration"(function()
         return 0, 0, 0, 0
     end
 
-    __Arguments__{ RecyclerView, ItemView, Number }
+    __Arguments__{ RecyclerView, ItemView, NaturalNumber }
     __Abstract__()
-    function DrawBackground(recyclerView, itemView, position)
+    function Draw(self, recyclerView, itemView)
     end
 
     __Arguments__{ RecyclerView }
     __Abstract__()
-    function DrawOver(recyclerView)
+    function DrawOver(self, recyclerView)
     end
 
 end)
@@ -229,23 +263,6 @@ end)
 -----------------------------------------------------------
 --                      Adapter                          --
 -----------------------------------------------------------
-
-__Sealed__()
-class "ViewHolder"(function()
-
-    property "ContentView"          {
-        type                        = LayoutFrame
-    }
-
-    property "ItemViewType"         {
-        type                        = Number
-    }
-
-    property "Position"             {
-        type                        = NaturalNumber
-    }
-
-end)
 
 __Sealed__()
 class "Adapter"(function()
@@ -353,9 +370,17 @@ class "LayoutManager"(function()
     }
 
     -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
-    -- @param: offset: 当前滚动位置
+    -- @param: offset: 该position对应的itemView当前滚动位置
     __Abstract__()
     function Layout(self, position, offset)
+    end
+
+    __Abstract__()
+    function UpdateItemViewSize(self, itemView)
+    end
+
+    __Abstract__()
+    function Scroll(self, offset)
     end
 
     function RequestLayout(self)
@@ -372,6 +397,39 @@ __Sealed()
 class "LinearLayoutManager"(function()
     inherit "LayoutManager"
 
+    function UpdateItemViewSize(self, itemView)
+        local recyclerView = self.RecyclerView
+        if not recyclerView then return end
+
+        local orientation = recyclerView.Orientation
+        local length = itemView:GetContentLength(orientation)
+        local maxLeft, maxRight, maxTop, maxBottom = 0, 0, 0, 0
+
+        for _, itemDecoration in recyclerView:GetItemDecorations() do
+            local left, right, top, bottom = itemDecoration:GetItemMargins()
+            maxLeft = max(left, maxLeft)
+            maxRight = max(right, maxRight)
+            maxTop = max(top, maxTop)
+            maxBottom = max(bottom, maxBottom)
+        end
+
+        if orientation == Orientation.VERTICAL then
+            length = length + maxTop + maxBottom
+        elseif orientation == Orientation.HORIZONTAL then
+            length = length + maxLeft + maxBottom
+        end
+
+        if orientation == Orientation.VERTICAL then
+            itemView:SetHeight(length)
+            itemView:SetWidth(recyclerView:GetWidth())
+        elseif orientation == Orientation.HORIZONTAL then
+            itemView:SetWidth(length)
+            itemView:SetHeight(recyclerView:GetHeight())
+        end
+
+        return length
+    end
+
     function Layout(self, position, offset)
         local recyclerView = self.RecyclerView
         if not recyclerView then return end
@@ -386,28 +444,45 @@ class "LinearLayoutManager"(function()
         local itemViewIndex, contentLength, orientation = 1, 0, recyclerView.Orientation
         local relativePoint = orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
 
-        while contentLength <= recyclerView:GetHeight() and startPosition <= itemCount do
+        while contentLength <= recyclerView:GetContentLength() and startPosition <= itemCount do
             local itemView = recyclerView:GetItemView(itemViewIndex)
             local lastItemView = itemViewIndex > 1 and recyclerView:GetItemView(itemViewIndex - 1) or nil
 
             adapter:AttachItemView(itemView, startPosition)
-            local itemLength = recyclerView:UpdateItemViewSize()
+            local itemLength = self:UpdateItemViewSize(itemView)
+            recyclerView:DrawItemDecorations(itemView)
             itemView:ClearAllPoints()
             itemView:SetPoint("TOPLEFT", lastItemView, itemViewIndex == 1 and "TOPLEFT" or relativePoint)
+            itemView:Show()
 
             itemViewIndex = itemViewIndex + 1
             startPosition = startPosition + 1
             contentLength = contentLength + itemLength
         end
 
-        recyclerView:HideItemViewFromIndex(itemViewIndex)
+        recyclerView:RecycleItemViews(adapter, itemViewIndex)
         
         -- @todo set offset
-        local itemView = recyclerView:GetItemView(0)
+        local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
         if itemView then
-            
+            local length = 0
+            for i = 1, index do
+            end
         end
     end
+
+    function Scroll(self, offset)
+        local recyclerView = self.RecyclerView
+        if not recyclerView then return end
+
+        local orientation = recyclerView.Orientation
+        if orientation == Orientation.VERTICAL then
+            recyclerView:SetVerticalScroll(offset)
+        elseif orientation == Orientation.HORIZONTAL then
+            recyclerView:SetHorizontalScroll(offset)
+        end
+    end
+
 end)
 
 -----------------------------------------------------------
@@ -431,9 +506,6 @@ class "RecyclerView"(function()
         type                        = LayoutManager,
         get                         = function(self) return self.__LayoutManager end,
         set                         = function(self, layoutManager)
-            if self.__LayoutManager then
-               self.__LayoutManager:Destroy()
-            end
             self.__LayoutManager = layoutManager
             if layoutManager then
                 layoutManager.RecyclerView = self
@@ -449,6 +521,37 @@ class "RecyclerView"(function()
     -------------------------------------------------------
     --                    Functions                      --
     -------------------------------------------------------
+
+    __Arguments__{ ItemView }
+    function DrawItemDecorations(self, itemView)
+        for _, itemDecoration in ipairs(self.__ItemDecorations) do
+            for _, itemView in ipairs(self.__ItemViews) do
+                if itemView:IsShown() then
+                    itemDecoration:Draw(self, itemView)
+                end
+            end
+        end
+    end
+
+    -- 返回ItemDecorations的迭代器
+    function GetItemDecorations(self)
+        return ipairs(self.__ItemDecorations)
+    end
+
+    __Arguments__{ NaturalNumber }
+    function GetItemDecoration(self, index)
+        return self.__ItemDecorations[index]
+    end
+
+    __Arguments__{ ItemDecoration }
+    function AddItemDecoration(self, itemDecoration)
+        return tinsert(self.__ItemDecorations, itemDecoration)
+    end
+
+    __Arguments__{ ItemDecoration }
+    function RemoveItemDecoration(self, itemDecoration)
+        return tDeleteItem(self.__ItemDecorations, itemDecoration)
+    end
 
     function OnOrientationChanged(self)
         local verticalScrollBar = self:GetChild("VerticalScrollBar")
@@ -466,7 +569,10 @@ class "RecyclerView"(function()
             verticalScrollBar:Hide()
             horizontalScrollBar:Hide()
         end
-        -- @todo
+        
+        if self.LayoutManager then
+            self.LayoutManager:RequestLayout()
+        end
     end
 
     function OnAdapterChanged(self, newAdapter, oldAdapter)
@@ -504,13 +610,18 @@ class "RecyclerView"(function()
         end
     end
 
-    -- 刷新ItemView的size
-    function UpdateItemViewSize(itemView)
+    function GetVisibleLength(self)
+        if self.Orientation == Orientation.HORIZONTAL then
+            return self:GetWidth()
+        elseif self.Orientation == Orientation.VERTICAL then
+            return self:GetHeight()
+        end
     end
 
-    -- 回收所有ItemViews
-    function RecycleItemViews(self, adapter)
-        for i = 1, #self.__ItemViews do
+    -- 从指定index开始回收ItemViews
+    __Arguments__{ Adapter, NaturalNumber/1 }
+    function RecycleItemViews(self, Adapter, index)
+        for i = index, #self.__ItemViews do
             self:RecycleItemView(adapter, i)
         end
     end
@@ -534,10 +645,10 @@ class "RecyclerView"(function()
     -- 获取指定index的ItemView
     function GetItemView(self, index)
         if index <= 0 then
-            error("GetItemView index 必须大于 0", 2)
+            throw("GetItemView index 必须大于 0")
         end
         if index > #self.__ItemViews + 1 then
-            error("GetItemView index 最多只能比现有的ItemViews数量 +1 ", 2)
+            throw("GetItemView index 最多只能比现有的ItemViews数量 +1 ")
         end
 
         local itemView = self.__ItemViews[index]
@@ -550,15 +661,8 @@ class "RecyclerView"(function()
         return itemView
     end
 
-    function HideItemViewFromIndex(self, index)
-        for i = index, #self.__ItemViews do
-            local itemView = self.__ItemViews[index]
-            itemView:Hide()
-        end
-    end
-
     -- 获取可见的ItemView count
-    -- 注意：只的是IsShown()，并不一定是视觉可见
+    -- 注意：指的是IsShown()，并不一定是视觉可见
     function GetVisibleItemViewCount(self)
         local count = 0
         for _, itemView in ipairs(self.__ItemViews) do
@@ -567,6 +671,19 @@ class "RecyclerView"(function()
             end
         end
         return count
+    end
+
+    -- 通过adapter position获取ItemView
+    -- 可能为nil
+    function GetItemViewByAdapterPosition(self, position)
+        for index, itemView in ipairs(self.__ItemViews) do
+            if itemView:IsShown() then
+                local viewHolder = itemView.ViewHolder
+                if viewHolder and viewHolder.Position == position then
+                    return itemView, index
+                end
+            end
+        end
     end
 
     local function OnVerticalScroll(self, offset)
@@ -579,6 +696,7 @@ class "RecyclerView"(function()
     }
     function __ctor(self)
         self.__ItemViews = {}
+        self.__ItemDecorations = {}
 
         local scrollChild = self:GetChild("ScrollChild")
         self:SetScrollChild(scrollChild)
