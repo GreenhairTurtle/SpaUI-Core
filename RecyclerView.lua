@@ -223,17 +223,28 @@ class "ItemView"(function()
         type                        = ViewHolder
     }
 
-    __Arguments__{ Orientation }
-    function GetContentLength(self, orientation)
+    property "Orientation"          {
+        type                        = Orientation
+    }
+
+    function GetContentLength(self)
         local length = 0
         if self.ViewHolder and self.ViewHolder.ContentView then
-            if orientation == Orientation.VERTICAL then
+            if self.Orientation == Orientation.VERTICAL then
                 length = self.ViewHolder.ContentView:GetHeight()
-            elseif orientation == Orientation.HORIZONTAL then
+            elseif self.Orientation == Orientation.HORIZONTAL then
                 length = self.ViewHolder.ContentView:GetWidth()
             end
         end
         return length
+    end
+
+    function GetLength(self)
+        if self.Orientation == Orientation.VERTICAL then
+            return GetHeight()
+        elseif self.Orientation == Orientation.HORIZONTAL then
+            return GetWidth()
+        end
     end
 
 end)
@@ -402,7 +413,7 @@ class "LinearLayoutManager"(function()
         if not recyclerView then return end
 
         local orientation = recyclerView.Orientation
-        local length = itemView:GetContentLength(orientation)
+        local length = itemView:GetContentLength()
         local maxLeft, maxRight, maxTop, maxBottom = 0, 0, 0, 0
 
         for _, itemDecoration in recyclerView:GetItemDecorations() do
@@ -415,14 +426,10 @@ class "LinearLayoutManager"(function()
 
         if orientation == Orientation.VERTICAL then
             length = length + maxTop + maxBottom
-        elseif orientation == Orientation.HORIZONTAL then
-            length = length + maxLeft + maxBottom
-        end
-
-        if orientation == Orientation.VERTICAL then
             itemView:SetHeight(length)
             itemView:SetWidth(recyclerView:GetWidth())
         elseif orientation == Orientation.HORIZONTAL then
+            length = length + maxLeft + maxBottom
             itemView:SetWidth(length)
             itemView:SetHeight(recyclerView:GetHeight())
         end
@@ -464,10 +471,13 @@ class "LinearLayoutManager"(function()
         
         -- @todo set offset
         local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
-        if itemView then
+        if itemView and index > 1 then
             local length = 0
-            for i = 1, index do
+            for i = 1, index - 1 do
+                length = length + recyclerView:GetItemView(i):GetLength()
             end
+            length = length + offset
+            self:Scroll(length)
         end
     end
 
@@ -569,6 +579,10 @@ class "RecyclerView"(function()
             verticalScrollBar:Hide()
             horizontalScrollBar:Hide()
         end
+
+        for _, itemView in ipairs(self.__ItemViews) do
+            itemView.Orientation = self.Orientation
+        end
         
         if self.LayoutManager then
             self.LayoutManager:RequestLayout()
@@ -639,6 +653,7 @@ class "RecyclerView"(function()
 
     local function CreateItemView(self, index)
         local itemView = ItemView("ItemView" .. index, self:GetChild("ScrollChild"))
+        itemView.Orientation = self.Orientation
         return itemView
     end
 
