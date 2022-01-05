@@ -431,12 +431,18 @@ class "LayoutManager"(function()
 
 end)
 
-__Sealed()
+__Sealed__()
 class "LinearLayoutManager"(function()
     inherit "LayoutManager"
 
     function OnOrientationChanged(self, orientation)
+        local recyclerView = self.RecyclerView
+        if not recyclerView then return end
 
+        local itemView, index = recyclerView:GetFirstCompletelyVisibleItemView()
+        if itemView and itemView.ViewHolder and itemView.ViewHolder.Position then
+            self:Layout(itemView.ViewHolder.Position, 0)
+        end
     end
 
     function LayoutItemViews(self)
@@ -587,11 +593,7 @@ class "RecyclerView"(function()
     __Arguments__{ ItemView }
     function DrawItemDecorations(self, itemView)
         for _, itemDecoration in ipairs(self.__ItemDecorations) do
-            for _, itemView in ipairs(self.__ItemViews) do
-                if itemView:IsShown() then
-                    itemDecoration:Draw(self, itemView)
-                end
-            end
+            itemDecoration:Draw(self, itemView)
         end
     end
 
@@ -765,14 +767,20 @@ class "RecyclerView"(function()
         end
     end
 
-    -- 获取第一个可以完整可见的ItemView
     function GetFirstCompletelyVisibleItemView(self)
+        local itemViewCount = #self.__ItemViews
+        if itemViewCount <= 0 then return end
+
         local scrollOffset = self:GetScrollOffset()
         local offset = 0
+
         for index, itemView in ipairs(self.__ItemViews) do
-            offset = offset + itemView:GetLength()
-            -- @todo
+            if scrollOffset <= offset then
+                return itemView, index
+            end
         end
+    
+        return self.__ItemViews[itemViewCount], itemViewCount
     end
 
     function GetScrollRange(self)
