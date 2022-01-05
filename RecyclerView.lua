@@ -196,17 +196,27 @@ class "VerticalScrollBar"   { ScrollBar }
 __Sealed__()
 class "ViewHolder"(function()
 
-    property "ContentView"          {
-        type                        = LayoutFrame
-    }
-
-    property "ItemViewType"         {
-        type                        = Integer
-    }
-
     property "Position"             {
         type                        = NaturalNumber
     }
+
+    property "Orientation"          {
+        type                        = Orientation
+    }
+
+    function Destroy(self)
+        self.Orientation = nil
+        self.Position = nil
+        self.ContentView:Hide()
+        self.ContentView:ClearAllPoints()
+        self.ContentView:SetParent(nil)
+    end
+
+    __Arguments__{ LayoutFrame, Integer }
+    function __ctor(self, contentView, itemViewType)
+        self.ContentView = contentView
+        self.ItemViewType = itemViewType
+    end
 
 end)
 
@@ -220,16 +230,26 @@ class "ItemView"(function()
     inherit "Frame"
 
     property "ViewHolder"           {
-        type                        = ViewHolder
+        type                        = ViewHolder,
+        handler                     = function(self, viewHolder)
+            if viewHolder then
+                viewHolder.Orientation = self.Orientation
+            end
+        end
     }
 
     property "Orientation"          {
-        type                        = Orientation
+        type                        = Orientation,
+        handler                     = function(self, orientation)
+            if self.ViewHolder then
+                self.ViewHolder.Orientation = orientation
+            end
+        end
     }
 
     function GetContentLength(self)
         local length = 0
-        if self.ViewHolder and self.ViewHolder.ContentView then
+        if self.ViewHolder then
             if self.Orientation == Orientation.VERTICAL then
                 length = self.ViewHolder.ContentView:GetHeight()
             elseif self.Orientation == Orientation.HORIZONTAL then
@@ -241,9 +261,9 @@ class "ItemView"(function()
 
     function GetLength(self)
         if self.Orientation == Orientation.VERTICAL then
-            return GetHeight()
+            return self:GetHeight()
         elseif self.Orientation == Orientation.HORIZONTAL then
-            return GetWidth()
+            return self:GetWidth()
         end
     end
 
@@ -296,10 +316,7 @@ class "Adapter"(function()
     __Arguments__{ LayoutFrame, Number }
     __Final__()
     function CreateViewHolder(self, parent, viewType)
-        local holder = ViewHolder()
-        holder.ContentView = self:OnCreateView(parent, viewType)
-        holder.ItemViewType = viewType
-        return holder
+        return ViewHolder(self:OnCreateView(parent, viewType), viewType)
     end
 
     -- 返回列表view
@@ -311,8 +328,10 @@ class "Adapter"(function()
     __Arguments__{ ViewHolder, NaturalNumber }
     __Final__()
     function BindViewHolder(self, holder, position)
+        if holder.Position ~= position then
+            OnBindViewHolder(self, holder, position)
+        end
         holder.Position = position
-        OnBindViewHolder(self, holder, position)
     end
 
     __Arguments__{ ViewHolder, NaturalNumber }
@@ -321,34 +340,38 @@ class "Adapter"(function()
     end
 
     __Arguments__{ ItemView }
-    function RecyclerViewHoder(self, itemView)
+    function RecycleViewHoder(self, itemView)
         local viewHolder = itemView.ViewHolder
         if not viewHolder then return end
 
-        viewHolder.ContentView:Hide()
-        viewHolder.ContentView:ClearAllPoints()
-        viewHolder.ContentView:SetParent(nil)
+        viewHolder:Destroy()
         
-        local viewHolderCache = self.__ViewHolderCaches[viewHolder.ItemViewType]
+        local viewHolderCache = self.__ViewHolderCache[viewHolder.ItemViewType]
         if not viewHolderCache then
             viewHolderCache = {}
-            self.__ViewHolderCaches[viewHolder.ItemViewType] = viewHolderCache
+            self.__ViewHolderCache[viewHolder.ItemViewType] = viewHolderCache
         end
+
         tinsert(viewHolderCache, viewHolder)
 
         itemView.ViewHolder = nil
     end
 
     local function GetViewHolderFromCache(self, itemViewType)
-        if self.__ViewHolderCaches[itemViewType] then
-            return tremove(self.__ViewHolderCaches[itemViewType])
+        if self.__ViewHolderCache[itemViewType] then
+            return tremove(self.__ViewHolderCache[itemViewType])
         end
     end
 
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
-        local viewHolder = itemView.ViewHolder
         local itemViewType = self:GetItemViewType(position)
+
+        if itemView.ViewHolder.ItemViewType ~= itemViewType then
+            self:RecycleViewHoder(itemView)
+        end
+
+        local viewHolder = itemView.ViewHolder
 
         if not viewHolder then
             viewHolder = GetViewHolderFromCache(self, itemViewType)
@@ -364,7 +387,7 @@ class "Adapter"(function()
     end
 
     function __ctor(self)
-        self.__ViewHolderCaches = {}
+        self.__ViewHolderCache = {}
     end
     
 end)
@@ -391,7 +414,11 @@ class "LayoutManager"(function()
     end
 
     __Abstract__()
-    function Scroll(self, offset)
+    function OnOrientationChanged(self, orientation)
+    end
+
+    __Abstract__()
+    function LayoutItemView(self)
     end
 
     function RequestLayout(self)
@@ -408,11 +435,25 @@ __Sealed()
 class "LinearLayoutManager"(function()
     inherit "LayoutManager"
 
-    function UpdateItemViewSize(self, itemView)
+    function OnOrientationChanged(self, orientation)
+
+    end
+
+    function LayoutItemViews(self)
         local recyclerView = self.RecyclerView
         if not recyclerView then return end
+        
+        local relativePoint = recyclerView.Orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
 
-        local orientation = recyclerView.Orientation
+        local lastItemView
+        for index, itemView in recyclerView:GetItemViews() do
+            itemView:ClearAllPoints()
+            itemView:SetPoint("TOPLEFT", lastItemView or itemView:GetParent(), relativePoint)
+            lastItemView = index > 1 and itemView
+        end
+    end
+
+    function UpdateItemViewSize(self, itemView)
         local length = itemView:GetContentLength()
         local maxLeft, maxRight, maxTop, maxBottom = 0, 0, 0, 0
 
@@ -424,6 +465,7 @@ class "LinearLayoutManager"(function()
             maxBottom = max(bottom, maxBottom)
         end
 
+        local orientation = itemView.Orientation
         if orientation == Orientation.VERTICAL then
             length = length + maxTop + maxBottom
             itemView:SetHeight(length)
@@ -448,48 +490,64 @@ class "LinearLayoutManager"(function()
         local itemCount = adapter:GetItemCount()
         if startPosition > itemCount then return end
         
-        local itemViewIndex, contentLength, orientation = 1, 0, recyclerView.Orientation
-        local relativePoint = orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
+        local itemViewIndex, contentLength = 1, 0
+        local adapterPosition = startPosition
+        local itemViewMap = {}
+        -- 用于排序
+        local itemViewPositions = {}
 
-        while contentLength <= recyclerView:GetContentLength() and startPosition <= itemCount do
+        while contentLength <= recyclerView:GetLength() and adapterPosition <= itemCount do
             local itemView = recyclerView:GetItemView(itemViewIndex)
-            local lastItemView = itemViewIndex > 1 and recyclerView:GetItemView(itemViewIndex - 1) or nil
 
-            adapter:AttachItemView(itemView, startPosition)
+            adapter:AttachItemView(itemView, adapterPosition)
             local itemLength = self:UpdateItemViewSize(itemView)
             recyclerView:DrawItemDecorations(itemView)
-            itemView:ClearAllPoints()
-            itemView:SetPoint("TOPLEFT", lastItemView, itemViewIndex == 1 and "TOPLEFT" or relativePoint)
             itemView:Show()
 
-            itemViewIndex = itemViewIndex + 1
-            startPosition = startPosition + 1
+            itemViewMap[adapterPosition] = itemView
+            tinsert(itemViewPositions, adapterPosition)
+
+            adapterPosition = adapterPosition + 1
             contentLength = contentLength + itemLength
+            itemViewIndex = itemViewIndex + 1
         end
 
+        adapterPosition = startPosition - 1
+
+        while contentLength <= recyclerView:GetLength() and adapterPosition > 0 do
+            local itemView = recyclerView:GetItemView(itemViewIndex)
+
+            adapter:AttachItemView(itemView, adapterPosition)
+            local itemLength = self:UpdateItemViewSize(itemView)
+            recyclerView:DrawItemDecorations(itemView)
+            itemView:Show()
+
+            itemViewMap[adapterPosition] = itemView
+            tinsert(itemViewPositions, adapterPosition)
+
+            adapterPosition = adapterPosition + 1
+            contentLength = contentLength + itemLength
+            itemViewIndex = itemViewIndex + 1
+        end
+
+        -- 设置ItemView布局
+        sort(itemViewPositions)
+        for index, itemViewPosition in ipairs(itemViewPositions) do
+            local itemView = itemViewMap[itemViewPosition]
+            recyclerView:SetItemView(index, itemView)
+        end
         recyclerView:RecycleItemViews(adapter, itemViewIndex)
+        self:LayoutItemViews()
         
-        -- @todo set offset
+        -- set offset
         local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
-        if itemView and index > 1 then
+        if itemView then
             local length = 0
             for i = 1, index - 1 do
                 length = length + recyclerView:GetItemView(i):GetLength()
             end
             length = length + offset
-            self:Scroll(length)
-        end
-    end
-
-    function Scroll(self, offset)
-        local recyclerView = self.RecyclerView
-        if not recyclerView then return end
-
-        local orientation = recyclerView.Orientation
-        if orientation == Orientation.VERTICAL then
-            recyclerView:SetVerticalScroll(offset)
-        elseif orientation == Orientation.HORIZONTAL then
-            recyclerView:SetHorizontalScroll(offset)
+            recyclerView:Scroll(length)
         end
     end
 
@@ -514,13 +572,7 @@ class "RecyclerView"(function()
 
     property "LayoutManager"        {
         type                        = LayoutManager,
-        get                         = function(self) return self.__LayoutManager end,
-        set                         = function(self, layoutManager)
-            self.__LayoutManager = layoutManager
-            if layoutManager then
-                layoutManager.RecyclerView = self
-            end
-        end
+        handler                     = "OnLayoutManagerChanged"
     }
 
     property "Adapter"              {
@@ -563,6 +615,13 @@ class "RecyclerView"(function()
         return tDeleteItem(self.__ItemDecorations, itemDecoration)
     end
 
+    function OnLayoutManagerChanged(self, layoutManager)
+        self:RecyclerItemViews(self.Adapter)
+        if layoutManager then
+            layoutManager:RequestLayout()
+        end
+    end
+
     function OnOrientationChanged(self)
         local verticalScrollBar = self:GetChild("VerticalScrollBar")
         local horizontalScrollBar = self:GetChild("HorizontalScrollBar")
@@ -585,7 +644,7 @@ class "RecyclerView"(function()
         end
         
         if self.LayoutManager then
-            self.LayoutManager:RequestLayout()
+            self.LayoutManager:OnOrientationChanged(self.Orientation)
         end
     end
 
@@ -624,7 +683,7 @@ class "RecyclerView"(function()
         end
     end
 
-    function GetVisibleLength(self)
+    function GetLength(self)
         if self.Orientation == Orientation.HORIZONTAL then
             return self:GetWidth()
         elseif self.Orientation == Orientation.VERTICAL then
@@ -634,30 +693,42 @@ class "RecyclerView"(function()
 
     -- 从指定index开始回收ItemViews
     __Arguments__{ Adapter, NaturalNumber/1 }
-    function RecycleItemViews(self, Adapter, index)
+    function RecycleItemViews(self, adapter, index)
         for i = index, #self.__ItemViews do
             self:RecycleItemView(adapter, i)
         end
     end
     
+    __Arguments__{ Adapter, NaturalNumber }
     function RecycleItemView(self, adapter, index)
-        local itemView = self.__ItemViews[index]
+        local itemView = tremove(self.__ItemView, index)
         if itemView then
             if adapter then
-                adapter:RecyclerViewHoder(itemView)
+                adapter:RecycleViewHoder(itemView)
             end
             itemView:Hide()
             itemView:ClearAllPoints()
+            tinsert(self.__ItemViewCache, itemView)
         end
     end
 
-    local function CreateItemView(self, index)
-        local itemView = ItemView("ItemView" .. index, self:GetChild("ScrollChild"))
-        itemView.Orientation = self.Orientation
+    __Arguments__{ NaturalNumber, ItemView }
+    function SetItemView(self, index, itemView)
+        self.__ItemViews[index] = itemView
+    end
+
+    function GetItemViews(self)
+        return ipairs(self.__ItemViews)
+    end
+
+    local function CreateItemView(self)
+        self.__ItemViewCount = self.__ItemViewCount + 1
+        local itemView = ItemView("ItemView" .. self.__ItemViewCount, self:GetChild("ScrollChild"))
         return itemView
     end
 
     -- 获取指定index的ItemView
+    __Arguments__{ NaturalNumber }
     function GetItemView(self, index)
         if index <= 0 then
             throw("GetItemView index 必须大于 0")
@@ -668,38 +739,69 @@ class "RecyclerView"(function()
 
         local itemView = self.__ItemViews[index]
         if not itemView then
-            itemView = CreateItemView(self, index)
+            itemView = tremove(self.__ItemViewCache)
+            if not itemView then
+                itemView = CreateItemView(self)
+            end
+            itemView.Orientation = self.Orientation
+            self.__ItemViews[index] = itemView
         end
-
-        self.__ItemViews[index] = itemView
 
         return itemView
     end
 
-    -- 获取可见的ItemView count
-    -- 注意：指的是IsShown()，并不一定是视觉可见
-    function GetVisibleItemViewCount(self)
-        local count = 0
-        for _, itemView in ipairs(self.__ItemViews) do
-            if itemView:IsShown() then
-                count = count + 1
-            end
-        end
-        return count
+    function GetItemViewCount(self)
+        return #self.__ItemViews
     end
 
     -- 通过adapter position获取ItemView
     -- 可能为nil
     function GetItemViewByAdapterPosition(self, position)
         for index, itemView in ipairs(self.__ItemViews) do
-            if itemView:IsShown() then
-                local viewHolder = itemView.ViewHolder
-                if viewHolder and viewHolder.Position == position then
-                    return itemView, index
-                end
+            local viewHolder = itemView.ViewHolder
+            if viewHolder and viewHolder.Position == position then
+                return itemView, index
             end
         end
     end
+
+    -- 获取第一个可以完整可见的ItemView
+    function GetFirstCompletelyVisibleItemView(self)
+        local scrollOffset = self:GetScrollOffset()
+        local offset = 0
+        for index, itemView in ipairs(self.__ItemViews) do
+            offset = offset + itemView:GetLength()
+            -- @todo
+        end
+    end
+
+    function GetScrollRange(self)
+        local orientation = self.Orientation
+        if orientation == Orientation.VERTICAL then
+            return self:GetVerticalScrollRange()
+        elseif orientation == Orientation.HORIZONTAL then
+            return self:GetHorizontalScrollRange()
+        end
+    end
+
+    function GetScrollOffset(self)
+        local orientation = self.Orientation
+        if orientation == Orientation.VERTICAL then
+            return self:GetVerticalScroll()
+        elseif orientation == Orientation.HORIZONTAL then
+            return self:GetHorizontalScroll()
+        end
+    end
+
+    function Scroll(self, offset)
+        local orientation = self.Orientation
+        if orientation == Orientation.VERTICAL then
+            self:SetVerticalScroll(offset)
+        elseif orientation == Orientation.HORIZONTAL then
+            self:SetHorizontalScroll(offset)
+        end
+    end
+
 
     local function OnVerticalScroll(self, offset)
     end
@@ -710,7 +812,9 @@ class "RecyclerView"(function()
         ScrollChild                 = Frame
     }
     function __ctor(self)
+        self.__ItemViewCount = 0
         self.__ItemViews = {}
+        self.__ItemViewCache = {}
         self.__ItemDecorations = {}
 
         local scrollChild = self:GetChild("ScrollChild")
