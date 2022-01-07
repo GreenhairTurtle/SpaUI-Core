@@ -1,10 +1,9 @@
----@diagnostic disable: undefined-global
 -----------------------------------------------------------
 --         Warcraft version of Android recyclerView      --
 -----------------------------------------------------------
 Scorpio "SpaUI.Widget.RecyclerView" ""
 
-namespace "SpaUI.Widget.RecyclerView"
+namespace "SpaUI.Widget.Recycler"
 
 class "ItemDecoration" {}
 
@@ -93,6 +92,10 @@ class "ScrollBar"(function()
         end
     end
 
+    local function OnLeave(self)
+        -- do nothing
+    end
+
     local function OnEnter(self)
         Show(self)
     end
@@ -179,6 +182,7 @@ class "ScrollBar"(function()
         self.OnValueChanged     = self.OnValueChanged + OnValueChanged
         self.OnMouseWheel       = self.OnMouseWheel + OnMouseWheel
         self.OnEnter            = self.OnEnter + OnEnter
+        self.OnLeave            = self.OnLeave + OnLeave
     end
 
 end)
@@ -310,26 +314,25 @@ class "Adapter"(function()
     -- 获取item数量，必须是自然数
     __Abstract__()
     function GetItemCount(self)
-        return 0
+        return self.Data and self.Data.Count or 0
     end
 
-    __Arguments__{ LayoutFrame, Number }
+    __Arguments__{ Number }
     __Final__()
-    function CreateViewHolder(self, parent, viewType)
-        return ViewHolder(self:OnCreateView(parent, viewType), viewType)
+    function CreateViewHolder(self, viewType)
+        return ViewHolder(self:OnCreateView(viewType), viewType)
     end
 
-    -- 返回列表view
-    __Arguments__{ LayoutFrame, Number }
+    __Arguments__{ Number }
     __Abstract__()
-    function OnCreateView(self, parent, viewType)
+    function OnCreateView(self, viewType)
     end
 
     __Arguments__{ ViewHolder, NaturalNumber }
     __Final__()
     function BindViewHolder(self, holder, position)
         if holder.Position ~= position then
-            OnBindViewHolder(self, holder, position)
+            self:OnBindViewHolder(holder, position)
         end
         holder.Position = position
     end
@@ -365,9 +368,10 @@ class "Adapter"(function()
 
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
+        print("AttachItemView", position)
         local itemViewType = self:GetItemViewType(position)
 
-        if itemView.ViewHolder.ItemViewType ~= itemViewType then
+        if itemView.ViewHolder and itemView.ViewHolder.ItemViewType ~= itemViewType then
             self:RecycleViewHoder(itemView)
         end
 
@@ -375,14 +379,13 @@ class "Adapter"(function()
 
         if not viewHolder then
             viewHolder = GetViewHolderFromCache(self, itemViewType)
-            if viewHolder then
-                viewHolder.ContentView:SetParent(itemView)
-                viewHolder.ContentView:Show()
-            else
-                viewHolder = self:CreateViewHolder(itemView, itemViewType)
+            if not viewHolder then
+                viewHolder = self:CreateViewHolder(itemViewType)
             end
+            viewHolder.ContentView:SetParent(itemView)
+            viewHolder.ContentView:Show()
+            itemView.ViewHolder = viewHolder
         end
-
         self:BindViewHolder(viewHolder, position)
     end
 
@@ -454,12 +457,15 @@ class "LinearLayoutManager"(function()
         local lastItemView
         for index, itemView in recyclerView:GetItemViews() do
             itemView:ClearAllPoints()
-            itemView:SetPoint("TOPLEFT", lastItemView or itemView:GetParent(), relativePoint)
-            lastItemView = index > 1 and itemView
+            itemView:SetPoint("TOPLEFT", lastItemView or itemView:GetParent(), lastItemView and relativePoint or "TOPLEFT", 0, 0)
+            lastItemView = itemView
         end
     end
 
     function UpdateItemViewSize(self, itemView)
+        local recyclerView = self.RecyclerView
+        if not recyclerView then return end
+
         local length = itemView:GetContentLength()
         local maxLeft, maxRight, maxTop, maxBottom = 0, 0, 0, 0
 
@@ -472,14 +478,20 @@ class "LinearLayoutManager"(function()
         end
 
         local orientation = itemView.Orientation
+        local contentView = itemView.ViewHolder.ContentView
+        contentView:SetPoint("TOPLEFT", maxLeft, -maxTop)
         if orientation == Orientation.VERTICAL then
-            length = length + maxTop + maxBottom
+            length = maxTop + maxBottom + contentView:GetHeight()
+            local width = recyclerView:GetWidth()
+            contentView:SetWidth(width - maxLeft - maxRight)
+            itemView:SetWidth(width)
             itemView:SetHeight(length)
-            itemView:SetWidth(recyclerView:GetWidth())
         elseif orientation == Orientation.HORIZONTAL then
-            length = length + maxLeft + maxBottom
+            length = maxLeft + maxRight + contentView:GetWidth()
+            local height = recyclerView:GetHeight()
+            contentView:SetHeight(height - maxTop - maxBottom)
+            itemView:SetHeight(height)
             itemView:SetWidth(length)
-            itemView:SetHeight(recyclerView:GetHeight())
         end
 
         return length
@@ -546,15 +558,15 @@ class "LinearLayoutManager"(function()
         self:LayoutItemViews()
         
         -- set offset
-        local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
-        if itemView then
-            local length = 0
-            for i = 1, index - 1 do
-                length = length + recyclerView:GetItemView(i):GetLength()
-            end
-            length = length + offset
-            recyclerView:Scroll(length)
-        end
+        -- local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
+        -- if itemView then
+        --     local length = 0
+        --     for i = 1, index - 1 do
+        --         length = length + recyclerView:GetItemView(i):GetLength()
+        --     end
+        --     length = length + offset
+        --     recyclerView:Scroll(length)
+        -- end
     end
 
 end)
@@ -617,9 +629,15 @@ class "RecyclerView"(function()
         return tDeleteItem(self.__ItemDecorations, itemDecoration)
     end
 
-    function OnLayoutManagerChanged(self, layoutManager)
-        self:RecyclerItemViews(self.Adapter)
+    function OnLayoutManagerChanged(self, layoutManager, oldLayoutManager)
+        self:RecycleItemViews(self.Adapter)
+
+        if oldLayoutManager then
+            oldLayoutManager.RecyclerView = nil
+        end
+
         if layoutManager then
+            layoutManager.RecyclerView = self
             layoutManager:RequestLayout()
         end
     end
@@ -653,7 +671,7 @@ class "RecyclerView"(function()
     function OnAdapterChanged(self, newAdapter, oldAdapter)
         local scrollBar = self:GetScrollBar()
 
-        self:RecyclerItemViews(oldAdapter)
+        self:RecycleItemViews(oldAdapter)
 
         if newAdapter then
             scrollBar:SetMinMaxValues(0, newAdapter:GetItemCount())
@@ -694,7 +712,7 @@ class "RecyclerView"(function()
     end
 
     -- 从指定index开始回收ItemViews
-    __Arguments__{ Adapter, NaturalNumber/1 }
+    __Arguments__{ Adapter/nil, NaturalNumber/1 }
     function RecycleItemViews(self, adapter, index)
         for i = index, #self.__ItemViews do
             self:RecycleItemView(adapter, i)
@@ -1052,7 +1070,6 @@ Style.UpdateSkin("Default", {
     },
 
     [RecyclerView]                              = {
-
         VerticalScrollBar                       = {
             location                            = {
                 Anchor("TOPLEFT", 2, -18, nil, "TOPRIGHT"),
