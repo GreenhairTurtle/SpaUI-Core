@@ -210,7 +210,6 @@ class "ViewHolder"(function()
 
     function Destroy(self)
         self.Orientation = nil
-        self.Position = nil
         self.ContentView:Hide()
         self.ContentView:ClearAllPoints()
         self.ContentView:SetParent(nil)
@@ -231,7 +230,6 @@ end)
 
 __Sealed__()
 class "ItemView"(function()
-    inherit "Frame"
 
     property "ViewHolder"           {
         type                        = ViewHolder,
@@ -271,6 +269,30 @@ class "ItemView"(function()
         end
     end
 
+    __Arguments__{ NEString }
+    function GetItemDecorationView(self, name)
+        local view = self.__ItemDecorations[name]
+        if not view then
+            view = Frame("ItemDecoration_" .. name, self)
+            view:SetFrameStrata(self:GetFrameStrata())
+            view:SetFrameLevel(self:GetFrameLevel())
+            view:SetAllPoints(self)
+            self.__ItemDecorations[name] = view
+        end
+        
+        return view
+    end
+
+    function HideItemDecorations(self)
+        for _, decorationView in pairs(self.__ItemDecorations) do
+            decorationView:Hide()
+        end
+    end
+
+    function __ctor(self)
+        self.__ItemDecorations = {}
+    end
+
 end)
 
 __Sealed__()
@@ -283,14 +305,19 @@ class "ItemDecoration"(function()
         return 0, 0, 0, 0
     end
 
-    __Arguments__{ RecyclerView, ItemView, NaturalNumber }
+    __Arguments__{ RecyclerView, ItemView, LayoutFrame }
     __Abstract__()
-    function Draw(self, recyclerView, itemView)
+    function Draw(self, recyclerView, decorationView)
     end
 
     __Arguments__{ RecyclerView }
     __Abstract__()
     function DrawOver(self, recyclerView)
+    end
+
+    __Arguments__{ NEString }
+    function __ctor(self, name)
+        self.Name = name
     end
 
 end)
@@ -320,12 +347,12 @@ class "Adapter"(function()
     __Arguments__{ Number }
     __Final__()
     function CreateViewHolder(self, viewType)
-        return ViewHolder(self:OnCreateView(viewType), viewType)
+        return ViewHolder(self:OnCreateView(viewType, "ContentView"), viewType)
     end
 
-    __Arguments__{ Number }
+    __Arguments__{ Number, NEString }
     __Abstract__()
-    function OnCreateView(self, viewType)
+    function OnCreateContentView(self, viewType, contentViewName)
     end
 
     __Arguments__{ ViewHolder, NaturalNumber }
@@ -360,6 +387,12 @@ class "Adapter"(function()
         itemView.ViewHolder = nil
     end
 
+    __Arguments__{ NaturalNumber }
+    function NeedRefresh(self, position)
+        local itemViewType = self:GetItemViewType(position)
+        return self.ViewHolder and self.ViewHolder.Position ~= position and self.ViewHolder.ItemViewType ~= itemViewType
+    end
+
     local function GetViewHolderFromCache(self, itemViewType)
         if self.__ViewHolderCache[itemViewType] then
             return tremove(self.__ViewHolderCache[itemViewType])
@@ -368,8 +401,11 @@ class "Adapter"(function()
 
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
-        print("AttachItemView", position)
         local itemViewType = self:GetItemViewType(position)
+
+        if not self:NeedRefresh(position) then
+            return
+        end
 
         if itemView.ViewHolder and itemView.ViewHolder.ItemViewType ~= itemViewType then
             self:RecycleViewHoder(itemView)
@@ -386,6 +422,7 @@ class "Adapter"(function()
             viewHolder.ContentView:Show()
             itemView.ViewHolder = viewHolder
         end
+
         self:BindViewHolder(viewHolder, position)
     end
 
@@ -455,7 +492,7 @@ class "LinearLayoutManager"(function()
         local relativePoint = recyclerView.Orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
 
         local lastItemView
-        for index, itemView in recyclerView:GetItemViews() do
+        for _, itemView in recyclerView:GetItemViews() do
             itemView:ClearAllPoints()
             itemView:SetPoint("TOPLEFT", lastItemView or itemView:GetParent(), lastItemView and relativePoint or "TOPLEFT", 0, 0)
             lastItemView = itemView
@@ -480,6 +517,7 @@ class "LinearLayoutManager"(function()
         local orientation = itemView.Orientation
         local contentView = itemView.ViewHolder.ContentView
         contentView:SetPoint("TOPLEFT", maxLeft, -maxTop)
+
         if orientation == Orientation.VERTICAL then
             length = maxTop + maxBottom + contentView:GetHeight()
             local width = recyclerView:GetWidth()
@@ -493,8 +531,24 @@ class "LinearLayoutManager"(function()
             itemView:SetHeight(height)
             itemView:SetWidth(length)
         end
+    end
 
-        return length
+    local function GetItemViewByPosition(recyclerView, adapter, position)
+        local itemView = recyclerView:GetItemViewByAdapterPosition(position)
+
+        if not itemView then
+            itemView = recyclerView:GetItemView()
+        end
+
+        if adapter:NeedRefresh() then
+            adapter:AttachItemView(itemView, position)
+            self:UpdateItemViewSize(itemView)
+            recyclerView:DrawItemDecorations(itemView)
+        end
+
+        itemView:Show()
+
+        return itemView
     end
 
     function Layout(self, position, offset)
@@ -508,37 +562,27 @@ class "LinearLayoutManager"(function()
         local itemCount = adapter:GetItemCount()
         if startPosition > itemCount then return end
         
-        local itemViewIndex, contentLength = 1, 0
+        local contentLength = 0
         local adapterPosition = startPosition
         local itemViewMap = {}
         -- 用于排序
         local itemViewPositions = {}
 
         while contentLength <= recyclerView:GetLength() and adapterPosition <= itemCount do
-            local itemView = recyclerView:GetItemView(itemViewIndex)
-
-            adapter:AttachItemView(itemView, adapterPosition)
-            local itemLength = self:UpdateItemViewSize(itemView)
-            recyclerView:DrawItemDecorations(itemView)
-            itemView:Show()
+            local itemView = GetItemViewByPosition(recyclerView, adapter, adapterPosition)
 
             itemViewMap[adapterPosition] = itemView
             tinsert(itemViewPositions, adapterPosition)
 
             adapterPosition = adapterPosition + 1
-            contentLength = contentLength + itemLength
+            contentLength = contentLength + itemView:GetLength()
             itemViewIndex = itemViewIndex + 1
         end
 
         adapterPosition = startPosition - 1
 
         while contentLength <= recyclerView:GetLength() and adapterPosition > 0 do
-            local itemView = recyclerView:GetItemView(itemViewIndex)
-
-            adapter:AttachItemView(itemView, adapterPosition)
-            local itemLength = self:UpdateItemViewSize(itemView)
-            recyclerView:DrawItemDecorations(itemView)
-            itemView:Show()
+            local itemView = GetItemViewByPosition(recyclerView, adapter, adapterPosition)
 
             itemViewMap[adapterPosition] = itemView
             tinsert(itemViewPositions, adapterPosition)
@@ -558,15 +602,15 @@ class "LinearLayoutManager"(function()
         self:LayoutItemViews()
         
         -- set offset
-        -- local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
-        -- if itemView then
-        --     local length = 0
-        --     for i = 1, index - 1 do
-        --         length = length + recyclerView:GetItemView(i):GetLength()
-        --     end
-        --     length = length + offset
-        --     recyclerView:Scroll(length)
-        -- end
+        local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
+        if itemView then
+            local length = 0
+            for i = 1, index - 1 do
+                length = length + recyclerView:GetItemView(i):GetLength()
+            end
+            length = length + offset
+            recyclerView:Scroll(length)
+        end
     end
 
 end)
@@ -604,8 +648,9 @@ class "RecyclerView"(function()
 
     __Arguments__{ ItemView }
     function DrawItemDecorations(self, itemView)
+        self:HideItemDecorations()
         for _, itemDecoration in ipairs(self.__ItemDecorations) do
-            itemDecoration:Draw(self, itemView)
+            itemDecoration:Draw(self, itemView:GetItemDecorationView(itemDecoration.Name))
         end
     end
 
@@ -747,24 +792,12 @@ class "RecyclerView"(function()
         return itemView
     end
 
-    -- 获取指定index的ItemView
-    __Arguments__{ NaturalNumber }
-    function GetItemView(self, index)
-        if index <= 0 then
-            throw("GetItemView index 必须大于 0")
-        end
-        if index > #self.__ItemViews + 1 then
-            throw("GetItemView index 最多只能比现有的ItemViews数量 +1 ")
-        end
-
-        local itemView = self.__ItemViews[index]
+    -- 获取ItemView
+    function GetItemView(self)
+        local itemView = tremove(self.__ItemViewCache)
         if not itemView then
-            itemView = tremove(self.__ItemViewCache)
-            if not itemView then
-                itemView = CreateItemView(self)
-            end
+            itemView = CreateItemView(self)
             itemView.Orientation = self.Orientation
-            self.__ItemViews[index] = itemView
         end
 
         return itemView
@@ -827,7 +860,6 @@ class "RecyclerView"(function()
             self:SetHorizontalScroll(offset)
         end
     end
-
 
     local function OnVerticalScroll(self, offset)
     end
