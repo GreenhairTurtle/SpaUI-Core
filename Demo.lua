@@ -31,51 +31,39 @@ Divider = ItemDecoration("Divider")
 Divider.Height = 10
 
 function Divider:GetItemMargins(recyclerView, holder)
-    if holder.Orientation == Orientation.VERTICAL then
-        local paddingBottom = self.Height
-        local adapter = recyclerView.Adapter
-
-        if holder.Position == adapter:GetItemCount() then
-            paddingBottom = 30
-        end
-        return 0, 0, 0, paddingBottom
-    else
-        local paddingBottom = self.Height
-        local adapter = recyclerView.Adapter
-
-        if holder.Position == adapter:GetItemCount() then
-            paddingBottom = 30
-        end
-        return 0, paddingBottom, 0, 0
+    local paddingBottom = self.Height
+    if holder.Position % 2 == 0 then
+        paddingBottom = 30
     end
+    return 0, 0, 0, paddingBottom
 end
 
 function Divider:Draw(recyclerView, parent, holder)
     local line = parent:GetChild("Line")
-    local endText = parent:GetChild("EndText")
+    local text = parent:GetChild("Text")
     local adapter = recyclerView.Adapter
 
     if not line then
         line = Texture("Line", parent)
-            line:SetPoint("BOTTOMLEFT")
-            line:SetPoint("BOTTOMRIGHT")
-            line:SetHeight(self.Height)
+        line:SetPoint("BOTTOMLEFT")
+        line:SetPoint("BOTTOMRIGHT")
+        line:SetHeight(self.Height)
         line:SetColorTexture(1, 0, 0)
     end
 
-    if not endText then
-        endText = FontString("EndText", parent)
-        endText:SetFontObject(GameFontRed)
-        endText:SetPoint("BOTTOM")
-        endText:SetText("我是有底线的！")
+    if not text then
+        text = FontString("Text", parent)
+        text:SetFontObject(GameFontRed)
+        text:SetPoint("BOTTOM")
     end
 
-    if holder.Position == adapter:GetItemCount() then
+    if holder.Position % 2 == 0 then
         line:Hide()
-        endText:Show()
+        text:Show()
+        text:SetText("这是第" .. holder.Position .. "行的页尾")
     else
         line:Show()
-        endText:Hide()
+        text:Hide()
     end
 end
 

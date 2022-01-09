@@ -795,6 +795,7 @@ class "RecyclerView"(function()
             local count = adapter:GetItemCount()
             if count > 0 then
                 scrollBar:SetRange(count)
+                scrollBar:SetValue(1)
             end
         end
     end
