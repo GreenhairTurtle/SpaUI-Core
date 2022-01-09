@@ -655,7 +655,6 @@ class "LinearLayoutManager"(function()
 
         -- 设置ItemView布局
         recyclerView:SetItemViews(itemViewMap)
-        recyclerView:SetScrollBarValue(position)
         self:LayoutItemViews()
         
         -- set offset
@@ -820,10 +819,6 @@ class "RecyclerView"(function()
     __Arguments__{ Boolean/false }
     function SetScrollBarVisible(self, show)
         self:GetScrollBar():SetShown(show)
-    end
-
-    function SetScrollBarValue(self, value)
-        self:GetScrollBar():SetValue(value)
     end
 
     function HideScrollBars(self)
@@ -1004,9 +999,9 @@ class "RecyclerView"(function()
 
         -- 判断是否滚动出范围
         -- 滚动出范围，重新刷新
+        local itemView, index, curOffset = self:GetFirstCompletelyVisibleItemView()
+        local position = itemView.ViewHolder.Position
         if offset > scrollRange or offset < 0 then
-            local itemView, index, curOffset = self:GetFirstCompletelyVisibleItemView()
-            local position = itemView.ViewHolder.Position
             offset = -(curOffset - offset)
             
             if position == 1 then
@@ -1017,6 +1012,9 @@ class "RecyclerView"(function()
                 self.LayoutManager:Layout(itemView.ViewHolder.Position, offset)
             end
         end
+
+        -- 改变ScrollBar的值
+        self:GetScrollBar():SetValue(position)
     end
 
     __Template__{
