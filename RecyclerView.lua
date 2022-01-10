@@ -316,7 +316,7 @@ class "ItemView"(function()
     function GetItemDecorationView(self, name)
         local view = self.__ItemDecorations[name]
         if not view then
-            view = Frame("ItemDecoration_" .. name, self)
+            view = ItemDecorationView("ItemDecoration_" .. name, self)
             view:SetFrameStrata(self:GetFrameStrata())
             view:SetFrameLevel(self:GetFrameLevel())
             view:SetAllPoints(self)
@@ -333,6 +333,21 @@ class "ItemView"(function()
 end)
 
 __Sealed__()
+class "ItemDecorationView"(function()
+    inherit "Frame"
+
+    __Arguments__{ NEString, -LayoutFrame, Any * 0 }
+    function ObtainChild(self, name, class, ...)
+        local child = self:GetChild(name)
+        if not child then
+            child = class(name, self, ...)
+        end
+        return child
+    end
+
+end)
+
+__Sealed__()
 class "ItemDecoration"(function()
 
     -- 返回每项item的间距
@@ -342,9 +357,9 @@ class "ItemDecoration"(function()
         return 0, 0, 0, 0
     end
 
-    __Arguments__{ RecyclerView, LayoutFrame, ViewHolder }
+    __Arguments__{ RecyclerView, ItemDecorationView, ViewHolder }
     __Abstract__()
-    function Draw(self, recyclerView, parent, viewHolder)
+    function Draw(self, recyclerView, decorationView, viewHolder)
     end
 
     __Arguments__{ RecyclerView }
@@ -598,7 +613,7 @@ class "LinearLayoutManager"(function()
         local itemView = recyclerView:GetItemViewByAdapterPosition(position)
 
         if not itemView then
-            itemView = recyclerView:GetItemViewFromCache()
+            itemView = recyclerView:ObtainItemView()
         end
 
         if adapter:NeedRefresh(itemView, position) then
@@ -902,7 +917,7 @@ class "RecyclerView"(function()
         return itemView
     end
 
-    function GetItemViewFromCache(self)
+    function ObtainItemView(self)
         local itemView = tremove(self.__ItemViewCache)
         if not itemView then
             itemView = CreateItemView(self)
