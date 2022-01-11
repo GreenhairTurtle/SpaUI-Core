@@ -15,56 +15,33 @@ class "RecyclerView" { ScrollFrame }
 --                     ScrollBar                         --
 -----------------------------------------------------------
 
--- 修改自Scorpio.Widget.UIPanelScrollFrame.UIPanelScrollBar
--- 无视ValueSetp的ScrollBar，每次滚动只移动1，对应列表1个item
+-- 滑块表示当前显示的列表项的数目的滚动条，每次滚动只移动1，对应列表1个item
 __Sealed__()
 class "ScrollBar"(function()
-    inherit "Slider"
+    inherit "Frame"
 
     local function RefreshScrollButtonStates(self)
-        local value = self:GetValue()
-        local min, max = self:GetMinMaxValues()
+        local value = self.Value
         local scrollUpButton = self:GetChild("ScrollUpButton")
         local scrollDownButton = self:GetChild("ScrollDownButton")
-        if value <= min then
+        if value <= 1 then
             scrollUpButton:Disable()
         else
             scrollUpButton:Enable()
         end
-        if value >= max then
+        if value >= self.Range then
             scrollDownButton:Disable()
         else
             scrollDownButton:Enable()
         end
     end
-    
-    local function Show(self)
-        self:SetAlpha(1)
-        local current = GetTime()
-        self.ShowTime = current
-        self.FadeoutTarget = current + self.FadeoutDelay + self.FadeoutDuration
-    end
-
-    local function SyncRecyclerView(self)
-        self:GetParent():ScrollToPosition(self:GetValue())
-    end
-
-    local function OnValueChanged(self, value, userInput)
-        print("OnValueChanged", value, userInput)
-        Show(self)
-        RefreshScrollButtonStates(self)
-        if userInput then
-            SyncRecyclerView(self)
-        end
-    end
 
     local function OnMouseWheel(self, delta)
         local value = self:GetValue() - delta
-        local min, max = self:GetMinMaxValues()
-        if value < min then
-            value = min
-        elseif value > max then
-            value = max
+        if value < 1 then
+            value = 1
+        elseif value > self.Range then
+            value = self.Range
         end
         self:SetValue(value)
         SyncRecyclerView(self)
@@ -92,6 +69,13 @@ class "ScrollBar"(function()
         else
             self:SetScript("OnUpdate", nil)
         end
+    end
+
+    local function Show(self)
+        self:SetAlpha(1)
+        local current = GetTime()
+        self.ShowTime = current
+        self.FadeoutTarget = current + self.FadeoutDelay + self.FadeoutDuration
     end
 
     local function OnLeave(self)
@@ -130,49 +114,42 @@ class "ScrollBar"(function()
         OnLeave(self:GetParent())
     end
 
-    -- @Override
+    local function SyncRecyclerView(self)
+        self:GetParent():ScrollToPosition(self:GetValue())
+    end
+
+    local function OnValueChanged(self, value, userInput)
+        print("OnValueChanged", value, userInput)
+        Show(self)
+        RefreshScrollButtonStates(self)
+        if userInput then
+            SyncRecyclerView(self)
+        end
+    end
+
+    local function OnRangeChanged(self, range)
+    end
+    
     __Final__()
-    function SetValueStep(self, step)
-        Slider.SetValueStep(self, 1)
-    end
+    __Arguments__{ NaturalNumber, Boolean/false }
+    function SetValue(self, value, userInput)
+        local max = self.Range
 
-    -- @Override
-    __Final__()
-    function SetMinMaxValues(self, min, max)
-        -- do nothing
-    end
-
-    -- @Override
-    function SetObeyStepOnDrag(self, obeyStepOnDrag)
-        Slider.SetObeyStepOnDrag(self, true)
-    end
-
-    function SetRange(self, range)
-        Slider.SetMinMaxValues(self, 1, range)
-    end
-
-    -- @Override
-    __Final__()
-    function SetValue(self, value)
-        local min, max = self:GetMinMaxValues()
-        local oldValue = self:GetValue()
-        value = math.floor(value + 0.5)
-        if value < min then
-            value = min
-        elseif value > max then
+        if value > max then
             value = max
         end
 
+        local oldValue = self.Value
+        self.Value = value
+
         if value ~= oldValue then
-            Slider.SetValue(self, value)
+            OnValueChanged(self, value, userInput)
         end
     end
 
-    -- @Override
     __Final__()
     function GetValue(self)
-        local value = math.modf(Slider.GetValue(self))
-        return value or 1
+        return self.Value
     end
 
     -- 渐隐
@@ -199,13 +176,29 @@ class "ScrollBar"(function()
         default                 = 2
     }
 
+    -- 范围
+    property "Range"            {
+        type                    = NaturalNumber,
+        default                 = 1,
+        handler                 = OnRangeChanged
+    }
+
+    -- 方向
+    property "Orientation"      {
+        type                    = Orientation,
+        default                 = Orientation.VERTICAL
+    }
+
+    -- 滑块
+    property "ThumbTexture"     {
+        type                    = Texture
+    }
+
     __Template__{
         ScrollUpButton          = Button,
         ScrollDownButton        = Button,
     }
     function __ctor(self)
-        self:SetObeyStepOnDrag(true)
-        self:SetValueStep(1)
         self:SetAlpha(0)
 
         local scrollUpButton    = self:GetChild("ScrollUpButton")
@@ -222,7 +215,6 @@ class "ScrollBar"(function()
         scrollDownButton.OnEnter = scrollDownButton.OnEnter + ScrollButton_OnEnter
         scrollDownButton.OnLeave = scrollDownButton.OnLeave + ScrollButton_OnLeave
 
-        self.OnValueChanged     = self.OnValueChanged + OnValueChanged
         self.OnMouseWheel       = self.OnMouseWheel + OnMouseWheel
         self.OnEnter            = self.OnEnter + OnEnter
         self.OnLeave            = self.OnLeave + OnLeave
