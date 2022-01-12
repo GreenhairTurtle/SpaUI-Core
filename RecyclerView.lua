@@ -252,6 +252,7 @@ class "ScrollBar"(function()
     __Template__{
         ScrollUpButton          = Button,
         ScrollDownButton        = Button,
+        Thumb                   = Button
     }
     function __ctor(self)
         self:SetAlpha(0)
