@@ -36,6 +36,13 @@ class "ScrollBar"(function()
         end
     end
 
+    local function SyncRecyclerView(self)
+        local recyclerView = self:GetParent()
+        if recyclerView then
+            recyclerView:ScrollToPosition(self:GetValue())
+        end
+    end
+
     local function OnMouseWheel(self, delta)
         local value = self:GetValue() - delta
         if value < 1 then
@@ -43,8 +50,13 @@ class "ScrollBar"(function()
         elseif value > self.Range then
             value = self.Range
         end
-        self:SetValue(value)
-        SyncRecyclerView(self)
+        local recyclerView = self:GetParent()
+        if recyclerView then
+            recyclerView:ScrollToPosition(self:GetValue())
+        end
+        local count = recyclerView:GetVisibleItemViewCount()
+        print("count", count)
+        self:SetValue(value, count)
     end
 
     -- Hold down
@@ -114,25 +126,60 @@ class "ScrollBar"(function()
         OnLeave(self:GetParent())
     end
 
-    local function SyncRecyclerView(self)
-        self:GetParent():ScrollToPosition(self:GetValue())
-    end
-
     local function OnValueChanged(self, value, userInput)
         print("OnValueChanged", value, userInput)
         Show(self)
         RefreshScrollButtonStates(self)
+        --@todo
         if userInput then
             SyncRecyclerView(self)
         end
     end
 
-    local function OnRangeChanged(self, range)
+    local function UpdateThumb(self)
+        if not self.ThumbTexture then return end
+
+        local thumb = self.ThumbTexture
+        local length = self:GetLength()
+        local thumbLength = (self.ThumbRange or 1) / self.Range * self:GetLength()
+        local value = self:GetValue()
+        local offset = (value - 1) / self.Range * length
+        print("UpdateThumb", value, thumbLength)
+        local point = "TOPLEFT"
+        
+        if offset + thumbLength > length then
+            offset = 0
+            point = "BOTTOMRIGHT"
+        end
+
+        thumb:ClearAllPoints()
+        if self.Orientation == Orientation.HORIZONTAL then
+            thumb:SetWidth(thumbLength)
+            thumb:SetHeight(self:GetHeight())
+            thumb:SetPoint(point, offset, 0)
+        elseif self.Orientation == Orientation.VERTICAL then
+            thumb:SetHeight(thumbLength)
+            thumb:SetWidth(self:GetWidth())
+            thumb:SetPoint(point, 0, -offset)
+        end
+    end
+
+    local function OnRangeChanged(self)
+        self:SetValue(self:GetValue(), self.ThumbRange)
+    end
+
+    __Final__()
+    function GetLength(self)
+        if self.Orientation == Orientation.HORIZONTAL then
+            return self:GetWidth()
+        elseif self.Orientation == Orientation.VERTICAL then
+            return self:GetHeight()
+        end
     end
     
     __Final__()
-    __Arguments__{ NaturalNumber, Boolean/false }
-    function SetValue(self, value, userInput)
+    __Arguments__{ NaturalNumber, NaturalNumber/1, Boolean/false }
+    function SetValue(self, value, thumbRange, userInput)
         local max = self.Range
 
         if value > max then
@@ -141,6 +188,8 @@ class "ScrollBar"(function()
 
         local oldValue = self.Value
         self.Value = value
+        self.ThumbRange = thumbRange
+        UpdateThumb(self)
 
         if value ~= oldValue then
             OnValueChanged(self, value, userInput)
@@ -149,7 +198,13 @@ class "ScrollBar"(function()
 
     __Final__()
     function GetValue(self)
-        return self.Value
+        return self.Value or 1
+    end
+
+    __Final__()
+    __Arguments__{ NaturalNumber }
+    function SetRange(self, range)
+        self.Range = range
     end
 
     -- 渐隐
@@ -966,6 +1021,30 @@ class "RecyclerView"(function()
         return self.__ItemViews[itemViewCount], itemViewCount, offset
     end
 
+    -- 获取可见的ItemView数量
+    function GetVisibleItemViewCount(self)
+        local scrollOffset = self:GetScrollOffset()
+        local offset = 0
+        local length = self:GetLength()
+        local itemViewCount = #self.__ItemViews
+        local visibleCount = 0
+        
+        for i = 1, itemViewCount do
+            local itemView = self.__ItemViews[i]
+            offset = offset + itemView:GetLength()
+
+            if offset > scrollOffset then
+                visibleCount = visibleCount + 1
+            end
+
+            if offset >= scrollOffset + length then
+                break
+            end
+        end
+
+        return visibleCount
+    end
+
     function GetScrollRange(self)
         local orientation = self.Orientation
         if orientation == Orientation.VERTICAL then
@@ -1060,8 +1139,7 @@ Style.UpdateSkin("Default", {
         width                                   = 16,
         thumbTexture                            = {
             file                                = [[Interface\Buttons\UI-ScrollBar-Knob]],
-            texCoords                           = RectType(0.20, 0.80, 0.125, 0.875),
-            size                                = Size(18, 24),
+            texCoords                           = RectType(0.20, 0.80, 0.125, 0.875)
         },
 
         ScrollUpButton                          = {
