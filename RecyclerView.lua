@@ -809,6 +809,30 @@ class "RecyclerView"(function()
         { name = "Position", type = NaturalNumber,  require = true },
         { name = "ItemView", type = ItemView,       require = true }
     }
+
+    -------------------------------------------------------
+    --                      Pool                         --
+    -------------------------------------------------------
+
+    local itemViewPool              = Recycle(ItemView, "RecyclerView.ItemView%d")
+
+    function itemViewPool:OnPush(itemView)
+        itemView:Hide()
+        itemView:ClearAllPoints()
+        itemView:SetParent(nil)
+    end
+
+    local function AcquireItemView(self)
+        local itemView = itemViewPool()
+        itemView:SetParent(self:GetChild("ScrollChild"))
+        itemView.Orientation = self.Orientation
+        return itemView
+    end
+
+    local function ReleaseItemView(self, itemView)
+        itemViewPool(itemView)
+    end
+
     -------------------------------------------------------
     --                    Property                       --
     -------------------------------------------------------
@@ -970,9 +994,7 @@ class "RecyclerView"(function()
         if adapter then
             adapter:RecycleViewHolder(itemView)
         end
-        itemView:Hide()
-        itemView:ClearAllPoints()
-        tinsert(self.__ItemViewCache, itemView)
+        ReleaseItemView(self, itemView)
     end
 
     __Arguments__{ struct {ItemViewInfos} / nil }
@@ -1012,20 +1034,8 @@ class "RecyclerView"(function()
         return ipairs(self.__ItemViews)
     end
 
-    local function CreateItemView(self)
-        self.__ItemViewCount = self.__ItemViewCount + 1
-        local itemView = ItemView("ItemView" .. self.__ItemViewCount, self:GetChild("ScrollChild"))
-        return itemView
-    end
-
     function ObtainItemView(self)
-        local itemView = tremove(self.__ItemViewCache)
-        if not itemView then
-            itemView = CreateItemView(self)
-            itemView.Orientation = self.Orientation
-        end
-
-        return itemView
+        return AcquireItemView(self)
     end
 
     -- 获取ItemView
@@ -1035,7 +1045,7 @@ class "RecyclerView"(function()
     end
 
     function GetItemViewCount(self)
-        return #self.__ItemViews, #self.__ItemViewCache
+        return #self.__ItemViews, #itemViewPool
     end
 
     -- 通过adapter position获取ItemView
@@ -1196,6 +1206,7 @@ class "RecyclerView"(function()
 
         -- 改变ScrollBar的值
         self:GetScrollBar():SetValue(position)
+        print(self:GetItemViewCount())
     end
 
     __Template__{
@@ -1204,9 +1215,7 @@ class "RecyclerView"(function()
         ScrollChild                 = Frame
     }
     function __ctor(self)
-        self.__ItemViewCount = 0
         self.__ItemViews = {}
-        self.__ItemViewCache = {}
         self.__ItemDecorations = {}
 
         self.OnMouseWheel = self.OnMouseWheel + OnMouseWheel

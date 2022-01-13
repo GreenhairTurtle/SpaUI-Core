@@ -23,7 +23,7 @@ function adapter:OnBindViewHolder(holder, position)
     local contentView = holder.ContentView
     contentView:GetChild("Text"):SetText("测试" .. data)
     if holder.Orientation == Orientation.VERTICAL then
-        contentView:SetHeight(math.max(data * 2, 50))
+        contentView:SetHeight(math.max(data * 5, 50))
     else
         contentView:SetWidth(math.max(data * 2, 50))
     end
@@ -70,7 +70,7 @@ function Divider:Draw(recyclerView, parent, holder)
 end
 
 TestRecyclerView.Adapter = adapter
-TestRecyclerView.Orientation = Orientation.HORIZONTAL
+-- TestRecyclerView.Orientation = Orientation.HORIZONTAL
 TestRecyclerView.LayoutManager = LinearLayoutManager()
--- TestRecyclerView:AddItemDecoration(Divider)
+TestRecyclerView:AddItemDecoration(Divider)
 adapter.Data = List(50)
