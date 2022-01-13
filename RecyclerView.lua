@@ -20,27 +20,61 @@ __Sealed__()
 class "ScrollBar"(function()
     inherit "Frame"
 
-    local function RefreshScrollButtonStates(self)
-        local value = self.Value
-        local scrollUpButton = self:GetChild("ScrollUpButton")
-        local scrollDownButton = self:GetChild("ScrollDownButton")
-        if value <= 1 then
-            scrollUpButton:Disable()
-        else
-            scrollUpButton:Enable()
+    local function ScrollToCursorValue(self)
+        local uiScale, cursorX, cursorY = self:GetEffectiveScale(),  GetCursorPosition()
+        local left, top = self:GetLeft(), self:GetTop()
+        cursorX, cursorY = cursorX/uiScale, cursorY/uiScale
+        
+        local offset, length = 0, 0
+
+        if self.Orientation == Orientation.HORIZONTAL then
+            offset = cursorX - left
+            length = self:GetWidth()
+        elseif self.Orientation == Orientation.VERTICAL then
+            offset = top - cursorY
+            length = self:GetHeight()
         end
-        if value >= self.Range then
-            scrollDownButton:Disable()
-        else
-            scrollDownButton:Enable()
+
+        if offset > length then
+            offset = length
+        elseif offset < 0 then
+            offset = 0
+        end
+
+        local value = math.floor(offset / length * self.Range + 0.5)
+        if value < 1 then
+            value = 1
+        end
+
+        self:SetValue(value, true)
+    end
+
+    local function Thumb_OnUpdate(self, elapsed)
+        self.timeSinceLast = self.timeSinceLast + elapsed
+        if self.timeSinceLast >= 0.08 then
+            self.timeSinceLast = 0
+            ScrollToCursorValue(self:GetParent())
         end
     end
 
-    local function SyncRecyclerView(self)
+    local function Thumb_OnMouseUp(self, button)
+        self.OnUpdate = self.OnUpdate - Thumb_OnUpdate
+    end
+
+    local function Thumb_OnMouseDown(self, button)
+        if button == "LeftButton" then
+            self.timeSinceLast = 0
+            self.OnUpdate = self.OnUpdate + Thumb_OnUpdate
+        end
+    end
+
+    local function GetThumbRange(self)
         local recyclerView = self:GetParent()
         if recyclerView then
-            recyclerView:ScrollToPosition(self:GetValue())
+            return recyclerView:GetVisibleItemViewCount()
         end
+
+        return 1
     end
 
     local function OnMouseWheel(self, delta)
@@ -50,13 +84,12 @@ class "ScrollBar"(function()
         elseif value > self.Range then
             value = self.Range
         end
-        local recyclerView = self:GetParent()
-        if recyclerView then
-            recyclerView:ScrollToPosition(self:GetValue())
-        end
-        local count = recyclerView:GetVisibleItemViewCount()
-        print("count", count)
-        self:SetValue(value, count)
+        self:SetValue(value, true)
+    end
+
+    
+    local function OnMouseDown(self, button)
+        ScrollToCursorValue(self)
     end
 
     -- Hold down
@@ -126,25 +159,41 @@ class "ScrollBar"(function()
         OnLeave(self:GetParent())
     end
 
+    local function RefreshScrollButtonStates(self)
+        local value = self:GetValue()
+        local scrollUpButton = self:GetChild("ScrollUpButton")
+        local scrollDownButton = self:GetChild("ScrollDownButton")
+        local recyclerView = self:GetParent()
+        if value <= 1 then
+            scrollUpButton:Disable()
+        else
+            scrollUpButton:Enable()
+        end
+        if value >= self.Range or (recyclerView and recyclerView:IsScrollToBottom()) then
+            scrollDownButton:Disable()
+        else
+            scrollDownButton:Enable()
+        end
+    end
+
     local function OnValueChanged(self, value, userInput)
         print("OnValueChanged", value, userInput)
         Show(self)
-        RefreshScrollButtonStates(self)
-        --@todo
         if userInput then
-            SyncRecyclerView(self)
+            local recyclerView = self:GetParent()
+            if recyclerView then
+                recyclerView:ScrollToPosition(self:GetValue())
+            end
         end
     end
 
     local function UpdateThumb(self)
-        if not self.ThumbTexture then return end
-
-        local thumb = self.ThumbTexture
+        local thumb = self:GetChild("Thumb")
+        local thumbRange = GetThumbRange(self)
         local length = self:GetLength()
-        local thumbLength = (self.ThumbRange or 1) / self.Range * self:GetLength()
+        local thumbLength = (thumbRange or 1) / self.Range * length
         local value = self:GetValue()
         local offset = (value - 1) / self.Range * length
-        print("UpdateThumb", value, thumbLength)
         local point = "TOPLEFT"
         
         if offset + thumbLength > length then
@@ -165,7 +214,8 @@ class "ScrollBar"(function()
     end
 
     local function OnRangeChanged(self)
-        self:SetValue(self:GetValue(), self.ThumbRange)
+        print("OnRangeChanged", self.Range)
+        self:SetValue(self:GetValue())
     end
 
     __Final__()
@@ -178,8 +228,8 @@ class "ScrollBar"(function()
     end
     
     __Final__()
-    __Arguments__{ NaturalNumber, NaturalNumber/1, Boolean/false }
-    function SetValue(self, value, thumbRange, userInput)
+    __Arguments__{ NaturalNumber, Boolean/false }
+    function SetValue(self, value, userInput)
         local max = self.Range
 
         if value > max then
@@ -188,8 +238,8 @@ class "ScrollBar"(function()
 
         local oldValue = self.Value
         self.Value = value
-        self.ThumbRange = thumbRange
         UpdateThumb(self)
+        RefreshScrollButtonStates(self)
 
         if value ~= oldValue then
             OnValueChanged(self, value, userInput)
@@ -244,36 +294,39 @@ class "ScrollBar"(function()
         default                 = Orientation.VERTICAL
     }
 
-    -- 滑块
-    property "ThumbTexture"     {
-        type                    = Texture
-    }
-
     __Template__{
         ScrollUpButton          = Button,
         ScrollDownButton        = Button,
         Thumb                   = Button
     }
+    __InstantApplyStyle__()
     function __ctor(self)
         self:SetAlpha(0)
 
-        local scrollUpButton    = self:GetChild("ScrollUpButton")
-        local scrollDownButton  = self:GetChild("ScrollDownButton")
+        local scrollUpButton        = self:GetChild("ScrollUpButton")
+        local scrollDownButton      = self:GetChild("ScrollDownButton")
+        local thumb                 = self:GetChild("Thumb")
         
         scrollUpButton:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
-        scrollUpButton.direction = 1
+        scrollUpButton.direction    = 1
         scrollDownButton:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
-        scrollDownButton.direction = -1
-        scrollUpButton.OnClick  = scrollUpButton.OnClick + ScrollButton_OnClick
-        scrollUpButton.OnEnter = scrollUpButton.OnEnter + ScrollButton_OnEnter
-        scrollUpButton.OnLeave = scrollUpButton.OnLeave + ScrollButton_OnLeave
-        scrollDownButton.OnClick= scrollDownButton.OnClick + ScrollButton_OnClick
-        scrollDownButton.OnEnter = scrollDownButton.OnEnter + ScrollButton_OnEnter
-        scrollDownButton.OnLeave = scrollDownButton.OnLeave + ScrollButton_OnLeave
+        scrollDownButton.direction  = -1
 
-        self.OnMouseWheel       = self.OnMouseWheel + OnMouseWheel
-        self.OnEnter            = self.OnEnter + OnEnter
-        self.OnLeave            = self.OnLeave + OnLeave
+        scrollUpButton.OnClick      = scrollUpButton.OnClick + ScrollButton_OnClick
+        scrollUpButton.OnEnter      = scrollUpButton.OnEnter + ScrollButton_OnEnter
+        scrollUpButton.OnLeave      = scrollUpButton.OnLeave + ScrollButton_OnLeave
+
+        scrollDownButton.OnClick    = scrollDownButton.OnClick + ScrollButton_OnClick
+        scrollDownButton.OnEnter    = scrollDownButton.OnEnter + ScrollButton_OnEnter
+        scrollDownButton.OnLeave    = scrollDownButton.OnLeave + ScrollButton_OnLeave
+
+        thumb.OnMouseDown           = thumb.OnMouseDown + Thumb_OnMouseDown
+        thumb.OnMouseUp             = thumb.OnMouseUp + Thumb_OnMouseUp
+
+        self.OnMouseWheel           = self.OnMouseWheel + OnMouseWheel
+        self.OnEnter                = self.OnEnter + OnEnter
+        self.OnLeave                = self.OnLeave + OnLeave
+        self.OnMouseDown            = self.OnMouseDown + OnMouseDown
     end
 
 end)
@@ -844,10 +897,10 @@ class "RecyclerView"(function()
     end
 
     function Refresh(self)
-        self:RefreshScrollBar()
         if self.LayoutManager then
             self.LayoutManager:RequestLayout()
         end
+        self:RefreshScrollBar()
     end
 
     function RefreshScrollBar(self)
@@ -1046,6 +1099,46 @@ class "RecyclerView"(function()
         return visibleCount
     end
 
+    -- 是否滚动到底部
+    function IsScrollToBottom(self)
+        local adapter = self.Adapter
+        local layoutManager = self.LayoutManager
+        local itemViewCount = #self.__ItemViews
+        if not adapter or not layoutManager or itemViewCount < 1 then
+            return true
+        end
+
+        local scrollOffset = math.floor(self:GetScrollOffset())
+        local scrollRange = math.floor(self:GetScrollRange())
+        local itemCount = adapter:GetItemCount()
+
+        local itemView = self.__ItemViews[#self.__ItemViews]
+        if itemView.ViewHolder.Position == itemCount and math.abs(scrollOffset - scrollRange) < 5 then
+            return true
+        end
+
+        return false
+    end
+
+    -- 是否滚动到顶部
+    function IsScrollToTop(self)
+        local adapter = self.Adapter
+        local layoutManager = self.LayoutManager
+        local itemViewCount = #self.__ItemViews
+        if not adapter or not layoutManager or itemViewCount < 1 then
+            return true
+        end
+
+        local scrollOffset = math.floor(self:GetScrollOffset())
+
+        local itemView = self.__ItemViews[1]
+        if itemView.ViewHolder.Position == 1 and math.abs(scrollOffset) < 5 then
+            return true
+        end
+
+        return false
+    end
+
     function GetScrollRange(self)
         local orientation = self.Orientation
         if orientation == Orientation.VERTICAL then
@@ -1138,9 +1231,11 @@ Style.UpdateSkin("Default", {
 
     [VerticalScrollBar]                         = {
         width                                   = 16,
-        thumbTexture                            = {
-            file                                = [[Interface\Buttons\UI-ScrollBar-Knob]],
-            texCoords                           = RectType(0.20, 0.80, 0.125, 0.875)
+
+        Thumb                                   = {
+            NormalTexture                       = {
+                color                           = ColorType(1, 0, 0)
+            }
         },
 
         ScrollUpButton                          = {
@@ -1201,21 +1296,23 @@ Style.UpdateSkin("Default", {
     [HorizontalScrollBar]                       = {
         height                                  = 16,
         orientation                             = "HORIZONTAL",
-        thumbTexture                            = {
-            file                                = [[Interface\Buttons\UI-ScrollBar-Knob]],
-            texCoords                           = {
-                ULx                             = 0.8,
-                ULy                             = 0.125,
-                LLx                             = 0.2,
-                LLy                             = 0.125,
-                URx                             = 0.8,
-                URy                             = 0.875,
-                LRx                             = 0.2,
-                LRy                             = 0.875
-            },
-            size                                = Size(24, 18),
-        },
 
+        Thumb                                   = {
+            NormalTexture                       = {
+                file                            = [[Interface\Buttons\UI-ScrollBar-Knob]],
+                texCoords                       = {
+                    ULx                         = 0.8,
+                    ULy                         = 0.125,
+                    LLx                         = 0.2,
+                    LLy                         = 0.125,
+                    URx                         = 0.8,
+                    URy                         = 0.875,
+                    LRx                         = 0.2,
+                    LRy                         = 0.875
+                }
+            }
+        },
+        
         ScrollUpButton                          = {
             location                            = { Anchor("RIGHT", 0, 0, nil, "LEFT") },
             size                                = Size(16, 18),

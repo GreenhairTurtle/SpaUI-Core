@@ -1,5 +1,7 @@
 Scorpio "SpaUI.Widget.RecyclerView.Demo" ""
 
+-- if not TestRecyclerView then return end
+
 TestRecyclerView = RecyclerView("TestRecylcerView")
 TestRecyclerView:SetPoint("CENTER")
 TestRecyclerView:SetSize(250, 500)
@@ -68,6 +70,7 @@ function Divider:Draw(recyclerView, parent, holder)
 end
 
 TestRecyclerView.Adapter = adapter
+TestRecyclerView.Orientation = Orientation.HORIZONTAL
 TestRecyclerView.LayoutManager = LinearLayoutManager()
-TestRecyclerView:AddItemDecoration(Divider)
+-- TestRecyclerView:AddItemDecoration(Divider)
 adapter.Data = List(50)
