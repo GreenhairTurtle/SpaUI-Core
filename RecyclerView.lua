@@ -272,7 +272,7 @@ class "ScrollBar"(function()
     -- 渐隐时间
     property "FadeoutDuration"  {
         type                    = Number,
-        default                 = 2.5
+        default                 = 4
     }
 
     -- 渐隐延迟
@@ -375,6 +375,37 @@ end)
 __Sealed__()
 class "ItemView"(function()
 
+    --@todo 放到recyclerView
+    local itemDecorationViewPool = {}
+
+    function itemDecorationViewPool:Release(view)
+        view:Hide()
+        view:ClearAllPoints()
+        view:SetParent(nil)
+        
+        local class = Class.GetObjectClass(view)
+        self[class] = self[class] or {}
+
+        tinsert(self[class], view)
+    end
+
+    __Arguments__{ -LayoutFrame }
+    function itemDecorationViewPool:Acquire(classType)
+        local view
+
+        local cache = self[classType]
+        if cache then
+            view = tremove(cache)
+        end
+
+        if not view then
+            self.__index = (self.__index or 0) + 1
+            view = classType("RecyclerView.ItemDecorationView" .. self.__index)
+        end
+
+        return view
+    end
+
     property "ViewHolder"           {
         type                        = ViewHolder,
         handler                     = function(self, viewHolder)
@@ -382,6 +413,12 @@ class "ItemView"(function()
                 viewHolder.Orientation = self.Orientation
             end
         end
+    }
+
+    property "DecorationViews"      {
+        type                        = RawTable,
+        default                     = {},
+        set                         = false
     }
 
     property "Orientation"          {
@@ -413,43 +450,44 @@ class "ItemView"(function()
         end
     end
 
-    __Arguments__{ NEString }
-    function GetItemDecorationView(self, name)
-        local view = self.__ItemDecorations[name]
+    __Arguments__{ ItemDecoration, NEString, -LayoutFrame }
+    function GetDecorationView(self, itemDecoration, name, class)
+        local decorationViews = self.DecorationViews[itemDecoration]
+        if decorationViews then
+            decorationViews = {}
+            self.DecorationViews[itemDecoration] = decorationViews
+        end
+        local view = decorationViews[name]
         if not view then
-            view = ItemDecorationView("ItemDecoration_" .. name, self)
-            view:SetFrameStrata(self:GetFrameStrata())
-            view:SetFrameLevel(self:GetFrameLevel())
-            view:SetAllPoints(self)
-            self.__ItemDecorations[name] = view
+            view = itemDecorationViewPool.Acquire(class)
+            view:SetParent(self)
+            view:SetFrameStrata(itemView:GetFrameStrata())
+            view:SetFrameLevel(itemView:GetFrameLevel())
+            decorationViews[name] = view
         end
         
         return view
     end
 
-    function __ctor(self)
-        self.__ItemDecorations = {}
-    end
-
-end)
-
-__Sealed__()
-class "ItemDecorationView"(function()
-    inherit "Frame"
-
-    __Arguments__{ NEString, -LayoutFrame, Any * 0 }
-    function ObtainChild(self, name, class, ...)
-        local child = self:GetChild(name)
-        if not child then
-            child = class(name, self, ...)
+    __Arguments__{ ItemDecoration/nil }
+    function RecycleDecorationViews(self, itemDecoration)
+        if itemDecoration then
+            local decorationViews = self.DecorationViews[itemDecoration]
+            wipe(decorationViews)
+        else
+            wipe(self.DecorationViews)
         end
-        return child
     end
 
 end)
 
 __Sealed__()
 class "ItemDecoration"(function()
+
+    __Arguments__{ ItemView, NEString, -LayoutFrame }
+    function GetDecorationView(self, itemView, name, class)
+        return itemView:GetDecorationView(self, name, class)
+    end
 
     -- 返回每项item的间距
     -- left, right, top, bottom
@@ -458,19 +496,14 @@ class "ItemDecoration"(function()
         return 0, 0, 0, 0
     end
 
-    __Arguments__{ RecyclerView, ItemDecorationView, ViewHolder }
+    __Arguments__{ RecyclerView, ItemView }
     __Abstract__()
-    function Draw(self, recyclerView, decorationView, viewHolder)
+    function Draw(self, recyclerView, itemView)
     end
 
     __Arguments__{ RecyclerView }
     __Abstract__()
     function DrawOver(self, recyclerView)
-    end
-
-    __Arguments__{ NEString }
-    function __ctor(self, name)
-        self.Name = name
     end
 
 end)
@@ -509,12 +542,13 @@ class "Adapter"(function()
     __Arguments__{ Number }
     __Final__()
     function CreateViewHolder(self, viewType)
-        return ViewHolder(self:OnCreateContentView(viewType, "ContentView"), viewType)
+        return ViewHolder(self:OnCreateContentView(viewType), viewType)
     end
 
+    -- 创建ContentView
     __Arguments__{ Number, NEString }
     __Abstract__()
-    function OnCreateContentView(self, viewType, contentViewName)
+    function OnCreateContentView(self, viewType)
     end
 
     __Arguments__{ ViewHolder, NaturalNumber }
@@ -824,7 +858,10 @@ class "RecyclerView"(function()
 
     local function AcquireItemView(self)
         local itemView = itemViewPool()
-        itemView:SetParent(self:GetChild("ScrollChild"))
+        local scrollChild = self:GetChild("ScrollChild")
+        itemView:SetParent(scrollChild)
+        itemView:SetFrameStrata(scrollChild:GetFrameStrata())
+        itemView:SetFrameLevel(scrollChild:GetFrameLevel())
         itemView.Orientation = self.Orientation
         return itemView
     end

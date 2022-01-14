@@ -8,8 +8,8 @@ TestRecyclerView:SetSize(250, 500)
 
 adapter = Adapter()
 
-function adapter:OnCreateContentView(viewType, contentViewName)
-    local frame = Frame(contentViewName)
+function adapter:OnCreateContentView(viewType)
+    local frame = Frame("ContentView")
     local text = FontString("Text", frame)
     text:SetAllPoints(frame)
     local bg = Texture("Bg", frame, "BACKGROUND")
@@ -40,24 +40,20 @@ function Divider:GetItemMargins(recyclerView, holder)
     return 0, 0, 0, paddingBottom
 end
 
-function Divider:Draw(recyclerView, parent, holder)
-    local line = parent:GetChild("Line")
-    local text = parent:GetChild("Text")
-    local adapter = recyclerView.Adapter
+function Divider:Draw(recyclerView, itemView)
+    local line = self:GetDecorationView(parent, "Line", Texture)
+    line = Texture("Line", itemView)
+    line:SetPoint("BOTTOMLEFT")
+    line:SetPoint("BOTTOMRIGHT")
+    line:SetHeight(self.Height)
+    line:SetColorTexture(1, 0, 0)
 
-    if not line then
-        line = Texture("Line", parent)
-        line:SetPoint("BOTTOMLEFT")
-        line:SetPoint("BOTTOMRIGHT")
-        line:SetHeight(self.Height)
-        line:SetColorTexture(1, 0, 0)
-    end
+    local text = itemView:GetDecorationView("Text", FontString)
+    text = FontString("Text", itemView)
+    text:SetFontObject(GameFontRed)
+    text:SetPoint("BOTTOM")
 
-    if not text then
-        text = FontString("Text", parent)
-        text:SetFontObject(GameFontRed)
-        text:SetPoint("BOTTOM")
-    end
+    local holder = itemView.ViewHolder
 
     if holder.Position % 2 == 0 then
         line:Hide()
