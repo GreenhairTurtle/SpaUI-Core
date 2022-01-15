@@ -177,7 +177,6 @@ class "ScrollBar"(function()
     end
 
     local function OnValueChanged(self, value, userInput)
-        print("OnValueChanged", value, userInput)
         Show(self)
         if userInput then
             local recyclerView = self:GetParent()
@@ -214,7 +213,6 @@ class "ScrollBar"(function()
     end
 
     local function OnRangeChanged(self)
-        print("OnRangeChanged", self.Range)
         self:SetValue(self:GetValue())
     end
 
@@ -375,37 +373,6 @@ end)
 __Sealed__()
 class "ItemView"(function()
 
-    --@todo 放到recyclerView
-    local itemDecorationViewPool = {}
-
-    function itemDecorationViewPool:Release(view)
-        view:Hide()
-        view:ClearAllPoints()
-        view:SetParent(nil)
-        
-        local class = Class.GetObjectClass(view)
-        self[class] = self[class] or {}
-
-        tinsert(self[class], view)
-    end
-
-    __Arguments__{ -LayoutFrame }
-    function itemDecorationViewPool:Acquire(classType)
-        local view
-
-        local cache = self[classType]
-        if cache then
-            view = tremove(cache)
-        end
-
-        if not view then
-            self.__index = (self.__index or 0) + 1
-            view = classType("RecyclerView.ItemDecorationView" .. self.__index)
-        end
-
-        return view
-    end
-
     property "ViewHolder"           {
         type                        = ViewHolder,
         handler                     = function(self, viewHolder)
@@ -417,7 +384,7 @@ class "ItemView"(function()
 
     property "DecorationViews"      {
         type                        = RawTable,
-        default                     = {},
+        default                     = function() return {} end,
         set                         = false
     }
 
@@ -450,44 +417,10 @@ class "ItemView"(function()
         end
     end
 
-    __Arguments__{ ItemDecoration, NEString, -LayoutFrame }
-    function GetDecorationView(self, itemDecoration, name, class)
-        local decorationViews = self.DecorationViews[itemDecoration]
-        if decorationViews then
-            decorationViews = {}
-            self.DecorationViews[itemDecoration] = decorationViews
-        end
-        local view = decorationViews[name]
-        if not view then
-            view = itemDecorationViewPool.Acquire(class)
-            view:SetParent(self)
-            view:SetFrameStrata(itemView:GetFrameStrata())
-            view:SetFrameLevel(itemView:GetFrameLevel())
-            decorationViews[name] = view
-        end
-        
-        return view
-    end
-
-    __Arguments__{ ItemDecoration/nil }
-    function RecycleDecorationViews(self, itemDecoration)
-        if itemDecoration then
-            local decorationViews = self.DecorationViews[itemDecoration]
-            wipe(decorationViews)
-        else
-            wipe(self.DecorationViews)
-        end
-    end
-
 end)
 
 __Sealed__()
 class "ItemDecoration"(function()
-
-    __Arguments__{ ItemView, NEString, -LayoutFrame }
-    function GetDecorationView(self, itemView, name, class)
-        return itemView:GetDecorationView(self, name, class)
-    end
 
     -- 返回每项item的间距
     -- left, right, top, bottom
@@ -496,14 +429,109 @@ class "ItemDecoration"(function()
         return 0, 0, 0, 0
     end
 
-    __Arguments__{ RecyclerView, ItemView }
+    -- 返回DecorationView
     __Abstract__()
-    function Draw(self, recyclerView, itemView)
+    function OnCreateDecorationView(self)
+    end
+
+    -- 返回Overlay View
+    function OnCreateOverlayView(self)
+    end
+
+    __Arguments__{ RecyclerView, LayoutFrame, ViewHolder }
+    __Abstract__()
+    function Draw(self, recyclerView, decorationView, viewHolder)
+    end
+
+    __Arguments__{ RecyclerView, LayoutFrame }
+    __Abstract__()
+    function DrawOver(self, recyclerView, overlayView)
+    end
+
+    __Arguments__{ ItemView }
+    function RecycleDecorationView(self, itemView)
+        local decorationView = itemView.DecorationViews[self]
+        if not decorationView then return end
+
+        decorationView:Hide()
+        decorationView:ClearAllPoints()
+        decorationView:SetParent(nil)
+        tinsert(self.__DecorationViewCache, decorationView)
+
+        itemView.DecorationViews[self] = nil
+    end
+
+    __Arguments__{ RecyclerView, ItemView }
+    function AttachItemView(self, recyclerView, itemView)
+        local decorationView = itemView.DecorationViews[self]
+        
+        if not decorationView then
+            decorationView = tremove(self.__DecorationViewCache)
+
+            if not decorationView then
+                decorationView = self:OnCreateDecorationView()
+            end
+        end
+
+        itemView.DecorationViews[self] = decorationView
+
+        if decorationView then
+            decorationView:SetParent(itemView)
+            decorationView:SetAllPoints(itemView)
+            self:Draw(recyclerView, decorationView, itemView.ViewHolder)
+            decorationView:Show()
+        end
     end
 
     __Arguments__{ RecyclerView }
-    __Abstract__()
-    function DrawOver(self, recyclerView)
+    function RecycleOverlayView(self, recyclerView)
+        local overlayView = recyclerView.OverlayViews[self]
+        if overlayView then
+            overlayView:Hide()
+            overlayView:ClearAllPoints()
+            overlayView:SetParent(nil)
+        end
+        tinsert(self.__OverlayViewCache, overlayView)
+
+        recyclerView.OverlayViews[self] = nil
+    end
+
+    __Arguments__{ RecyclerView }:Throwable()
+    function ShowOverlayView(self, recyclerView)
+        local overlayView = recyclerView.OverlayViews[self]
+        if not overlayView then
+            overlayView = tremove(self.__OverlayViewCache)
+
+            if not overlayView then
+                overlayView = self:OnCreateOverlayView()
+                if not Class.ValidateValue(Frame, overlayView) then
+                    throw("OverlayView必须是Frame或其子类型")
+                end
+            end
+
+            recyclerView.OverlayViews[self] = overlayView
+        end
+
+        if overlayView then
+            overlayView:SetParent(recyclerView)
+            overlayView:SetFrameStrata(recyclerView:GetFrameStrata())
+            overlayView:SetToplevel(true)
+            self:DrawOver(recyclerView, overlayView)
+            overlayView:Show()
+        end
+    end
+
+    function Destroy(self, recyclerView)
+        self:RecycleOverlayView(recyclerView)
+
+        for _, itemView in recyclerView:GetItemViews() do
+            self:RecycleDecorationView(itemView)
+        end
+    end
+
+    function __ctor(self)
+        self.__DecorationViewCache = {}
+        self.__OverlayViewCache = {}
     end
 
 end)
@@ -517,16 +545,22 @@ class "Adapter"(function()
 
     property "Data"                 {
         type                        = List,
-        handler                     = function(self, data)
-            if self.RecyclerView then
-                self.RecyclerView:Refresh()
-            end
+        handler                     = function(self)
+            self:NotifyDataSetChanged(false)
         end
     }
 
     property "RecyclerView"         {
         type                        = RecyclerView
     }
+
+    __Final__()
+    __Arguments__{ Boolean/true }
+    function NotifyDataSetChanged(self, keepPosition)
+        if self.RecyclerView then
+            self.RecyclerView:Refresh(keepPosition)
+        end
+    end
     
     __Arguments__{ NaturalNumber }
     function GetItemViewType(self, position)
@@ -619,12 +653,12 @@ class "Adapter"(function()
             if not viewHolder then
                 viewHolder = self:CreateViewHolder(itemViewType)
             end
-            viewHolder.ContentView:SetParent(itemView)
-            viewHolder.ContentView:Show()
             itemView.ViewHolder = viewHolder
         end
 
+        viewHolder.ContentView:SetParent(itemView)
         self:BindViewHolder(viewHolder, position)
+        viewHolder.ContentView:Show()
     end
 
     function __ctor(self)
@@ -649,11 +683,13 @@ class "LayoutManager"(function()
     }
 
     property "LayoutPosition"       {
-        type                        = NaturalNumber
+        type                        = NaturalNumber,
+        default                     = 1
     }
 
     property "LayoutOffset"         {
-        type                        = Number
+        type                        = Number,
+        default                     = 0
     }
 
     -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
@@ -661,9 +697,14 @@ class "LayoutManager"(function()
     __Final__()
     __Arguments__{ NaturalNumber, Number }
     function Layout(self, position, offset)
-        self.LayoutPosition = position
-        self.LayoutOffset = offset
-        self:OnLayout(position, offset)
+        if self.RecyclerView and self.RecyclerView.Adapter then
+            local itemCount = self.RecyclerView.Adapter:GetItemCount()
+            self.LayoutPosition = math.min(position, itemCount)
+            -- position大于item数量，则跳转到最后一项，offset设为0
+            self.LayoutOffset = position > itemCount and 0 or offset
+            self:OnLayout(position, offset)
+            self.RecyclerView:OnLayoutChanged()
+        end
     end
 
     __Abstract__()
@@ -678,8 +719,9 @@ class "LayoutManager"(function()
     function LayoutItemView(self)
     end
 
-    function RequestLayout(self)
-        self:Layout(1, 0)
+    __Arguments__{ Boolean/false }
+    function RequestLayout(self, keepPosition)
+        self:Layout(keepPosition and self.LayoutPosition or 1, 0)
     end
 
     function ScrollToPosition(self, position)
@@ -696,8 +738,6 @@ class "LinearLayoutManager"(function()
 
     function LayoutItemViews(self)
         local recyclerView = self.RecyclerView
-        if not recyclerView then return end
-        
         local relativePoint = recyclerView.Orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
 
         local lastItemView
@@ -710,8 +750,6 @@ class "LinearLayoutManager"(function()
 
     function UpdateItemViewSize(self, itemView)
         local recyclerView = self.RecyclerView
-        if not recyclerView then return end
-
         local length = itemView:GetContentLength()
         local maxLeft, maxRight, maxTop, maxBottom = 0, 0, 0, 0
 
@@ -763,16 +801,11 @@ class "LinearLayoutManager"(function()
     end
 
     function OnLayout(self, position, offset)
-        print("OnLayout", position, offset)
         local recyclerView = self.RecyclerView
-        if not recyclerView then return end
-
         local adapter = recyclerView.Adapter
-        if not adapter then return end
 
         local startPosition = math.max(position - 1, 1)
         local itemCount = adapter:GetItemCount()
-        if startPosition > itemCount then return end
         
         local contentLength = 0
         local adapterPosition = startPosition
@@ -854,6 +887,11 @@ class "RecyclerView"(function()
         itemView:Hide()
         itemView:ClearAllPoints()
         itemView:SetParent(nil)
+
+        local decorationViewCount = 0
+        for _, _ in pairs(itemView.DecorationViews) do
+            decorationViewCount = decorationViewCount + 1
+        end
     end
 
     local function AcquireItemView(self)
@@ -890,6 +928,18 @@ class "RecyclerView"(function()
         handler                     = "OnAdapterChanged"
     }
 
+    __Indexer__(Any)
+    property "OverlayViews"         {
+        type                        = LayoutFrame,
+        set                         = function(self, key, value)
+            self.__OverlayViews = self.__OverlayViews or {}
+            self.__OverlayViews[key] = value
+        end,
+        get                         = function(self, key)
+            return self.__OverlayViews and self.__OverlayViews[key]
+        end
+    }
+
     -------------------------------------------------------
     --                    Functions                      --
     -------------------------------------------------------
@@ -897,33 +947,30 @@ class "RecyclerView"(function()
     __Arguments__{ ItemView }
     function DrawItemDecorations(self, itemView)
         for _, itemDecoration in pairs(self.__ItemDecorations) do
-            itemDecoration:Draw(self, itemView:GetItemDecorationView(itemDecoration.Name), itemView.ViewHolder)
+            itemDecoration:AttachItemView(self, itemView)
         end
     end
 
     -- 返回ItemDecorations的迭代器
     function GetItemDecorations(self)
-        return pairs(self.__ItemDecorations)
-    end
-
-    __Arguments__{ NEString }
-    function GetItemDecoration(self, name)
-        return self.__ItemDecorations[name]
+        return ipairs(self.__ItemDecorations)
     end
 
     __Arguments__{ ItemDecoration }
     function AddItemDecoration(self, itemDecoration)
-        self.__ItemDecorations[itemDecoration.Name] = itemDecoration
+        if not tContains(self.__ItemDecorations, itemDecoration) then
+            tinsert(self.__ItemDecorations, itemDecoration)
+        end
     end
 
     __Arguments__{ ItemDecoration }
     function RemoveItemDecoration(self, itemDecoration)
-        self.__ItemDecorations[itemDecoration.Name] = nil
+        itemDecoration:Destroy(self)
+        tDeleteItem(self.__ItemDecorations, itemDecoration)
+        self:Refresh(true)
     end
 
     function OnLayoutManagerChanged(self, layoutManager, oldLayoutManager)
-        self:RecycleItemViews(self.Adapter)
-
         if oldLayoutManager then
             oldLayoutManager.RecyclerView = nil
         end
@@ -940,12 +987,10 @@ class "RecyclerView"(function()
             itemView.Orientation = self.Orientation
         end
 
-        self:Refresh()
+        self:Refresh(true)
     end
 
     function OnAdapterChanged(self, newAdapter, oldAdapter)
-        self:RecycleItemViews(oldAdapter)
-
         if oldAdapter then
             oldAdapter.RecyclerView = nil
         end
@@ -954,12 +999,14 @@ class "RecyclerView"(function()
             newAdapter.RecyclerView = self
         end
 
-        self:Refresh()
+        self:Refresh(oldAdapter)
     end
 
-    function Refresh(self)
+    __Arguments__{ Boolean/false, Adapter/nil }
+    function Refresh(self, keepPosition, adater )
+        self:RecycleItemViews(adater)
         if self.LayoutManager then
-            self.LayoutManager:RequestLayout()
+            self.LayoutManager:RequestLayout(keepPosition)
         end
         self:RefreshScrollBar()
     end
@@ -1028,16 +1075,23 @@ class "RecyclerView"(function()
 
     __Arguments__{ ItemView, Adapter/nil }
     function RecycleItemView(self, itemView, adapter)
+        adapter = adapter or self.Adapter
         if adapter then
             adapter:RecycleViewHolder(itemView)
         end
+
+        -- 回收ItemDecoration
+        for _, itemDecoration in ipairs(self.__ItemDecorations) do
+            itemDecoration:RecycleDecorationView(itemView)
+        end
+
         ReleaseItemView(self, itemView)
     end
 
     __Arguments__{ struct {ItemViewInfos} / nil }
     function SetItemViews(self, itemViewInfos)
         if not itemViewInfos then
-            self:RecycleItemViews(self.Adapter)
+            self:RecycleItemViews()
             return
         end
 
@@ -1213,6 +1267,13 @@ class "RecyclerView"(function()
         end
     end
 
+    __Final__()
+    function OnLayoutChanged(self)
+        for _, itemDecoration in ipairs(self.__ItemDecorations) do
+            itemDecoration:ShowOverlayView(self)
+        end
+    end
+
     local function OnMouseWheel(self, delta)
         if not self.LayoutManager or not self.Adapter then return end
         
@@ -1243,7 +1304,6 @@ class "RecyclerView"(function()
 
         -- 改变ScrollBar的值
         self:GetScrollBar():SetValue(position)
-        print(self:GetItemViewCount())
     end
 
     __Template__{
