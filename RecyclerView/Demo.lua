@@ -4,7 +4,7 @@ Scorpio "SpaUI.Widget.RecyclerView.Demo" ""
 
 TestRecyclerView = RecyclerView("TestRecylcerView")
 TestRecyclerView:SetPoint("CENTER")
-TestRecyclerView:SetSize(250, 500)
+TestRecyclerView:SetSize(500, 800)
 
 adapter = Adapter()
 
@@ -23,7 +23,7 @@ function adapter:OnBindViewHolder(holder, position)
     local contentView = holder.ContentView
     contentView:GetChild("Text"):SetText("测试" .. data)
     if holder.Orientation == Orientation.VERTICAL then
-        contentView:SetHeight(math.max(data * 5, 50))
+        contentView:SetHeight(math.max(data * 10, 50))
     else
         contentView:SetWidth(math.max(data * 2, 50))
     end
@@ -68,19 +68,19 @@ function Divider:Draw(recyclerView, decorationView, holder)
     end
 end
 
-function Divider:OnCreateOverlayView()
-    local frame = Frame("OverlayView")
-    local texture = Texture("Overlay", frame)
-    texture:SetColorTexture(0, 1, 0)
-    texture:SetAllPoints()
-    frame:SetWidth(50)
-    return frame
-end
+-- function Divider:OnCreateOverlayView()
+--     local frame = Frame("OverlayView")
+--     local texture = Texture("Overlay", frame)
+--     texture:SetColorTexture(0, 1, 0)
+--     texture:SetAllPoints()
+--     frame:SetWidth(50)
+--     return frame
+-- end
 
-function Divider:DrawOver(recyclerView, overlayView)
-    overlayView:SetPoint("TOPLEFT")
-    overlayView:SetPoint("BOTTOMLEFT")
-end
+-- function Divider:DrawOver(recyclerView, overlayView)
+--     overlayView:SetPoint("TOPLEFT")
+--     overlayView:SetPoint("BOTTOMLEFT")
+-- end
 
 RightBG = ItemDecoration("RightBG")
 
@@ -102,13 +102,23 @@ function RightBG:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("BOTTOMRIGHT")
 end
 
+layoutManager = GridLayoutManager(8)
+function layoutManager:GetSpanSizeLookUp(position)
+    local value = position % 6
+    if value > 0 and value <= 1 then
+        return 8
+    elseif value > 1 and value <= 3 then
+        return 4
+    elseif value > 3 and value <= 5 then
+        return 2
+    else
+        return 4
+    end
+end
+
 TestRecyclerView.Adapter = adapter
 -- TestRecyclerView.Orientation = Orientation.HORIZONTAL
-TestRecyclerView.LayoutManager = LinearLayoutManager()
+TestRecyclerView.LayoutManager = layoutManager
 TestRecyclerView:AddItemDecoration(Divider)
-TestRecyclerView:AddItemDecoration(RightBG)
+-- TestRecyclerView:AddItemDecoration(RightBG)
 adapter.Data = List(50)
-
-Delay(10, function()
-    TestRecyclerView:RemoveItemDecoration(Divider)
-end)

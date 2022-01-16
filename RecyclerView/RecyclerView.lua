@@ -397,6 +397,10 @@ class "ItemView"(function()
         end
     }
 
+    property "RowOrColumn"          {
+        type                        = NaturalNumber
+    }
+
     function GetContentLength(self)
         local length = 0
         if self.ViewHolder then
@@ -415,6 +419,13 @@ class "ItemView"(function()
         elseif self.Orientation == Orientation.HORIZONTAL then
             return self:GetWidth()
         end
+    end
+
+    function Destroy(self)
+        self:Hide()
+        self:ClearAllPoints()
+        self:SetParent(nil)
+        self.RowOrColumn = nil
     end
 
 end)
@@ -504,7 +515,7 @@ class "ItemDecoration"(function()
 
             if not overlayView then
                 overlayView = self:OnCreateOverlayView()
-                if not Class.ValidateValue(Frame, overlayView) then
+                if overlayView and not Class.ValidateValue(Frame, overlayView) then
                     throw("OverlayView必须是Frame或其子类型")
                 end
             end
@@ -573,14 +584,14 @@ class "Adapter"(function()
         return self.Data and self.Data.Count or 0
     end
 
-    __Arguments__{ Number }
+    __Arguments__{ Integer }
     __Final__()
     function CreateViewHolder(self, viewType)
         return ViewHolder(self:OnCreateContentView(viewType), viewType)
     end
 
     -- 创建ContentView
-    __Arguments__{ Number, NEString }
+    __Arguments__{ Integer }
     __Abstract__()
     function OnCreateContentView(self, viewType)
     end
@@ -699,24 +710,39 @@ class "LayoutManager"(function()
     function Layout(self, position, offset)
         if self.RecyclerView and self.RecyclerView.Adapter then
             local itemCount = self.RecyclerView.Adapter:GetItemCount()
-            self.LayoutPosition = math.min(position, itemCount)
+            position = math.min(position, itemCount)
+            if position <= 0 then return end
+
+            self.LayoutPosition = position
             -- position大于item数量，则跳转到最后一项，offset设为0
             self.LayoutOffset = position > itemCount and 0 or offset
-            self:OnLayout(position, offset)
+            self:OnLayout(self.LayoutPosition, self.LayoutOffset)
             self.RecyclerView:OnLayoutChanged()
         end
     end
 
     __Abstract__()
+    __Arguments__{ NaturalNumber, Number }
     function OnLayout(self, position, offset)
     end
 
     __Abstract__()
-    function UpdateItemViewSize(self, itemView)
+    function LayoutItemView(self)
     end
 
     __Abstract__()
-    function LayoutItemView(self)
+    function OnScroll(self, delta)
+    end
+
+    __Abstract__()
+    function GetVisibleItemViewCount(self)
+    end
+
+    -- @return itemView 返回第一个完整可见的item
+    -- @return index itemView index
+    -- @return offset 该item位置
+    __Abstract__()
+    function GetFirstCompletelyVisibleItemView(self)
     end
 
     __Arguments__{ Boolean/false }
@@ -728,139 +754,6 @@ class "LayoutManager"(function()
         if position ~= self.LayoutPosition or self.LayoutOffset ~= 0 then
             self:Layout(position, 0)
         end
-    end
-
-end)
-
-__Sealed__()
-class "LinearLayoutManager"(function()
-    inherit "LayoutManager"
-
-    function LayoutItemViews(self)
-        local recyclerView = self.RecyclerView
-        local relativePoint = recyclerView.Orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
-
-        local lastItemView
-        for _, itemView in recyclerView:GetItemViews() do
-            itemView:ClearAllPoints()
-            itemView:SetPoint("TOPLEFT", lastItemView or itemView:GetParent(), lastItemView and relativePoint or "TOPLEFT", 0, 0)
-            lastItemView = itemView
-        end
-    end
-
-    function UpdateItemViewSize(self, itemView)
-        local recyclerView = self.RecyclerView
-        local length = itemView:GetContentLength()
-        local maxLeft, maxRight, maxTop, maxBottom = 0, 0, 0, 0
-
-        for _, itemDecoration in recyclerView:GetItemDecorations() do
-            local left, right, top, bottom = itemDecoration:GetItemMargins(recyclerView, itemView.ViewHolder)
-            maxLeft = max(left, maxLeft)
-            maxRight = max(right, maxRight)
-            maxTop = max(top, maxTop)
-            maxBottom = max(bottom, maxBottom)
-        end
-
-        local orientation = itemView.Orientation
-        local contentView = itemView.ViewHolder.ContentView
-        contentView:SetPoint("TOPLEFT", maxLeft, -maxTop)
-
-        if orientation == Orientation.VERTICAL then
-            length = maxTop + maxBottom + contentView:GetHeight()
-            local width = recyclerView:GetWidth()
-            contentView:SetWidth(width - maxLeft - maxRight)
-            itemView:SetWidth(width)
-            itemView:SetHeight(length)
-        elseif orientation == Orientation.HORIZONTAL then
-            length = maxLeft + maxRight + contentView:GetWidth()
-            local height = recyclerView:GetHeight()
-            contentView:SetHeight(height - maxTop - maxBottom)
-            itemView:SetHeight(height)
-            itemView:SetWidth(length)
-        end
-    end
-
-    function GetItemViewByPosition(self, position)
-        local recyclerView = self.RecyclerView
-        local adapter = recyclerView.Adapter
-        local itemView = recyclerView:GetItemViewByAdapterPosition(position)
-
-        if not itemView then
-            itemView = recyclerView:ObtainItemView()
-        end
-
-        if adapter:NeedRefresh(itemView, position) then
-            adapter:AttachItemView(itemView, position)
-            self:UpdateItemViewSize(itemView)
-            recyclerView:DrawItemDecorations(itemView)
-        end
-
-        itemView:Show()
-
-        return itemView
-    end
-
-    function OnLayout(self, position, offset)
-        local recyclerView = self.RecyclerView
-        local adapter = recyclerView.Adapter
-
-        local startPosition = math.max(position - 1, 1)
-        local itemCount = adapter:GetItemCount()
-        
-        local contentLength = 0
-        local adapterPosition = startPosition
-        local itemViewMap = {}
-
-        while contentLength <= recyclerView:GetLength() and adapterPosition <= itemCount do
-            local itemView = self:GetItemViewByPosition(adapterPosition)
-            tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            adapterPosition = adapterPosition + 1
-            contentLength = contentLength + itemView:GetLength()
-        end
-
-        -- 额外添加一项
-        -- 因为可能startPosition那一项长度直接超过contentLength导致position反而没添加
-        if adapterPosition <= itemCount then
-            local itemView = self:GetItemViewByPosition(adapterPosition)
-            tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            contentLength = contentLength + itemView:GetLength()
-        end
-        
-
-        adapterPosition = startPosition - 1
-
-        while contentLength <= recyclerView:GetLength() and adapterPosition > 0 do
-            local itemView = self:GetItemViewByPosition(adapterPosition)
-            tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            adapterPosition = adapterPosition - 1
-            contentLength = contentLength + itemView:GetLength()
-        end
-
-        -- 设置ItemView布局
-        recyclerView:SetItemViews(itemViewMap)
-        self:LayoutItemViews()
-        
-        -- set offset
-        local scrollOffset = 0
-        if contentLength > recyclerView:GetLength() then
-            recyclerView:SetScrollBarVisible(true)
-            local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
-            if itemView and index > 1 then
-                for i = 1, index - 1 do
-                    scrollOffset = scrollOffset + recyclerView:GetItemView(i):GetLength()
-                end
-                scrollOffset = scrollOffset + offset
-
-                -- 触底
-                if contentLength - scrollOffset < recyclerView:GetLength() then
-                    scrollOffset = contentLength - recyclerView:GetLength()
-                end
-            end
-        else
-            recyclerView:SetScrollBarVisible(false)
-        end
-        
-        recyclerView:Scroll(scrollOffset)
     end
 
 end)
@@ -884,14 +777,7 @@ class "RecyclerView"(function()
     local itemViewPool              = Recycle(ItemView, "RecyclerView.ItemView%d")
 
     function itemViewPool:OnPush(itemView)
-        itemView:Hide()
-        itemView:ClearAllPoints()
-        itemView:SetParent(nil)
-
-        local decorationViewCount = 0
-        for _, _ in pairs(itemView.DecorationViews) do
-            decorationViewCount = decorationViewCount + 1
-        end
+        itemView:Destroy()
     end
 
     local function AcquireItemView(self)
@@ -999,7 +885,7 @@ class "RecyclerView"(function()
             newAdapter.RecyclerView = self
         end
 
-        self:Refresh(oldAdapter)
+        self:Refresh(false, oldAdapter)
     end
 
     __Arguments__{ Boolean/false, Adapter/nil }
@@ -1136,7 +1022,7 @@ class "RecyclerView"(function()
     end
 
     function GetItemViewCount(self)
-        return #self.__ItemViews, #itemViewPool
+        return #self.__ItemViews
     end
 
     -- 通过adapter position获取ItemView
@@ -1154,50 +1040,18 @@ class "RecyclerView"(function()
     -- @index itemView index
     -- @offset 该item位置
     function GetFirstCompletelyVisibleItemView(self)
-        local itemViewCount = #self.__ItemViews
-        if itemViewCount <= 0 then return end
-
-        local scrollOffset = self:GetScrollOffset()
-        local offset = 0
-        local itemViewCount = #self.__ItemViews
-
-        for index = 1, itemViewCount do
-            local itemView = self.__ItemViews[index]
-
-            if offset > scrollOffset then
-                return itemView, index, offset
-            end
-           
-            if index ~= itemViewCount then
-                offset = offset + itemView:GetLength()
-            end
-        end
+        if not self.LayoutManager then return end
     
-        return self.__ItemViews[itemViewCount], itemViewCount, offset
+        return self.LayoutManager:GetFirstCompletelyVisibleItemView()
     end
 
     -- 获取可见的ItemView数量
     function GetVisibleItemViewCount(self)
-        local scrollOffset = self:GetScrollOffset()
-        local offset = 0
-        local length = self:GetLength()
-        local itemViewCount = #self.__ItemViews
-        local visibleCount = 0
-        
-        for i = 1, itemViewCount do
-            local itemView = self.__ItemViews[i]
-            offset = offset + itemView:GetLength()
-
-            if offset > scrollOffset then
-                visibleCount = visibleCount + 1
-            end
-
-            if offset >= scrollOffset + length then
-                break
-            end
+        if not self.LayoutManager then
+            return 0
         end
 
-        return visibleCount
+        return self.LayoutManager:GetVisibleItemViewCount()
     end
 
     -- 是否滚动到底部
@@ -1277,33 +1131,7 @@ class "RecyclerView"(function()
     local function OnMouseWheel(self, delta)
         if not self.LayoutManager or not self.Adapter then return end
         
-        local scrollRange = self:GetScrollRange()
-        if scrollRange <= 0 then return end
-
-        local length = self:GetLength() / 20
-        local offset = self:GetScrollOffset() - length * delta
-
-        -- 直接滚动
-        self:Scroll(offset)
-
-        -- 判断是否滚动出范围
-        -- 滚动出范围，重新刷新
-        local itemView, index, curOffset = self:GetFirstCompletelyVisibleItemView()
-        local position = itemView.ViewHolder.Position
-        if offset > scrollRange or offset < 0 then
-            offset = -(curOffset - offset)
-            
-            if position == 1 then
-                offset = 0
-            end
-
-            if itemView then
-                self.LayoutManager:Layout(itemView.ViewHolder.Position, offset)
-            end
-        end
-
-        -- 改变ScrollBar的值
-        self:GetScrollBar():SetValue(position)
+        self.LayoutManager:OnScroll(delta)
     end
 
     __Template__{
