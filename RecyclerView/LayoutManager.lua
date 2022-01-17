@@ -285,11 +285,11 @@ class "GridLayoutManager"(function()
             if spanSize > self.SpanCount then
                 error("Span size must be lower than span count")
             end
-
+            
             rowOrColumnTotalSpanSize = rowOrColumnTotalSpanSize + spanSize
             if rowOrColumnTotalSpanSize > self.SpanCount then
                 rowOrColumn = rowOrColumn + 1
-                rowOrColumnTotalSpanSize = 0
+                rowOrColumnTotalSpanSize = spanSize
                 index = 1
             end
 
@@ -297,6 +297,7 @@ class "GridLayoutManager"(function()
             itemViewInfo.RowOrColumn = rowOrColumn
             itemViewInfo.RowOrColumnIndex = index
 
+            print(position, rowOrColumn, index, spanSize, rowOrColumnTotalSpanSize)
             self.__ItemViewInfos[position] = itemViewInfo
             self.__RowOrColumnInfos[rowOrColumn] = self.__RowOrColumnInfos[rowOrColumn] or {}
             tinsert(self.__RowOrColumnInfos[rowOrColumn], position)

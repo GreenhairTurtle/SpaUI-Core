@@ -102,7 +102,7 @@ function RightBG:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("BOTTOMRIGHT")
 end
 
-layoutManager = GridLayoutManager(8)
+layoutManager = GridLayoutManager(10)
 function layoutManager:GetSpanSizeLookUp(position)
     local value = position % 6
     if value > 0 and value <= 1 then
