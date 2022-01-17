@@ -136,39 +136,6 @@ class "LinearLayoutManager"(function()
         recyclerView:Scroll(scrollOffset)
     end
 
-    function OnScroll(self, delta)
-        local recyclerView = self.RecyclerView
-
-        local scrollRange = recyclerView:GetScrollRange()
-        if scrollRange <= 0 then return end
-
-        local length = recyclerView:GetLength() / 20
-        local offset = recyclerView:GetScrollOffset() - length * delta
-
-        -- 直接滚动
-        recyclerView:Scroll(offset)
-
-        -- 判断是否滚动出范围
-        -- 滚动出范围，重新刷新
-        local itemView, index, curOffset = self:GetFirstCompletelyVisibleItemView()
-        if not itemView then return end
-        local position = itemView.ViewHolder.Position
-        if offset > scrollRange or offset < 0 then
-            offset = -(curOffset - offset)
-            
-            if position == 1 then
-                offset = 0
-            end
-
-            if itemView then
-                self:Layout(itemView.ViewHolder.Position, offset)
-            end
-        end
-
-        -- 改变ScrollBar的值
-        recyclerView:GetScrollBar():SetValue(position)
-    end
-
     function GetVisibleItemViewCount(self)
         local recyclerView = self.RecyclerView
 
@@ -237,7 +204,6 @@ class "GridLayoutManager"(function()
     }
 
     -- 获取item对应的跨度大小
-    -- 请注意：设置SpanSizeLookUp要保证每行/列刚好填满SpanCount，否则会报错！
     __Arguments__{ NaturalNumber }
     function GetSpanSizeLookUp(self, position)
         return 1
@@ -315,10 +281,16 @@ class "GridLayoutManager"(function()
         for position = 1, itemCount do
             local itemViewInfo = {}
             local spanSize = self:GetSpanSizeLookUp(position)
-            rowOrColumnTotalSpanSize = rowOrColumnTotalSpanSize + spanSize
 
-            if spanSize > self.SpanCount or rowOrColumnTotalSpanSize > self.SpanCount then
-                error("请检查GetSpanLookUp设置是否合理")
+            if spanSize > self.SpanCount then
+                error("Span size must be lower than span count")
+            end
+
+            rowOrColumnTotalSpanSize = rowOrColumnTotalSpanSize + spanSize
+            if rowOrColumnTotalSpanSize > self.SpanCount then
+                rowOrColumn = rowOrColumn + 1
+                rowOrColumnTotalSpanSize = 0
+                index = 1
             end
 
             itemViewInfo.SpanSize = spanSize
@@ -330,13 +302,6 @@ class "GridLayoutManager"(function()
             tinsert(self.__RowOrColumnInfos[rowOrColumn], position)
 
             index = index + spanSize
-
-            if rowOrColumnTotalSpanSize == self.SpanCount then
-                rowOrColumn = rowOrColumn + 1
-                rowOrColumnTotalSpanSize = 0
-                index = 1
-            end
-            
         end
     end
 
@@ -349,7 +314,6 @@ class "GridLayoutManager"(function()
     end
 
     function OnLayout(self, position, offset)
-        print("OnLayout", position, offset)
         local recyclerView = self.RecyclerView
         local adapter = recyclerView.Adapter
 
@@ -376,7 +340,7 @@ class "GridLayoutManager"(function()
             rowOrColumn = rowOrColumn + 1
         end
 
-         -- 额外添加一行/列
+        -- 额外添加一行/列
         -- 因为可能startRowOrColumn那一行/列长度直接超过contentLength导致需要显示的那一行/列反而不显示
         if rowOrColumn <= maxRowOrColumn then
             local length = 0
@@ -445,6 +409,7 @@ class "GridLayoutManager"(function()
             end
             
             if rowOrColumnIndex == 1 then
+                -- 每行/列第一个
                 itemView:SetPoint("TOPLEFT", itemView:GetParent(), index == 1 and "TOPLEFT" or relativePointWrapLine, 0, - GetContentLengthBetweenRowOrColumn(self, firstItemViewRowOrColumn, rowOrColumn - 1))
             else
                 itemView:SetPoint("TOPLEFT", lastItemView, relativePointSameLine, 0, 0)
@@ -458,40 +423,6 @@ class "GridLayoutManager"(function()
         if GetRowOrColumn(self, position) ~= GetRowOrColumn(self, self.LayoutPosition) or self.LayoutOffset ~= 0 then
             self:Layout(position, 0)
         end
-    end
-
-    function OnScroll(self, delta)
-        local recyclerView = self.RecyclerView
-
-        local scrollRange = recyclerView:GetScrollRange()
-        if scrollRange <= 0 then return end
-
-        local length = recyclerView:GetLength() / 20
-        local offset = recyclerView:GetScrollOffset() - length * delta
-
-        -- 直接滚动
-        recyclerView:Scroll(offset)
-
-        -- 判断是否滚动出范围
-        -- 滚动出范围，重新刷新
-        local itemView, index, curOffset = self:GetFirstCompletelyVisibleItemView()
-        if not itemView then return end
-
-        local position = itemView.ViewHolder.Position
-        if offset > scrollRange or offset < 0 then
-            offset = -(curOffset - offset)
-            
-            if position == 1 then
-                offset = 0
-            end
-
-            if itemView then
-                self:Layout(itemView.ViewHolder.Position, offset)
-            end
-        end
-
-        -- 改变ScrollBar的值
-        recyclerView:GetScrollBar():SetValue(position)
     end
 
     function GetVisibleItemViewCount(self)

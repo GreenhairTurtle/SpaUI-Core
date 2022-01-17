@@ -397,10 +397,6 @@ class "ItemView"(function()
         end
     }
 
-    property "RowOrColumn"          {
-        type                        = NaturalNumber
-    }
-
     function GetContentLength(self)
         local length = 0
         if self.ViewHolder then
@@ -425,7 +421,6 @@ class "ItemView"(function()
         self:Hide()
         self:ClearAllPoints()
         self:SetParent(nil)
-        self.RowOrColumn = nil
     end
 
 end)
@@ -563,6 +558,11 @@ class "Adapter"(function()
 
     property "RecyclerView"         {
         type                        = RecyclerView
+    }
+
+    -- 空布局
+    property "EmptyView"            {
+        type                        = LayoutFrame
     }
 
     __Final__()
@@ -727,11 +727,7 @@ class "LayoutManager"(function()
     end
 
     __Abstract__()
-    function LayoutItemView(self)
-    end
-
-    __Abstract__()
-    function OnScroll(self, delta)
+    function LayoutItemViews(self)
     end
 
     __Abstract__()
@@ -885,12 +881,17 @@ class "RecyclerView"(function()
             newAdapter.RecyclerView = self
         end
 
-        self:Refresh(false, oldAdapter)
+        self:Refresh(oldAdapter)
+    end
+
+    __Arguments__{ Adapter/nil }
+    function Refresh(self, adapter)
+        self:Refresh(false, adapter)
     end
 
     __Arguments__{ Boolean/false, Adapter/nil }
-    function Refresh(self, keepPosition, adater )
-        self:RecycleItemViews(adater)
+    function Refresh(self, keepPosition, adapter )
+        self:RecycleItemViews(adapter)
         if self.LayoutManager then
             self.LayoutManager:RequestLayout(keepPosition)
         end
@@ -1131,7 +1132,35 @@ class "RecyclerView"(function()
     local function OnMouseWheel(self, delta)
         if not self.LayoutManager or not self.Adapter then return end
         
-        self.LayoutManager:OnScroll(delta)
+        local scrollRange = self:GetScrollRange()
+        if scrollRange <= 0 then return end
+
+        local length = self:GetLength() / 20
+        local offset = self:GetScrollOffset() - length * delta
+
+        -- 直接滚动
+        self:Scroll(offset)
+
+        -- 判断是否滚动出范围
+        -- 滚动出范围，重新刷新
+        local itemView, index, curOffset = self:GetFirstCompletelyVisibleItemView()
+        if not itemView then return end
+
+        local position = itemView.ViewHolder.Position
+        if offset > scrollRange or offset < 0 then
+            offset = -(curOffset - offset)
+            
+            if position == 1 then
+                offset = 0
+            end
+
+            if itemView then
+                self.LayoutManager:Layout(itemView.ViewHolder.Position, offset)
+            end
+        end
+
+        -- 改变ScrollBar的值
+        self:GetScrollBar():SetValue(position)
     end
 
     __Template__{
