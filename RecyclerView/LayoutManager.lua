@@ -253,11 +253,13 @@ class "GridLayoutManager"(function()
         local adapter = recyclerView.Adapter
         local itemView = recyclerView:GetItemViewByAdapterPosition(position)
 
+        print("GetItemViewByPosition", itemView, position)
         if not itemView then
             itemView = recyclerView:ObtainItemView()
         end
 
         if adapter:NeedRefresh(itemView, position) then
+            print("NeedRefresh", itemView, position)
             adapter:AttachItemView(itemView, position)
             UpdateItemViewSize(self, itemView, position)
             recyclerView:DrawItemDecorations(itemView)
@@ -296,8 +298,7 @@ class "GridLayoutManager"(function()
             itemViewInfo.SpanSize = spanSize
             itemViewInfo.RowOrColumn = rowOrColumn
             itemViewInfo.RowOrColumnIndex = index
-
-            print(position, rowOrColumn, index, spanSize, rowOrColumnTotalSpanSize)
+            
             self.__ItemViewInfos[position] = itemViewInfo
             self.__RowOrColumnInfos[rowOrColumn] = self.__RowOrColumnInfos[rowOrColumn] or {}
             tinsert(self.__RowOrColumnInfos[rowOrColumn], position)
@@ -315,6 +316,7 @@ class "GridLayoutManager"(function()
     end
 
     function OnLayout(self, position, offset)
+        print("OnLayout", position, offset)
         local recyclerView = self.RecyclerView
         local adapter = recyclerView.Adapter
 
@@ -398,8 +400,9 @@ class "GridLayoutManager"(function()
 
     function LayoutItemViews(self)
         local recyclerView = self.RecyclerView
-        local relativePointWrapLine = recyclerView.Orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
-        local relativePointSameLine = recyclerView.Orientation == Orientation.VERTICAL and "TOPRIGHT" or "BOTTOMLEFT"
+        local orientation = recyclerView.Orientation
+        local relativePointWrapLine = orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
+        local relativePointSameLine = orientation == Orientation.VERTICAL and "TOPRIGHT" or "BOTTOMLEFT"
 
         local lastItemView, firstItemViewRowOrColumn
         for index, itemView in recyclerView:GetItemViews() do
@@ -411,7 +414,10 @@ class "GridLayoutManager"(function()
             
             if rowOrColumnIndex == 1 then
                 -- 每行/列第一个
-                itemView:SetPoint("TOPLEFT", itemView:GetParent(), index == 1 and "TOPLEFT" or relativePointWrapLine, 0, - GetContentLengthBetweenRowOrColumn(self, firstItemViewRowOrColumn, rowOrColumn - 1))
+                local offset = GetContentLengthBetweenRowOrColumn(self, firstItemViewRowOrColumn, rowOrColumn - 1)
+                local xOffset = orientation == Orientation.VERTICAL and 0 or offset
+                local yOffset = orientation == Orientation.VERTICAL and -offset or 0
+                itemView:SetPoint("TOPLEFT", itemView:GetParent(), index == 1 and "TOPLEFT" or relativePointWrapLine, xOffset, yOffset)
             else
                 itemView:SetPoint("TOPLEFT", lastItemView, relativePointSameLine, 0, 0)
             end
@@ -464,6 +470,7 @@ class "GridLayoutManager"(function()
 
         local scrollOffset = recyclerView:GetScrollOffset()
         local firstItemViewRowOrColumn
+        local offset = 0
 
         for index = 1, itemViewCount do
             local itemView = recyclerView:GetItemView(index)
@@ -472,7 +479,7 @@ class "GridLayoutManager"(function()
                 firstItemViewRowOrColumn = rowOrColumn
             end
 
-            local offset = GetContentLengthBetweenRowOrColumn(self, firstItemViewRowOrColumn, rowOrColumn - 1)
+            offset = GetContentLengthBetweenRowOrColumn(self, firstItemViewRowOrColumn, rowOrColumn - 1)
 
             if offset > scrollOffset then
                 return itemView, index, offset

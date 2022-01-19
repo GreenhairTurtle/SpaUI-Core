@@ -352,6 +352,7 @@ class "ViewHolder"(function()
 
     function Destroy(self)
         self.Orientation = nil
+        self.Position = nil
         self.ContentView:Hide()
         self.ContentView:ClearAllPoints()
         self.ContentView:SetParent(nil)
@@ -562,7 +563,18 @@ class "Adapter"(function()
 
     -- 空布局
     property "EmptyView"            {
-        type                        = LayoutFrame
+        type                        = LayoutFrame,
+        handler                     = function(self, newView, oldView)
+            if oldView then
+                oldView:SetParent(nil)
+                oldView:ClearAllPoints()
+                oldView:Hide()
+            end
+
+            if newView and self:GetItemCount() <= 0 then
+                self:NotifyDataSetChanged()
+            end
+        end
     }
 
     __Final__()
@@ -599,9 +611,7 @@ class "Adapter"(function()
     __Arguments__{ ViewHolder, NaturalNumber }
     __Final__()
     function BindViewHolder(self, holder, position)
-        if holder.Position ~= position then
-            self:OnBindViewHolder(holder, position)
-        end
+        self:OnBindViewHolder(holder, position)
         holder.Position = position
     end
 
@@ -667,6 +677,7 @@ class "Adapter"(function()
             itemView.ViewHolder = viewHolder
         end
 
+        print("AttachItemView", itemView, position)
         viewHolder.ContentView:SetParent(itemView)
         self:BindViewHolder(viewHolder, position)
         viewHolder.ContentView:Show()
@@ -705,17 +716,26 @@ class "LayoutManager"(function()
 
     -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
     -- @param: offset: 该position对应的itemView当前滚动位置
+    -- @parm: forceRefresh:强制刷新。正常情况下，已经显示的Item在刷新的时候会被忽略，这个参数可以控制这个特性是否运作
     __Final__()
-    __Arguments__{ NaturalNumber, Number }
-    function Layout(self, position, offset)
+    __Arguments__{ NaturalNumber, Number, Boolean/false }
+    function Layout(self, position, offset, forceRefresh)
         if self.RecyclerView and self.RecyclerView.Adapter then
             local itemCount = self.RecyclerView.Adapter:GetItemCount()
             position = math.min(position, itemCount)
             if position <= 0 then return end
-
+            
             self.LayoutPosition = position
             -- position大于item数量，则跳转到最后一项，offset设为0
             self.LayoutOffset = position > itemCount and 0 or offset
+
+            if forceRefresh then
+                print("forceRefresh")
+                self.RecyclerView:RecycleItemViews()
+                return self:Layout(self.LayoutPosition, self.LayoutOffset)
+            end
+
+            print("Layout", position, offset, forceRefresh)
             self:OnLayout(self.LayoutPosition, self.LayoutOffset)
             self.RecyclerView:OnLayoutChanged()
         end
@@ -743,7 +763,7 @@ class "LayoutManager"(function()
 
     __Arguments__{ Boolean/false }
     function RequestLayout(self, keepPosition)
-        self:Layout(keepPosition and self.LayoutPosition or 1, 0)
+        self:Layout(keepPosition and self.LayoutPosition or 1, 0, keepPosition)
     end
 
     function ScrollToPosition(self, position)
@@ -826,6 +846,23 @@ class "RecyclerView"(function()
     --                    Functions                      --
     -------------------------------------------------------
 
+    function RefreshEmptyView(self)
+        if self.Adapter then
+            local emptyView = self.Adapter.EmptyView
+            if not emptyView then return end
+
+            local itemCount = self.Adapter:GetItemCount()
+            if itemCount <= 0 then
+                emptyView:ClearAllPoints()
+                emptyView:SetParent(self)
+                emptyView:SetAllPoints(self)
+                emptyView:Show()
+            else
+                emptyView:Hide()
+            end
+        end
+    end
+
     __Arguments__{ ItemView }
     function DrawItemDecorations(self, itemView)
         for _, itemDecoration in pairs(self.__ItemDecorations) do
@@ -868,7 +905,7 @@ class "RecyclerView"(function()
         for _, itemView in ipairs(self.__ItemViews) do
             itemView.Orientation = self.Orientation
         end
-
+        self:ResetScroll()
         self:Refresh(true)
     end
 
@@ -891,16 +928,20 @@ class "RecyclerView"(function()
 
     __Arguments__{ Boolean/false, Adapter/nil }
     function Refresh(self, keepPosition, adapter )
+        self:RefreshScrollBar()
         self:RecycleItemViews(adapter)
         if self.LayoutManager then
             self.LayoutManager:RequestLayout(keepPosition)
         end
-        self:RefreshScrollBar()
+        self:RefreshEmptyView()
     end
 
     function RefreshScrollBar(self)
-        local scrollBar = self:GetScrollBar()
+        -- 先隐藏，由LayoutManager决定是否显示
+        -- @see SetScrollBarVisible
+        self:HideScrollBars()
 
+        local scrollBar = self:GetScrollBar()
         local adapter = self.Adapter
         if adapter then
             local count = adapter:GetItemCount()
@@ -1120,6 +1161,11 @@ class "RecyclerView"(function()
         elseif orientation == Orientation.HORIZONTAL then
             self:SetHorizontalScroll(offset)
         end
+    end
+
+    function ResetScroll(self)
+        self:SetHorizontalScroll(0)
+        self:SetVerticalScroll(0)
     end
 
     __Final__()

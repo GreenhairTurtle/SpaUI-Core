@@ -22,12 +22,17 @@ function adapter:OnBindViewHolder(holder, position)
     local data = self.Data[position]
     local contentView = holder.ContentView
     contentView:GetChild("Text"):SetText("测试" .. data)
+    print(holder.Orientation)
     if holder.Orientation == Orientation.VERTICAL then
         contentView:SetHeight(math.max(data * 10, 50))
     else
-        contentView:SetWidth(math.max(data * 2, 50))
+        contentView:SetWidth(math.max(data * 10, 50))
     end
 end
+
+EmptyView = FontString("EmptyText")
+EmptyView:SetText("没有数据哦~")
+adapter.EmptyView = EmptyView
 
 Divider = ItemDecoration("Divider")
 Divider.Height = 10
@@ -102,19 +107,7 @@ function RightBG:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("BOTTOMRIGHT")
 end
 
-layoutManager = GridLayoutManager(10)
-function layoutManager:GetSpanSizeLookUp(position)
-    local value = position % 6
-    if value > 0 and value <= 1 then
-        return 8
-    elseif value > 1 and value <= 3 then
-        return 4
-    elseif value > 3 and value <= 5 then
-        return 2
-    else
-        return 4
-    end
-end
+layoutManager = GridLayoutManager(2)
 
 TestRecyclerView.Adapter = adapter
 -- TestRecyclerView.Orientation = Orientation.HORIZONTAL
@@ -122,3 +115,7 @@ TestRecyclerView.LayoutManager = layoutManager
 TestRecyclerView:AddItemDecoration(Divider)
 -- TestRecyclerView:AddItemDecoration(RightBG)
 adapter.Data = List(50)
+
+Delay(5, function()
+    TestRecyclerView.Orientation = Orientation.HORIZONTAL
+end)
