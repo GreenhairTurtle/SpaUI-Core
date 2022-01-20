@@ -577,6 +577,7 @@ class "Adapter"(function()
         end
     }
 
+    -- 刷新
     __Final__()
     __Arguments__{ Boolean/true }
     function NotifyDataSetChanged(self, keepPosition)
@@ -585,13 +586,14 @@ class "Adapter"(function()
         end
     end
     
+    -- 如果需要实现多布局，重写这个方法，需返回整数
     __Arguments__{ NaturalNumber }
     function GetItemViewType(self, position)
         return 0
     end
 
     -- 获取item数量，必须是自然数
-    __Abstract__()
+    __Final__()
     function GetItemCount(self)
         return self.Data and self.Data.Count or 0
     end
@@ -602,24 +604,30 @@ class "Adapter"(function()
         return ViewHolder(self:OnCreateContentView(viewType), viewType)
     end
 
-    -- 创建ContentView
-    __Arguments__{ Integer }
+    -- 重写该方法返回ContentView
+    -- @param viewType: 由GetItemViewType获取
     __Abstract__()
+    __Arguments__{ Integer }
     function OnCreateContentView(self, viewType)
     end
 
-    __Arguments__{ ViewHolder, NaturalNumber }
+    -- 绑定ViewHolder
+    -- @param holder: ViewHolder
+    -- @param position: 数据源位置
     __Final__()
+    __Arguments__{ ViewHolder, NaturalNumber }
     function BindViewHolder(self, holder, position)
         self:OnBindViewHolder(holder, position)
         holder.Position = position
     end
 
+    -- 重写该方法实现数据绑定
     __Arguments__{ ViewHolder, NaturalNumber }
     __Abstract__()
     function OnBindViewHolder(self, holder, position)
     end
 
+    -- 回收ItemView的ViewHolder
     __Arguments__{ ItemView }
     function RecycleViewHolder(self, itemView)
         local viewHolder = itemView.ViewHolder
@@ -638,12 +646,16 @@ class "Adapter"(function()
         itemView.ViewHolder = nil
     end
 
+    -- 判断是否需要刷新
+    -- @param itemView: ItemView
+    -- @param position: 数据源位置
     __Arguments__{ ItemView, NaturalNumber }
     function NeedRefresh(self, itemView, position)
         local itemViewType = self:GetItemViewType(position)
         return not itemView.ViewHolder or itemView.ViewHolder.Position ~= position or itemView.ViewHolder.ItemViewType ~= itemViewType
     end
 
+    -- 获取回收池内ViewHolder数量
     function GetViewHolderCount(self)
         local count = 0
         for _, cache in pairs(self.__ViewHolderCache) do
@@ -659,6 +671,9 @@ class "Adapter"(function()
         end
     end
 
+    -- Adapter附着到ItemView，这个方法实现数据绑定
+    -- @param itemView: ItemView
+    -- @param position: 数据源位置
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
         local itemViewType = self:GetItemViewType(position)
@@ -714,6 +729,7 @@ class "LayoutManager"(function()
         default                     = 0
     }
 
+    -- 从指定位置和偏移量开始布局，是布局的入口
     -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
     -- @param: offset: 该position对应的itemView当前滚动位置
     -- @parm: forceRefresh:强制刷新。正常情况下，已经显示的Item在刷新的时候会被忽略，这个参数可以控制这个特性是否运作
@@ -737,10 +753,11 @@ class "LayoutManager"(function()
 
             print("Layout", position, offset, forceRefresh)
             self:OnLayout(self.LayoutPosition, self.LayoutOffset)
-            self.RecyclerView:OnLayoutChanged()
         end
     end
 
+    -- @see Layout
+    -- LayoutManager的子类应当重写这个方法来实现自己的布局
     __Abstract__()
     __Arguments__{ NaturalNumber, Number }
     function OnLayout(self, position, offset)
@@ -750,22 +767,28 @@ class "LayoutManager"(function()
     function LayoutItemViews(self)
     end
 
+    -- 获取可见的ItemView数量
     __Abstract__()
     function GetVisibleItemViewCount(self)
     end
 
-    -- @return itemView 返回第一个完整可见的item
-    -- @return index itemView index
-    -- @return offset 该item位置
+    -- @return
+    -- @param itemView 返回第一个完整可见的item
+    -- @param index itemView index
+    -- @param offset 该item位置
     __Abstract__()
     function GetFirstCompletelyVisibleItemView(self)
     end
 
+    -- 请求重新布局
+    -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
     __Arguments__{ Boolean/false }
     function RequestLayout(self, keepPosition)
-        self:Layout(keepPosition and self.LayoutPosition or 1, 0, keepPosition)
+        self:Layout(keepPosition and self.LayoutPosition or 1, 0, true)
     end
 
+    -- 滚动到指定位置
+    -- @param position:数据源位置
     function ScrollToPosition(self, position)
         if position ~= self.LayoutPosition or self.LayoutOffset ~= 0 then
             self:Layout(position, 0)
@@ -846,6 +869,7 @@ class "RecyclerView"(function()
     --                    Functions                      --
     -------------------------------------------------------
 
+    -- 刷新空布局
     function RefreshEmptyView(self)
         if self.Adapter then
             local emptyView = self.Adapter.EmptyView
@@ -863,10 +887,18 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 绘制ItemDecorations
     __Arguments__{ ItemView }
     function DrawItemDecorations(self, itemView)
         for _, itemDecoration in pairs(self.__ItemDecorations) do
             itemDecoration:AttachItemView(self, itemView)
+        end
+    end
+
+    -- 绘制ItemDecorations的Overlay
+    function DrawItemDecorationsOverlay(self)
+        for _, itemDecoration in ipairs(self.__ItemDecorations) do
+            itemDecoration:ShowOverlayView(self)
         end
     end
 
@@ -875,6 +907,7 @@ class "RecyclerView"(function()
         return ipairs(self.__ItemDecorations)
     end
 
+    -- 添加ItemDecoration
     __Arguments__{ ItemDecoration }
     function AddItemDecoration(self, itemDecoration)
         if not tContains(self.__ItemDecorations, itemDecoration) then
@@ -882,6 +915,7 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 删除ItemDecoration
     __Arguments__{ ItemDecoration }
     function RemoveItemDecoration(self, itemDecoration)
         itemDecoration:Destroy(self)
@@ -889,6 +923,7 @@ class "RecyclerView"(function()
         self:Refresh(true)
     end
 
+    -- LayoutManager变更
     function OnLayoutManagerChanged(self, layoutManager, oldLayoutManager)
         if oldLayoutManager then
             oldLayoutManager.RecyclerView = nil
@@ -901,6 +936,7 @@ class "RecyclerView"(function()
         self:Refresh()
     end
 
+    -- 方向变更
     function OnOrientationChanged(self)
         for _, itemView in ipairs(self.__ItemViews) do
             itemView.Orientation = self.Orientation
@@ -909,6 +945,7 @@ class "RecyclerView"(function()
         self:Refresh(true)
     end
 
+    -- 适配器变更
     function OnAdapterChanged(self, newAdapter, oldAdapter)
         if oldAdapter then
             oldAdapter.RecyclerView = nil
@@ -921,11 +958,16 @@ class "RecyclerView"(function()
         self:Refresh(oldAdapter)
     end
 
+    -- 刷新
     __Arguments__{ Adapter/nil }
     function Refresh(self, adapter)
         self:Refresh(false, adapter)
     end
 
+
+    -- 刷新
+    -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
+    -- @param adapter 指定ViewHolder回收到哪个adapter，默认为nil，即当前adapter
     __Arguments__{ Boolean/false, Adapter/nil }
     function Refresh(self, keepPosition, adapter )
         self:RefreshScrollBar()
@@ -936,6 +978,7 @@ class "RecyclerView"(function()
         self:RefreshEmptyView()
     end
 
+    -- 刷新ScrollBar
     function RefreshScrollBar(self)
         -- 先隐藏，由LayoutManager决定是否显示
         -- @see SetScrollBarVisible
@@ -953,6 +996,7 @@ class "RecyclerView"(function()
     end
 
     -- 跳转到指定item
+    -- @param position: item位置
     __Arguments__{ NaturalNumber }
     function ScrollToPosition(self, position)
         if self.LayoutManager then
@@ -969,16 +1013,19 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 设置当前ScrollBar是否显示
     __Arguments__{ Boolean/false }
     function SetScrollBarVisible(self, show)
         self:GetScrollBar():SetShown(show)
     end
 
+    -- 隐藏所有ScrollBar
     function HideScrollBars(self)
         self:GetChild("VerticalScrollBar"):Hide()
         self:GetChild("HorizontalScrollBar"):Hide()
     end
 
+    -- 获取RecyclerView长度，根据其方向会返回长度或宽度
     function GetLength(self)
         if self.Orientation == Orientation.HORIZONTAL then
             return self:GetWidth()
@@ -988,6 +1035,8 @@ class "RecyclerView"(function()
     end
 
     -- 从指定index开始回收ItemViews
+    -- @param index: 从指定位置的ItemView往后开始回收
+    -- @param adapter: 指定ViewHolder回收到哪个adapter，默认为nil，即当前adapter
     __Arguments__{ Adapter/nil, NaturalNumber/1 }
     function RecycleItemViews(self, adapter, index)
         for i = #self.__ItemViews, index, -1 do
@@ -995,12 +1044,17 @@ class "RecyclerView"(function()
         end
     end
     
+    -- 回收指定位置的ItemView
+    -- @param index: 指定位置的ItemView
+    -- @param adapter: 指定ViewHolder回收到哪个adapter，默认为nil，即当前adapter
     __Arguments__{ NaturalNumber, Adapter/nil }
     function RecycleItemView(self, index, adapter)
         local itemView = tremove(self.__ItemViews, index)
         self:RecycleItemView(itemView, adapter)
     end
 
+    -- 回收ItemView
+    -- @param itemView: 需要被回收的itemView
     __Arguments__{ ItemView, Adapter/nil }
     function RecycleItemView(self, itemView, adapter)
         adapter = adapter or self.Adapter
@@ -1016,6 +1070,7 @@ class "RecyclerView"(function()
         ReleaseItemView(self, itemView)
     end
 
+    -- 设置ItemViews，由LayoutManager调用
     __Arguments__{ struct {ItemViewInfos} / nil }
     function SetItemViews(self, itemViewInfos)
         if not itemViewInfos then
@@ -1049,26 +1104,31 @@ class "RecyclerView"(function()
         self.__ItemViews = items
     end
 
+    -- 返回ItemViews的迭代器
     function GetItemViews(self)
         return ipairs(self.__ItemViews)
     end
 
+    -- 获取一个新的ItemView，由LayoutManager调用
+    -- 由回收池获取或新建返回
     function ObtainItemView(self)
         return AcquireItemView(self)
     end
 
-    -- 获取ItemView
+    -- 获取指定位置的ItemView
+    -- @param index:ItemView位置
     __Arguments__{ NaturalNumber }
     function GetItemView(self, index)
         return self.__ItemViews[index]
     end
 
+    -- 获取布局中的ItemView个数
     function GetItemViewCount(self)
         return #self.__ItemViews
     end
 
-    -- 通过adapter position获取ItemView
-    -- 可能为nil
+    -- 通过adapter position获取ItemView，可能为nil
+    -- @param position:数据源内的位置
     function GetItemViewByAdapterPosition(self, position)
         for index, itemView in ipairs(self.__ItemViews) do
             local viewHolder = itemView.ViewHolder
@@ -1079,8 +1139,10 @@ class "RecyclerView"(function()
     end
 
     -- @itemView 返回第一个完整可见的item
-    -- @index itemView index
-    -- @offset 该item位置
+    -- @return
+    -- @param itemView: ItemView
+    -- @param index:ItemView index
+    -- @param offset:ItemView offset
     function GetFirstCompletelyVisibleItemView(self)
         if not self.LayoutManager then return end
     
@@ -1136,6 +1198,7 @@ class "RecyclerView"(function()
         return false
     end
 
+    -- 获取滚动范围，根据不同方向返回不同的滚动范围
     function GetScrollRange(self)
         local orientation = self.Orientation
         if orientation == Orientation.VERTICAL then
@@ -1145,6 +1208,7 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 获取滚动值，根据不同方向返回不同的滚动值
     function GetScrollOffset(self)
         local orientation = self.Orientation
         if orientation == Orientation.VERTICAL then
@@ -1154,6 +1218,8 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 在当前方向上滚动
+    -- @param offset:滚动值
     function Scroll(self, offset)
         local orientation = self.Orientation
         if orientation == Orientation.VERTICAL then
@@ -1163,18 +1229,14 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 重置滚动值
     function ResetScroll(self)
         self:SetHorizontalScroll(0)
         self:SetVerticalScroll(0)
     end
 
-    __Final__()
-    function OnLayoutChanged(self)
-        for _, itemDecoration in ipairs(self.__ItemDecorations) do
-            itemDecoration:ShowOverlayView(self)
-        end
-    end
-
+    -- 鼠标滚轮事件
+    -- 这里是滚动驱动入口
     local function OnMouseWheel(self, delta)
         if not self.LayoutManager or not self.Adapter then return end
         
@@ -1207,6 +1269,13 @@ class "RecyclerView"(function()
 
         -- 改变ScrollBar的值
         self:GetScrollBar():SetValue(position)
+        -- 刷新ItemDecoration的OverlayView
+        self:DrawItemDecorationsOverlay()
+    end
+
+    -- 大小变化时刷新以触发重绘
+    local function OnSizeChanged(self)
+        self:Refresh(true)
     end
 
     __Template__{
@@ -1219,6 +1288,7 @@ class "RecyclerView"(function()
         self.__ItemDecorations = {}
 
         self.OnMouseWheel = self.OnMouseWheel + OnMouseWheel
+        self.OnSizeChanged = self.OnSizeChanged + OnSizeChanged
 
         -- set scroll child
         local scrollChild = self:GetChild("ScrollChild")
