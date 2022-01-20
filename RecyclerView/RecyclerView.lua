@@ -199,7 +199,7 @@ class "ScrollBar"(function()
             offset = 0
             point = "BOTTOMRIGHT"
         end
-
+ 
         thumb:ClearAllPoints()
         if self.Orientation == Orientation.HORIZONTAL then
             thumb:SetWidth(thumbLength)
@@ -692,7 +692,6 @@ class "Adapter"(function()
             itemView.ViewHolder = viewHolder
         end
 
-        print("AttachItemView", itemView, position)
         viewHolder.ContentView:SetParent(itemView)
         self:BindViewHolder(viewHolder, position)
         viewHolder.ContentView:Show()
@@ -746,12 +745,10 @@ class "LayoutManager"(function()
             self.LayoutOffset = position > itemCount and 0 or offset
 
             if forceRefresh then
-                print("forceRefresh")
                 self.RecyclerView:RecycleItemViews()
                 return self:Layout(self.LayoutPosition, self.LayoutOffset)
             end
 
-            print("Layout", position, offset, forceRefresh)
             self:OnLayout(self.LayoutPosition, self.LayoutOffset)
         end
     end
@@ -969,13 +966,14 @@ class "RecyclerView"(function()
     -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
     -- @param adapter 指定ViewHolder回收到哪个adapter，默认为nil，即当前adapter
     __Arguments__{ Boolean/false, Adapter/nil }
-    function Refresh(self, keepPosition, adapter )
+    function Refresh(self, keepPosition, adapter)
         self:RefreshScrollBar()
         self:RecycleItemViews(adapter)
         if self.LayoutManager then
             self.LayoutManager:RequestLayout(keepPosition)
         end
         self:RefreshEmptyView()
+        self:DrawItemDecorationsOverlay()
     end
 
     -- 刷新ScrollBar
@@ -1227,6 +1225,8 @@ class "RecyclerView"(function()
         elseif orientation == Orientation.HORIZONTAL then
             self:SetHorizontalScroll(offset)
         end
+        -- 刷新ItemDecoration的OverlayView
+        self:DrawItemDecorationsOverlay()
     end
 
     -- 重置滚动值
@@ -1269,13 +1269,12 @@ class "RecyclerView"(function()
 
         -- 改变ScrollBar的值
         self:GetScrollBar():SetValue(position)
-        -- 刷新ItemDecoration的OverlayView
-        self:DrawItemDecorationsOverlay()
     end
 
     -- 大小变化时刷新以触发重绘
     local function OnSizeChanged(self)
-        self:Refresh(true)
+        -- 延迟一点时间，以使Scorllbar重新布局，否则Scrollbar.Thumb位置会不正确，因为在重新布局期间调用thumb:SetPoint会使其定位错误
+        Delay(0.1, self.Refresh, self, true)
     end
 
     __Template__{

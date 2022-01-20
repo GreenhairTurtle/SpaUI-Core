@@ -22,7 +22,6 @@ function adapter:OnBindViewHolder(holder, position)
     local data = self.Data[position]
     local contentView = holder.ContentView
     contentView:GetChild("Text"):SetText("测试" .. data)
-    print(holder.Orientation)
     if holder.Orientation == Orientation.VERTICAL then
         contentView:SetHeight(math.max(data * 10, 50))
     else
@@ -73,19 +72,22 @@ function Divider:Draw(recyclerView, decorationView, holder)
     end
 end
 
--- function Divider:OnCreateOverlayView()
---     local frame = Frame("OverlayView")
---     local texture = Texture("Overlay", frame)
---     texture:SetColorTexture(0, 1, 0)
---     texture:SetAllPoints()
---     frame:SetWidth(50)
---     return frame
--- end
+function Divider:OnCreateOverlayView()
+    local frame = Frame("OverlayView")
+    local texture = Texture("Overlay", frame)
+    -- texture:SetColorTexture(0, 1, 0)
+    texture:SetAllPoints()
+    frame:SetHeight(50)
+    return frame
+end
 
--- function Divider:DrawOver(recyclerView, overlayView)
---     overlayView:SetPoint("TOPLEFT")
---     overlayView:SetPoint("BOTTOMLEFT")
--- end
+function Divider:DrawOver(recyclerView, overlayView)
+    overlayView:SetPoint("TOPLEFT")
+    overlayView:SetPoint("TOPRIGHT")
+    -- local itemViewCount = recyclerView:GetItemViewCount()
+    -- local itemView, index, offset = recyclerView:GetFirstCompletelyVisibleItemView()
+    -- print(itemViewCount, itemView.ViewHolder.Position, index, offset)
+end
 
 RightBG = ItemDecoration("RightBG")
 
@@ -117,5 +119,5 @@ TestRecyclerView:AddItemDecoration(Divider)
 adapter.Data = List(50)
 
 Delay(5, function()
-    TestRecyclerView.Orientation = Orientation.HORIZONTAL
+    TestRecyclerView:SetSize(600, 800)
 end)

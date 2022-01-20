@@ -173,7 +173,7 @@ class "LinearLayoutManager"(function()
         for index = 1, itemViewCount do
             local itemView = recyclerView:GetItemView(index)
 
-            if offset > scrollOffset then
+            if offset >= scrollOffset then
                 return itemView, index, offset
             end
            
@@ -253,13 +253,11 @@ class "GridLayoutManager"(function()
         local adapter = recyclerView.Adapter
         local itemView = recyclerView:GetItemViewByAdapterPosition(position)
 
-        print("GetItemViewByPosition", itemView, position)
         if not itemView then
             itemView = recyclerView:ObtainItemView()
         end
 
         if adapter:NeedRefresh(itemView, position) then
-            print("NeedRefresh", itemView, position)
             adapter:AttachItemView(itemView, position)
             UpdateItemViewSize(self, itemView, position)
             recyclerView:DrawItemDecorations(itemView)
@@ -316,7 +314,6 @@ class "GridLayoutManager"(function()
     end
 
     function OnLayout(self, position, offset)
-        print("OnLayout", position, offset)
         local recyclerView = self.RecyclerView
         local adapter = recyclerView.Adapter
 
@@ -481,7 +478,7 @@ class "GridLayoutManager"(function()
 
             offset = GetContentLengthBetweenRowOrColumn(self, firstItemViewRowOrColumn, rowOrColumn - 1)
 
-            if offset > scrollOffset then
+            if offset >= scrollOffset then
                 return itemView, index, offset
             end
            
