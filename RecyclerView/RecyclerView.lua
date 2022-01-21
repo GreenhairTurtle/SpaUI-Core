@@ -674,11 +674,11 @@ class "Adapter"(function()
             end
             position = self.HeaderView and (position - 1) or position
             local dataSize = self.Data and self.Data.Count or 0
-            if position < dataSize then
+            if position <= dataSize then
                 -- 子类重写这个方法，返回自己的ViewType
                 local viewType = self:GetItemViewType(position)
-                if self:IsInternalViewType(viewType) then
-                    throw("GetItemViewType can not return view type which is same as %d, %d and %d":format(HEADER_VIEW, EMPTY_VIEW, FOOTER_VIEW))
+                if IsInternalViewType(viewType) then
+                    throw(string.format("GetItemViewType can not return view type which is same as %d, %d and %d", HEADER_VIEW, EMPTY_VIEW, FOOTER_VIEW))
                 end
                 if type(viewType) ~= "number" then
                     throw("GetItemViewType must return number")
@@ -695,6 +695,7 @@ class "Adapter"(function()
     __Abstract__()
     __Arguments__{ NaturalNumber }
     function GetItemViewType(self, position)
+        return 0
     end
 
     -- 获取item数量，必须是自然数
@@ -732,14 +733,15 @@ class "Adapter"(function()
         end
     end
 
-    function IsInternalViewType(self, viewType)
+    __Static__()
+    function IsInternalViewType(viewType)
         return viewType == HEADER_VIEW or viewType == FOOTER_VIEW or viewType == EMPTY_VIEW
     end
 
     __Arguments__{ Integer }
     __Final__()
     function CreateViewHolder(self, viewType)
-        if self:IsInternalViewType(viewType) then
+        if IsInternalViewType(viewType) then
             return ViewHolder(viewType)
         else
             return ViewHolder(self:OnCreateContentView(viewType), viewType)
@@ -760,7 +762,7 @@ class "Adapter"(function()
     __Final__()
     __Arguments__{ ViewHolder, NaturalNumber }
     function BindViewHolder(self, holder, position)
-        if not self:IsInternalViewType(holder.ItemViewType) then
+        if not IsInternalViewType(holder.ItemViewType) then
             self:OnBindViewHolder(holder, position)
         end
         holder.Position = position
@@ -778,9 +780,8 @@ class "Adapter"(function()
     __Arguments__{ ItemView, NaturalNumber }
     function NeedRefresh(self, itemView, position)
         local itemViewType = self:GetItemViewTypeInternal(position)
-        return not self:IsInternalViewType(itemViewType)
-            and (not itemView.ViewHolder or itemView.ViewHolder.Position ~= position
-                or itemView.ViewHolder.ItemViewType ~= itemViewType)
+        return not itemView.ViewHolder or itemView.ViewHolder.Position ~= position
+                or itemView.ViewHolder.ItemViewType ~= itemViewType
     end
 
     -- 获取回收池内ViewHolder数量
@@ -802,7 +803,7 @@ class "Adapter"(function()
         viewHolder:Destroy()
         -- Header、Footer、Empty等在回收时要取消对ContentView的索引
         -- 因为HeaderView、FooterView、EmptyView可能会被更改
-        if self:IsInternalViewType(viewHolder.ItemViewType) then
+        if IsInternalViewType(viewHolder.ItemViewType) then
             viewHolder.ContentView = nil
         end
         
@@ -829,6 +830,7 @@ class "Adapter"(function()
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
         local itemViewType = self:GetItemViewTypeInternal(position)
+        print(position, itemViewType)
 
         if itemView.ViewHolder and itemView.ViewHolder.ItemViewType ~= itemViewType then
             self:RecycleViewHolder(itemView)
@@ -843,7 +845,7 @@ class "Adapter"(function()
             end
             -- Header、Footer、Empty等在取出时要重新变更ContentView
             -- 因为HeaderView、FooterView、EmptyView可能会被更改
-            if self:IsInternalViewType(itemViewType) then
+            if IsInternalViewType(itemViewType) then
                 viewHolder.ContentView = GetContentViewByInternalViewType(self, itemViewType)
             end
             itemView.ViewHolder = viewHolder

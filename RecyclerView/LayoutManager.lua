@@ -35,6 +35,7 @@ class "LinearLayoutManager"(function()
 
         local orientation = itemView.Orientation
         local contentView = itemView.ViewHolder.ContentView
+        
         contentView:SetPoint("TOPLEFT", maxLeft, -maxTop)
 
         if orientation == Orientation.VERTICAL then
