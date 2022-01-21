@@ -55,6 +55,7 @@ class "LinearLayoutManager"(function()
     local function GetItemViewByPosition(self, position)
         local recyclerView = self.RecyclerView
         local adapter = recyclerView.Adapter
+        -- 取当前position存在的ItemView，这样也许可以不用刷新
         local itemView = recyclerView:GetItemViewByAdapterPosition(position)
 
         if not itemView then

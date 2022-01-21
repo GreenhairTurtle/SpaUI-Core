@@ -353,14 +353,23 @@ class "ViewHolder"(function()
     function Destroy(self)
         self.Orientation = nil
         self.Position = nil
-        self.ContentView:Hide()
-        self.ContentView:ClearAllPoints()
-        self.ContentView:SetParent(nil)
+        -- 对于正常的Item，ContentView不可能为nil
+        -- 但Header、Footer、Empty所在的ViewHolder则会在回收时将ContentView设置为nil
+        if self.ContentView then
+            self.ContentView:Hide()
+            self.ContentView:ClearAllPoints()
+            self.ContentView:SetParent(nil)
+        end
     end
 
     __Arguments__{ LayoutFrame, Integer }
     function __ctor(self, contentView, itemViewType)
         self.ContentView = contentView
+        self.ItemViewType = itemViewType
+    end
+
+    __Arguments__{ Integer }
+    function __ctor(self, itemViewType)
         self.ItemViewType = itemViewType
     end
 
@@ -550,6 +559,31 @@ end)
 __Sealed__()
 class "Adapter"(function()
 
+    local HEADER_VIEW = 0x10000111
+    local FOOTER_VIEW = 0x10000222
+    local EMPTY_VIEW  = 0x10000333
+
+    __Static__()
+    property "HEADER_VIEW"          {
+        type                        = Integer,
+        set                         = false,
+        default                     = HEADER_VIEW
+    }
+
+    __Static__()
+    property "FOOTER_VIEW"          {
+        type                        = Integer,
+        set                         = false,
+        default                     = FOOTER_VIEW
+    }
+
+    __Static__()
+    property "EMPTY_VIEW"           {
+        type                        = Integer,
+        set                         = false,
+        default                     = EMPTY_VIEW
+    }
+
     property "Data"                 {
         type                        = List,
         handler                     = function(self)
@@ -562,18 +596,43 @@ class "Adapter"(function()
     }
 
     -- 空布局
+    -- 设置了空布局，则默认不显示Header和Footer，除非设置了HeaderWithEmptyEnable及FooterWithEmptyEnable属性
     property "EmptyView"            {
         type                        = LayoutFrame,
-        handler                     = function(self, newView, oldView)
-            if oldView then
-                oldView:SetParent(nil)
-                oldView:ClearAllPoints()
-                oldView:Hide()
-            end
+        handler                     = function(self)
+            self:NotifyDataSetChanged()
+        end
+    }
 
-            if newView and self:GetItemCount() <= 0 then
-                self:NotifyDataSetChanged()
-            end
+    property "HeaderView"           {
+        type                        = LayoutFrame,
+        handler                     = function(self)
+            self:NotifyDataSetChanged()
+        end
+    }
+
+    property "FooterView"           {
+        type                        = LayoutFrame,
+        handler                     = function(self)
+            self:NotifyDataSetChanged()
+        end
+    }
+
+    -- 显示Header的时候是否显示空布局
+    property "HeaderWithEmptyEnable"{
+        type                        = Boolean,
+        default                     = false,
+        handler                     = function(self)
+            self:NotifyDataSetChanged()
+        end
+    }
+
+    -- 显示Footer的时候是否显示空布局
+    property "FooterWithEmptyEnable"{
+        type                        = Boolean,
+        default                     = false,
+        handler                     = function(self)
+            self:NotifyDataSetChanged()
         end
     }
 
@@ -586,22 +645,106 @@ class "Adapter"(function()
         end
     end
     
+    local function HasEmptyView(self)
+        if not self.EmptyView then
+            return false
+        end
+
+        return self.Data and self.Data.Count == 0
+    end
+
     -- 如果需要实现多布局，重写这个方法，需返回整数
+    __Final__()
+    __Arguments__{ NaturalNumber }:Throwable()
+    function GetItemViewTypeInternal(self, position)
+        if HasEmptyView(self) then
+            local hasHeader = (self.HeaderWithEmptyEnable and self.HeaderView)
+            if position == 0 then
+                return hasHeader and HEADER_VIEW or EmptyView
+            end
+            if position == 1 then
+                return hasHeader and EmptyView or Footer
+            end
+            if position == 2 then
+                return Footer
+            end
+        else
+            if self.HeaderView and position == 0 then
+                return HEADER_VIEW
+            end
+            position = self.HeaderView and (position - 1) or position
+            local dataSize = self.Data and self.Data.Count or 0
+            if position < dataSize then
+                -- 子类重写这个方法，返回自己的ViewType
+                local viewType = self:GetItemViewType(position)
+                if self:IsInternalViewType(viewType) then
+                    throw("GetItemViewType can not return view type which is same as %d, %d and %d":format(HEADER_VIEW, EMPTY_VIEW, FOOTER_VIEW))
+                end
+                if type(viewType) ~= "number" then
+                    throw("GetItemViewType must return number")
+                end
+                return viewType
+            else
+                return FOOTER_VIEW
+            end
+            
+        end
+        return 0
+    end
+    
+    __Abstract__()
     __Arguments__{ NaturalNumber }
     function GetItemViewType(self, position)
-        return 0
     end
 
     -- 获取item数量，必须是自然数
+    -- 设置了空布局，则默认不显示Header和Footer，除非设置了HeaderWithEmptyEnable及FooterWithEmptyEnable属性
     __Final__()
     function GetItemCount(self)
-        return self.Data and self.Data.Count or 0
+        if HasEmptyView(self) then
+            local count = 1
+            if self.HeaderWithEmptyEnable and self.HeaderView then
+                count = count + 1
+            end
+            if self.FooterWithEmptyEnable and self.FooterView then
+                count = count + 1
+            end
+            return count
+        else
+            local count = self.Data and self.Data.Count or 0
+            if self.HeaderView then
+                count = count + 1
+            end
+            if self.FooterView then
+                count = count + 1
+            end
+            return count
+        end
+    end
+
+    local function GetContentViewByInternalViewType(self, viewType)
+        if viewType == HEADER_VIEW then
+            return self.HeaderView
+        elseif viewType == EMPTY_VIEW then
+            return self.EmptyView
+        elseif viewType == FOOTER_VIEW then
+            return self.FooterView
+        end
+    end
+
+    function IsInternalViewType(self, viewType)
+        return viewType == HEADER_VIEW or viewType == FOOTER_VIEW or viewType == EMPTY_VIEW
     end
 
     __Arguments__{ Integer }
     __Final__()
     function CreateViewHolder(self, viewType)
-        return ViewHolder(self:OnCreateContentView(viewType), viewType)
+        if self:IsInternalViewType(viewType) then
+            return ViewHolder(viewType)
+        else
+            return ViewHolder(self:OnCreateContentView(viewType), viewType)
+        end
+        
     end
 
     -- 重写该方法返回ContentView
@@ -617,7 +760,9 @@ class "Adapter"(function()
     __Final__()
     __Arguments__{ ViewHolder, NaturalNumber }
     function BindViewHolder(self, holder, position)
-        self:OnBindViewHolder(holder, position)
+        if not self:IsInternalViewType(holder.ItemViewType) then
+            self:OnBindViewHolder(holder, position)
+        end
         holder.Position = position
     end
 
@@ -627,32 +772,15 @@ class "Adapter"(function()
     function OnBindViewHolder(self, holder, position)
     end
 
-    -- 回收ItemView的ViewHolder
-    __Arguments__{ ItemView }
-    function RecycleViewHolder(self, itemView)
-        local viewHolder = itemView.ViewHolder
-        if not viewHolder then return end
-
-        viewHolder:Destroy()
-        
-        local viewHolderCache = self.__ViewHolderCache[viewHolder.ItemViewType]
-        if not viewHolderCache then
-            viewHolderCache = {}
-            self.__ViewHolderCache[viewHolder.ItemViewType] = viewHolderCache
-        end
-
-        tinsert(viewHolderCache, viewHolder)
-
-        itemView.ViewHolder = nil
-    end
-
     -- 判断是否需要刷新
     -- @param itemView: ItemView
     -- @param position: 数据源位置
     __Arguments__{ ItemView, NaturalNumber }
     function NeedRefresh(self, itemView, position)
-        local itemViewType = self:GetItemViewType(position)
-        return not itemView.ViewHolder or itemView.ViewHolder.Position ~= position or itemView.ViewHolder.ItemViewType ~= itemViewType
+        local itemViewType = self:GetItemViewTypeInternal(position)
+        return not self:IsInternalViewType(itemViewType)
+            and (not itemView.ViewHolder or itemView.ViewHolder.Position ~= position
+                or itemView.ViewHolder.ItemViewType ~= itemViewType)
     end
 
     -- 获取回收池内ViewHolder数量
@@ -663,6 +791,30 @@ class "Adapter"(function()
         end
 
         return count
+    end
+
+    -- 回收ItemView的ViewHolder
+    __Arguments__{ ItemView }
+    function RecycleViewHolder(self, itemView)
+        local viewHolder = itemView.ViewHolder
+        if not viewHolder then return end
+
+        viewHolder:Destroy()
+        -- Header、Footer、Empty等在回收时要取消对ContentView的索引
+        -- 因为HeaderView、FooterView、EmptyView可能会被更改
+        if self:IsInternalViewType(viewHolder.ItemViewType) then
+            viewHolder.ContentView = nil
+        end
+        
+        local viewHolderCache = self.__ViewHolderCache[viewHolder.ItemViewType]
+        if not viewHolderCache then
+            viewHolderCache = {}
+            self.__ViewHolderCache[viewHolder.ItemViewType] = viewHolderCache
+        end
+
+        tinsert(viewHolderCache, viewHolder)
+
+        itemView.ViewHolder = nil
     end
 
     local function GetViewHolderFromCache(self, itemViewType)
@@ -676,7 +828,7 @@ class "Adapter"(function()
     -- @param position: 数据源位置
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
-        local itemViewType = self:GetItemViewType(position)
+        local itemViewType = self:GetItemViewTypeInternal(position)
 
         if itemView.ViewHolder and itemView.ViewHolder.ItemViewType ~= itemViewType then
             self:RecycleViewHolder(itemView)
@@ -688,6 +840,11 @@ class "Adapter"(function()
             viewHolder = GetViewHolderFromCache(self, itemViewType)
             if not viewHolder then
                 viewHolder = self:CreateViewHolder(itemViewType)
+            end
+            -- Header、Footer、Empty等在取出时要重新变更ContentView
+            -- 因为HeaderView、FooterView、EmptyView可能会被更改
+            if self:IsInternalViewType(itemViewType) then
+                viewHolder.ContentView = GetContentViewByInternalViewType(self, itemViewType)
             end
             itemView.ViewHolder = viewHolder
         end
@@ -731,10 +888,9 @@ class "LayoutManager"(function()
     -- 从指定位置和偏移量开始布局，是布局的入口
     -- @param: position: item位置,第一个完整显示在RecyclerView可视范围内的item位置
     -- @param: offset: 该position对应的itemView当前滚动位置
-    -- @parm: forceRefresh:强制刷新。正常情况下，已经显示的Item在刷新的时候会被忽略，这个参数可以控制这个特性是否运作
     __Final__()
-    __Arguments__{ NaturalNumber, Number, Boolean/false }
-    function Layout(self, position, offset, forceRefresh)
+    __Arguments__{ NaturalNumber, Number}
+    function Layout(self, position, offset)
         if self.RecyclerView and self.RecyclerView.Adapter then
             local itemCount = self.RecyclerView.Adapter:GetItemCount()
             position = math.min(position, itemCount)
@@ -743,11 +899,6 @@ class "LayoutManager"(function()
             self.LayoutPosition = position
             -- position大于item数量，则跳转到最后一项，offset设为0
             self.LayoutOffset = position > itemCount and 0 or offset
-
-            if forceRefresh then
-                self.RecyclerView:RecycleItemViews()
-                return self:Layout(self.LayoutPosition, self.LayoutOffset)
-            end
 
             self:OnLayout(self.LayoutPosition, self.LayoutOffset)
         end
@@ -866,24 +1017,6 @@ class "RecyclerView"(function()
     --                    Functions                      --
     -------------------------------------------------------
 
-    -- 刷新空布局
-    function RefreshEmptyView(self)
-        if self.Adapter then
-            local emptyView = self.Adapter.EmptyView
-            if not emptyView then return end
-
-            local itemCount = self.Adapter:GetItemCount()
-            if itemCount <= 0 then
-                emptyView:ClearAllPoints()
-                emptyView:SetParent(self)
-                emptyView:SetAllPoints(self)
-                emptyView:Show()
-            else
-                emptyView:Hide()
-            end
-        end
-    end
-
     -- 绘制ItemDecorations
     __Arguments__{ ItemView }
     function DrawItemDecorations(self, itemView)
@@ -972,7 +1105,6 @@ class "RecyclerView"(function()
         if self.LayoutManager then
             self.LayoutManager:RequestLayout(keepPosition)
         end
-        self:RefreshEmptyView()
         self:DrawItemDecorationsOverlay()
     end
 
