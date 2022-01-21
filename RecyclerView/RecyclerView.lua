@@ -659,17 +659,17 @@ class "Adapter"(function()
     function GetItemViewTypeInternal(self, position)
         if HasEmptyView(self) then
             local hasHeader = (self.HeaderWithEmptyEnable and self.HeaderView)
-            if position == 0 then
-                return hasHeader and HEADER_VIEW or EmptyView
-            end
             if position == 1 then
-                return hasHeader and EmptyView or Footer
+                return hasHeader and HEADER_VIEW or EMPTY_VIEW
             end
             if position == 2 then
-                return Footer
+                return hasHeader and EMPTY_VIEW or FOOTER_VIEW
+            end
+            if position == 3 then
+                return FOOTER_VIEW
             end
         else
-            if self.HeaderView and position == 0 then
+            if self.HeaderView and position == 1 then
                 return HEADER_VIEW
             end
             position = self.HeaderView and (position - 1) or position
@@ -733,14 +733,17 @@ class "Adapter"(function()
         end
     end
 
+    -- 是否为内部使用的ViewType，即Header、Footer和Empty
     __Static__()
     function IsInternalViewType(viewType)
         return viewType == HEADER_VIEW or viewType == FOOTER_VIEW or viewType == EMPTY_VIEW
     end
 
-    __Arguments__{ Integer }
+    -- 创建ViewHolder
     __Final__()
+    __Arguments__{ Integer }
     function CreateViewHolder(self, viewType)
+        -- Header、Footer、Empty不创建ContentView
         if IsInternalViewType(viewType) then
             return ViewHolder(viewType)
         else
@@ -762,7 +765,17 @@ class "Adapter"(function()
     __Final__()
     __Arguments__{ ViewHolder, NaturalNumber }
     function BindViewHolder(self, holder, position)
-        if not IsInternalViewType(holder.ItemViewType) then
+        local viewType = holder.ItemViewType
+        if IsInternalViewType(viewType) then
+            -- 空布局大小要和RecyclerView一样大
+            if viewType == EMPTY_VIEW then
+                print(self.RecyclerView:GetSize())
+                holder.ContentView:SetSize(self.RecyclerView:GetSize())
+            end
+        else
+            -- 去掉头布局才是真正的Data position
+            -- 走到这个分支时，说明Data一定有数据，所以无需判断HeaderWithEmptyEnable
+            position = self.HeaderView and (position - 1) or position
             self:OnBindViewHolder(holder, position)
         end
         holder.Position = position
@@ -830,7 +843,6 @@ class "Adapter"(function()
     __Arguments__{ ItemView, NaturalNumber }
     function AttachItemView(self, itemView, position)
         local itemViewType = self:GetItemViewTypeInternal(position)
-        print(position, itemViewType)
 
         if itemView.ViewHolder and itemView.ViewHolder.ItemViewType ~= itemViewType then
             self:RecycleViewHolder(itemView)

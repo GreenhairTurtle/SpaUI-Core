@@ -31,7 +31,26 @@ end
 
 EmptyView = FontString("EmptyText")
 EmptyView:SetText("没有数据哦~")
+EmptyView:SetJustifyH("CENTER")
+EmptyView:SetJustifyV("MIDDLE")
 adapter.EmptyView = EmptyView
+
+-- HeaderView = Frame("Header")
+-- local text = FontString("Text", HeaderView)
+-- text:SetPoint("CENTER")
+-- text:SetFontObject(GameFontNormalHuge)
+-- text:SetText("这是头布局")
+-- HeaderView:SetHeight(400)
+-- adapter.HeaderView = HeaderView
+
+-- FooterView = Frame("Footer")
+-- local text = FontString("Text", HeaderView)
+-- text:SetPoint("CENTER")
+-- text:SetFontObject(GameFontNormalHuge)
+-- text:SetText("这是脚布局")
+-- FooterView:SetHeight(200)
+-- adapter.FooterView = FooterView
+-- adapter.HeaderWithEmptyEnable = true
 
 Divider = ItemDecoration("Divider")
 Divider.Height = 10
@@ -109,7 +128,8 @@ function RightBG:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("BOTTOMRIGHT")
 end
 
-layoutManager = GridLayoutManager(2)
+-- layoutManager = GridLayoutManager(2)
+layoutManager = LinearLayoutManager()
 
 TestRecyclerView.Adapter = adapter
 -- TestRecyclerView.Orientation = Orientation.HORIZONTAL
@@ -118,6 +138,8 @@ TestRecyclerView:AddItemDecoration(Divider)
 -- TestRecyclerView:AddItemDecoration(RightBG)
 adapter.Data = List(50)
 
-Delay(5, function()
-    TestRecyclerView:SetSize(600, 800)
-end)
+-- Delay(5, function()
+--     adapter.Data = List(0)
+--     print(TestRecyclerView:GetItemViewCount())
+--     print(adapter.EmptyView:GetSize())
+-- end)
