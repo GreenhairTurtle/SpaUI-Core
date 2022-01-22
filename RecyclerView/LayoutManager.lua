@@ -8,7 +8,7 @@ __Sealed__()
 class "LinearLayoutManager"(function()
     inherit "LayoutManager"
 
-    function LayoutItemViews(self)
+    local function LayoutItemViews(self)
         local recyclerView = self.RecyclerView
         local relativePoint = recyclerView.Orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
 
@@ -74,6 +74,7 @@ class "LinearLayoutManager"(function()
         return itemView
     end
 
+    -- @Override
     function OnLayout(self, position, offset)
         local recyclerView = self.RecyclerView
         local adapter = recyclerView.Adapter
@@ -84,12 +85,17 @@ class "LinearLayoutManager"(function()
         local contentLength = 0
         local adapterPosition = startPosition
         local itemViewMap = {}
+        local displayLength = recyclerView:GetLength()
+        local maxLength = displayLength
 
-        while contentLength <= recyclerView:GetLength() and adapterPosition <= itemCount do
+        while contentLength <= maxLength and adapterPosition <= itemCount do
             local itemView = GetItemViewByPosition(self, adapterPosition)
             tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
             adapterPosition = adapterPosition + 1
-            contentLength = contentLength + itemView:GetLength()
+            local length = itemView:GetLength()
+            -- 动态变化最大值，保证当前绘制区域内至少要容得下一个超大的Item及额外一个item，这样才能滚动起来
+            maxLength = math.max(length + displayLength, maxLength)
+            contentLength = contentLength + length
         end
 
         -- 额外添加一项
@@ -97,28 +103,31 @@ class "LinearLayoutManager"(function()
         if adapterPosition <= itemCount then
             local itemView = GetItemViewByPosition(self, adapterPosition)
             tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            contentLength = contentLength + itemView:GetLength()
+            local length = itemView:GetLength()
+            maxLength = math.max(length + displayLength, maxLength)
+            contentLength = contentLength + length
         end
         
-
         adapterPosition = startPosition - 1
 
         -- 如果顺序长度不够，则逆序添加足够的项使长度足够
-        while contentLength <= recyclerView:GetLength() and adapterPosition > 0 do
+        while contentLength <= maxLength and adapterPosition > 0 do
             local itemView = GetItemViewByPosition(self, adapterPosition)
             tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
             adapterPosition = adapterPosition - 1
-            contentLength = contentLength + itemView:GetLength()
+            local length = itemView:GetLength()
+            maxLength = math.max(length + displayLength, maxLength)
+            contentLength = contentLength + length
         end
 
         -- 设置ItemView布局
         recyclerView:SetItemViews(itemViewMap)
-        self:LayoutItemViews()
+        LayoutItemViews(self)
         
         -- set offset
         local scrollOffset = 0
-        if contentLength > recyclerView:GetLength() then
-            recyclerView:SetScrollBarVisible(true)
+        contentLength = math.floor(contentLength + 0.5)
+        if contentLength > displayLength then
             local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
             if itemView and index > 1 then
                 for i = 1, index - 1 do
@@ -127,17 +136,18 @@ class "LinearLayoutManager"(function()
                 scrollOffset = scrollOffset + offset
 
                 -- 触底
-                if contentLength - scrollOffset < recyclerView:GetLength() then
-                    scrollOffset = contentLength - recyclerView:GetLength()
+                if contentLength - scrollOffset < displayLength then
+                    scrollOffset = contentLength - displayLength
                 end
             end
-        else
-            recyclerView:SetScrollBarVisible(false)
         end
         
         recyclerView:Scroll(scrollOffset)
+
+        return contentLength
     end
 
+    -- @Override
     function GetVisibleItemViewCount(self)
         local recyclerView = self.RecyclerView
 
@@ -163,6 +173,7 @@ class "LinearLayoutManager"(function()
         return visibleCount
     end
 
+    -- @Override
     function GetFirstCompletelyVisibleItemView(self)
         local recyclerView = self.RecyclerView
         
@@ -205,7 +216,25 @@ class "GridLayoutManager"(function()
         end
     }
 
+    __Arguments__{ NaturalNumber }:Throwable()
+    function GetSpanSizeLookUpInternal(self, position)
+        local adapter = self.RecyclerView.Adapter
+        if Adapter.IsInternalViewType(adapter:GetItemViewTypeInternal(position)) then
+            return self.SpanCount
+        else
+            local spanSize = self:GetSpanSizeLookUp(position)
+            if not Struct.ValidateValue(NaturalNumber, spanSize, true) then
+               throw("GetSpanSizeLookUp must return natural number")
+            end
+            if spanSize > self.SpanCount then
+                throw("Span size must be lower than span count")
+            end
+            return spanSize
+        end
+    end
+
     -- 获取item对应的跨度大小
+    -- 重写这个方法用来实现自己的表格，必须返回自然数
     __Arguments__{ NaturalNumber }
     function GetSpanSizeLookUp(self, position)
         return 1
@@ -282,12 +311,7 @@ class "GridLayoutManager"(function()
 
         for position = 1, itemCount do
             local itemViewInfo = {}
-            local spanSize = self:GetSpanSizeLookUp(position)
-
-            if spanSize > self.SpanCount then
-                error("Span size must be lower than span count")
-            end
-            
+            local spanSize = self:GetSpanSizeLookUpInternal(position)
             rowOrColumnTotalSpanSize = rowOrColumnTotalSpanSize + spanSize
             if rowOrColumnTotalSpanSize > self.SpanCount then
                 rowOrColumn = rowOrColumn + 1
@@ -315,89 +339,7 @@ class "GridLayoutManager"(function()
         return length
     end
 
-    function OnLayout(self, position, offset)
-        local recyclerView = self.RecyclerView
-        local adapter = recyclerView.Adapter
-
-        UpdateItemViewPositions(self)
-
-        local startRowOrColumn = math.max(GetRowOrColumn(self, position) - 1, 1)
-        local itemCount = adapter:GetItemCount()
-        local maxRowOrColumn = GetRowOrColumn(self, itemCount)
-        
-        local rowOrColumn = startRowOrColumn
-        local itemViewMap = {}
-        local contentLength = 0
-
-        while contentLength <= recyclerView:GetLength() and rowOrColumn <= maxRowOrColumn do
-            local length = 0
-            for _, adapterPosition in ipairs(self.__RowOrColumnInfos[rowOrColumn]) do
-                local itemView = GetItemViewByPosition(self, adapterPosition)
-                length = math.max(itemView:GetLength(), length)
-                self.__RowOrColumnInfos[rowOrColumn].Length = length
-                tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            end
-
-            contentLength = contentLength + length
-            rowOrColumn = rowOrColumn + 1
-        end
-
-        -- 额外添加一行/列
-        -- 因为可能startRowOrColumn那一行/列长度直接超过contentLength导致需要显示的那一行/列反而不显示
-        if rowOrColumn <= maxRowOrColumn then
-            local length = 0
-            for _, adapterPosition in ipairs(self.__RowOrColumnInfos[rowOrColumn]) do
-                local itemView = GetItemViewByPosition(self, adapterPosition)
-                length = math.max(itemView:GetLength(), length)
-                self.__RowOrColumnInfos[rowOrColumn].Length = length
-                tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            end
-            contentLength = contentLength + length
-        end
-
-        -- 如果顺序长度不够，则逆序添加足够的项使长度足够
-        rowOrColumn = startRowOrColumn - 1
-        while contentLength <= recyclerView:GetLength() and rowOrColumn > 0 do
-            local length = 0
-            for _, adapterPosition in ipairs(self.__RowOrColumnInfos[rowOrColumn]) do
-                local itemView = GetItemViewByPosition(self, adapterPosition)
-                length = math.max(itemView:GetLength(), length)
-                self.__RowOrColumnInfos[rowOrColumn].Length = length
-                tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
-            end
-
-            contentLength = contentLength + length
-            rowOrColumn = rowOrColumn - 1
-        end
-
-        -- 设置ItemView布局
-        recyclerView:SetItemViews(itemViewMap)
-        self:LayoutItemViews()
-        
-        -- set offset
-        local scrollOffset = 0
-        if contentLength > recyclerView:GetLength() then
-            recyclerView:SetScrollBarVisible(true)
-            local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
-            rowOrColumn = GetRowOrColumn(self, itemView.ViewHolder.Position)
-            if itemView and rowOrColumn > 1 then
-                -- 显示的第一个ItemView对应的行/列
-                local firstRowOrColumn = GetRowOrColumn(self, recyclerView:GetItemView(1).ViewHolder.Position)
-                scrollOffset = GetContentLengthBetweenRowOrColumn(self, firstRowOrColumn, rowOrColumn - 1) + offset
-
-                -- 触底
-                if contentLength - scrollOffset < recyclerView:GetLength() then
-                    scrollOffset = contentLength - recyclerView:GetLength()
-                end
-            end
-        else
-            recyclerView:SetScrollBarVisible(false)
-        end
-        
-        recyclerView:Scroll(scrollOffset)
-    end
-
-    function LayoutItemViews(self)
+    local function LayoutItemViews(self)
         local recyclerView = self.RecyclerView
         local orientation = recyclerView.Orientation
         local relativePointWrapLine = orientation == Orientation.VERTICAL and "BOTTOMLEFT" or "TOPRIGHT"
@@ -425,12 +367,103 @@ class "GridLayoutManager"(function()
         end
     end
 
+    -- @Override
+    function OnLayout(self, position, offset)
+        local recyclerView = self.RecyclerView
+        local adapter = recyclerView.Adapter
+
+        UpdateItemViewPositions(self)
+
+        local startRowOrColumn = math.max(GetRowOrColumn(self, position) - 1, 1)
+        local itemCount = adapter:GetItemCount()
+        local maxRowOrColumn = GetRowOrColumn(self, itemCount)
+        
+        local rowOrColumn = startRowOrColumn
+        local itemViewMap = {}
+        local contentLength = 0
+        local displayLength = recyclerView:GetLength()
+        local maxLength = displayLength
+
+        while contentLength <= maxLength and rowOrColumn <= maxRowOrColumn do
+            local length = 0
+            for _, adapterPosition in ipairs(self.__RowOrColumnInfos[rowOrColumn]) do
+                local itemView = GetItemViewByPosition(self, adapterPosition)
+                length = math.max(itemView:GetLength(), length)
+                self.__RowOrColumnInfos[rowOrColumn].Length = length
+                tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
+            end
+
+            -- 动态变化最大值，保证当前绘制区域内至少要容得下一个超大的Item及额外一个item，这样才能滚动起来
+            maxLength = math.max(displayLength + length, maxLength)
+            contentLength = contentLength + length
+            rowOrColumn = rowOrColumn + 1
+        end
+
+        -- 额外添加一行/列
+        -- 因为可能startRowOrColumn那一行/列长度直接超过contentLength导致需要显示的那一行/列反而不显示
+        if rowOrColumn <= maxRowOrColumn then
+            local length = 0
+            for _, adapterPosition in ipairs(self.__RowOrColumnInfos[rowOrColumn]) do
+                local itemView = GetItemViewByPosition(self, adapterPosition)
+                length = math.max(itemView:GetLength(), length)
+                self.__RowOrColumnInfos[rowOrColumn].Length = length
+                tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
+            end
+            maxLength = math.max(displayLength + length, maxLength)
+            contentLength = contentLength + length
+        end
+
+        -- 如果顺序长度不够，则逆序添加足够的项使长度足够
+        rowOrColumn = startRowOrColumn - 1
+        while contentLength <= maxLength and rowOrColumn > 0 do
+            local length = 0
+            for _, adapterPosition in ipairs(self.__RowOrColumnInfos[rowOrColumn]) do
+                local itemView = GetItemViewByPosition(self, adapterPosition)
+                length = math.max(itemView:GetLength(), length)
+                self.__RowOrColumnInfos[rowOrColumn].Length = length
+                tinsert(itemViewMap, RecyclerView.ItemViewInfo(adapterPosition, itemView))
+            end
+
+            maxLength = math.max(displayLength + length, maxLength)
+            contentLength = contentLength + length
+            rowOrColumn = rowOrColumn - 1
+        end
+
+        -- 设置ItemView布局
+        recyclerView:SetItemViews(itemViewMap)
+        LayoutItemViews(self)
+        
+        -- set offset
+        local scrollOffset = 0
+        contentLength = math.floor(contentLength + 0.5)
+        if contentLength > displayLength then
+            local itemView, index = recyclerView:GetItemViewByAdapterPosition(position)
+            rowOrColumn = GetRowOrColumn(self, itemView.ViewHolder.Position)
+            if itemView and rowOrColumn > 1 then
+                -- 显示的第一个ItemView对应的行/列
+                local firstRowOrColumn = GetRowOrColumn(self, recyclerView:GetItemView(1).ViewHolder.Position)
+                scrollOffset = GetContentLengthBetweenRowOrColumn(self, firstRowOrColumn, rowOrColumn - 1) + offset
+
+                -- 触底
+                if contentLength - scrollOffset < displayLength then
+                    scrollOffset = contentLength - displayLength
+                end
+            end
+        end
+        
+        recyclerView:Scroll(scrollOffset)
+
+        return contentLength
+    end
+
+    -- @Override
     function ScrollToPosition(self, position)
         if GetRowOrColumn(self, position) ~= GetRowOrColumn(self, self.LayoutPosition) or self.LayoutOffset ~= 0 then
             self:Layout(position, 0)
         end
     end
 
+    -- @Override
     function GetVisibleItemViewCount(self)
         local recyclerView = self.RecyclerView
 

@@ -35,22 +35,23 @@ EmptyView:SetJustifyH("CENTER")
 EmptyView:SetJustifyV("MIDDLE")
 adapter.EmptyView = EmptyView
 
--- HeaderView = Frame("Header")
--- local text = FontString("Text", HeaderView)
--- text:SetPoint("CENTER")
--- text:SetFontObject(GameFontNormalHuge)
--- text:SetText("这是头布局")
--- HeaderView:SetHeight(400)
--- adapter.HeaderView = HeaderView
+HeaderView = Frame("Header")
+local text = FontString("Text", HeaderView)
+text:SetPoint("CENTER")
+text:SetFontObject(GameFontNormalHuge)
+text:SetText("这是头布局")
+HeaderView:SetHeight(200)
+adapter.HeaderView = HeaderView
 
--- FooterView = Frame("Footer")
--- local text = FontString("Text", HeaderView)
--- text:SetPoint("CENTER")
--- text:SetFontObject(GameFontNormalHuge)
--- text:SetText("这是脚布局")
--- FooterView:SetHeight(200)
--- adapter.FooterView = FooterView
--- adapter.HeaderWithEmptyEnable = true
+FooterView = Frame("Footer")
+local text2 = FontString("Text", FooterView)
+text2:SetPoint("CENTER")
+text2:SetFontObject(GameFontNormalHuge)
+text2:SetText("这是脚布局")
+FooterView:SetHeight(300)
+adapter.FooterView = FooterView
+adapter.HeaderWithEmptyEnable = true
+adapter.FooterWithEmptyEnable = true
 
 Divider = ItemDecoration("Divider")
 Divider.Height = 10
@@ -75,18 +76,26 @@ function Divider:GetItemMargins(recyclerView, holder)
     if holder.Position % 2 == 0 then
         paddingBottom = 30
     end
+    if holder.ItemViewType == Adapter.EMPTY_VIEW then
+        paddingBottom = 0
+    end
     return 0, 0, 0, paddingBottom
 end
 
 function Divider:Draw(recyclerView, decorationView, holder)
     local line = decorationView:GetChild("Line")
     local text = decorationView:GetChild("Text")
-    if holder.Position % 2 == 0 then
-        line:Hide()
-        text:Show()
-        text:SetText("这是第" .. holder.Position .. "行的页尾")
+    if holder:IsDataView() then
+        if holder.Position % 2 == 0 then
+            line:Hide()
+            text:Show()
+            text:SetText("这是第" .. holder.Position .. "行的页尾")
+        else
+            line:Show()
+            text:Hide()
+        end
     else
-        line:Show()
+        line:Hide()
         text:Hide()
     end
 end
@@ -128,8 +137,8 @@ function RightBG:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("BOTTOMRIGHT")
 end
 
--- layoutManager = GridLayoutManager(2)
-layoutManager = LinearLayoutManager()
+layoutManager = GridLayoutManager(2)
+-- layoutManager = LinearLayoutManager()
 
 TestRecyclerView.Adapter = adapter
 -- TestRecyclerView.Orientation = Orientation.HORIZONTAL
@@ -138,8 +147,6 @@ TestRecyclerView:AddItemDecoration(Divider)
 -- TestRecyclerView:AddItemDecoration(RightBG)
 adapter.Data = List(50)
 
--- Delay(5, function()
---     adapter.Data = List(0)
---     print(TestRecyclerView:GetItemViewCount())
---     print(adapter.EmptyView:GetSize())
--- end)
+Delay(5, function()
+    TestRecyclerView:ScrollToPosition(25)
+end)
