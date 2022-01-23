@@ -390,6 +390,17 @@ class "ViewHolder"(function()
 end)
 
 -----------------------------------------------------------
+--                   ItemAnimation                       --
+-----------------------------------------------------------
+
+__Sealed__()
+class "ItemAnimation"(function()
+
+    
+
+end)
+
+-----------------------------------------------------------
 --          Decoration and item view                     --
 --Each recyclerView can contain multiple item decoration --
 -----------------------------------------------------------
@@ -1445,13 +1456,11 @@ class "RecyclerView"(function()
                 offset = 0
             end
 
-            if itemView then
-                self.LayoutManager:Layout(position, offset)
-            end
+            self.LayoutManager:Layout(position, offset)
         end
 
         -- 改变ScrollBar的值
-        self:GetScrollBar():SetValue(position)
+        self:SetScrollBarShown(true, position)
     end
 
     -- 大小变化时刷新以触发重绘
