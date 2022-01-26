@@ -494,6 +494,7 @@ class "GridLayoutManager"(function()
         return visibleCount
     end
 
+    -- @Override
     function GetFirstCompletelyVisibleItemView(self)
         local recyclerView = self.RecyclerView
         

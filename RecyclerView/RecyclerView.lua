@@ -662,6 +662,10 @@ class "Adapter"(function()
         end
     }
 
+    property "SelectMode"           {
+        type                        = 
+    }
+
     -- 刷新
     __Final__()
     __Arguments__{ Boolean/true }
@@ -683,7 +687,6 @@ class "Adapter"(function()
         return self:IsDataEmpty()
     end
 
-    -- 如果需要实现多布局，重写这个方法，需返回整数
     __Final__()
     __Arguments__{ NaturalNumber }:Throwable()
     function GetItemViewTypeInternal(self, position)
@@ -722,6 +725,7 @@ class "Adapter"(function()
         return 0
     end
     
+    -- 如果需要实现多布局，重写这个方法，需返回整数
     __Abstract__()
     __Arguments__{ NaturalNumber }
     function GetItemViewType(self, position)
