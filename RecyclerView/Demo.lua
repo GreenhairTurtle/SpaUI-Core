@@ -18,10 +18,21 @@ function adapter:OnCreateContentView(viewType)
     return frame
 end
 
-function adapter:OnBindViewHolder(holder, data, dataPosition)
+function adapter:OnBindViewHolder(holder, data)
     holder:GetChild("Text"):SetText("测试" .. data)
     holder:SetContentLength(math.max(data * 10, 50))
 end
+
+listener = {}
+function listener.OnClick(adapter, itemView, button, down)
+    print("OnClick", itemView:GetName(), button, down)
+    print(itemView.ViewHolder.Position, itemView.ViewHolder.DataPosition)
+end
+function listener.OnDoubleClick(adapter, itemView, button, down)
+    print("OnDoubeClick", itemView:GetName(), button, down)
+    print(itemView.ViewHolder.Position, itemView.ViewHolder.DataPosition)
+end
+adapter.ItemListener = listener
 
 EmptyView = FontString("EmptyText")
 EmptyView:SetText("没有数据哦~")
@@ -143,6 +154,6 @@ TestRecyclerView:AddItemDecoration(Divider)
 -- TestRecyclerView:AddItemDecoration(RightBG)
 adapter.Data = List(50)
 
-Delay(5, function()
+Delay(10, function()
     TestRecyclerView:ScrollToPosition(25)
 end)

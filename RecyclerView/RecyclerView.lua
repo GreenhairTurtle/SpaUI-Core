@@ -7,7 +7,7 @@ namespace "SpaUI.Widget.Recycler"
 
 class "ItemDecoration" {}
 
-class "ItemView" { Frame }
+class "ItemView" { Button }
 
 class "RecyclerView" { ScrollFrame }
 
@@ -293,6 +293,10 @@ class "ViewHolder"(function()
         type                        = NaturalNumber
     }
 
+    property "DataPosition"         {
+        type                        = NaturalNumber
+    }
+
     property "Orientation"          {
         type                        = Orientation
     }
@@ -300,6 +304,7 @@ class "ViewHolder"(function()
     function Destroy(self)
         self.Orientation = nil
         self.Position = nil
+        self.DataPosition = nil
         -- 对于正常的Item，ContentView不可能为nil
         -- 但Header、Footer、Empty所在的ViewHolder则会在回收时将ContentView设置为nil
         if self.ContentView then
@@ -425,10 +430,20 @@ class "ItemView"(function()
         end
     end
 
+    local function UnregisterAllScripts(self)
+        for _, event in Enum.GetEnumValues(ScriptsType) do
+            if self:HasScript(event) then
+                self[event] = nil
+            end
+        end
+    end
+
     function Destroy(self)
         self:Hide()
         self:ClearAllPoints()
         self:SetParent(nil)
+        self:RegisterForClicks(nil)
+        UnregisterAllScripts(self)
     end
 
 end)
@@ -635,6 +650,19 @@ class "Adapter"(function()
         end
     }
 
+    -- Item监听，需要定义同名Script方法
+    -- 例如 function listener.OnClick
+    -- Script handler返回的第一个参数为adapter
+    property "ItemListener"         {
+        type                        = RawTable
+    }
+
+    -- ItemView:RegisterForClicks
+    property "RegisterForClicks"    {
+        type                        = struct { String },
+        default                     = { "LeftButtonUp" }
+    }
+
     -- 刷新
     __Final__()
     __Arguments__{ Boolean/true }
@@ -642,11 +670,6 @@ class "Adapter"(function()
         if self.RecyclerView then
             self.RecyclerView:Refresh(keepPosition)
         end
-    end
-
-    -- 点击事件
-    __Arguments__{ RecyclerView, ViewHolder, Any, NaturalNumber }
-    function OnItemClick(self, recyclerView, holder, data, dataPosition)
     end
 
     -- 数据源为空
@@ -780,14 +803,15 @@ class "Adapter"(function()
             -- 去掉头布局才是真正的Data position
             -- 走到这个分支时，说明Data一定有数据，所以无需判断HeaderWithEmptyEnable
             position = self.HeaderView and (position - 1) or position
-            self:OnBindViewHolder(holder, self.Data[position], position)
+            holder.DataPosition = position
+            self:OnBindViewHolder(holder, self.Data[position])
         end
     end
 
     -- 重写该方法实现数据绑定
-    __Arguments__{ ViewHolder, Any, NaturalNumber }
+    __Arguments__{ ViewHolder, Any }
     __Abstract__()
-    function OnBindViewHolder(self, holder, data, dataPosition)
+    function OnBindViewHolder(self, holder, data)
     end
 
     -- 判断是否需要刷新
@@ -850,6 +874,25 @@ class "Adapter"(function()
         end
     end
 
+    -- @todo 子组件事件
+    function InstallEvents(self, itemView)
+        if self.ItemListener then
+            if self.RegisterForClicks then
+                itemView:RegisterForClicks(unpack(self.RegisterForClicks))
+            else
+                itemView:RegisterForClicks(nil)
+            end
+
+            for script, handler in pairs(self.ItemListener) do
+                if itemView:HasScript(script) and type(handler) == "function" then
+                    itemView[script] = function(...)
+                        handler(self, ...)
+                    end
+                end
+            end
+        end
+    end
+
     -- Adapter附着到ItemView，这个方法实现数据绑定
     -- @param itemView: ItemView
     -- @param position: 数据源位置
@@ -872,6 +915,8 @@ class "Adapter"(function()
             -- 因为HeaderView、FooterView、EmptyView可能会被更改
             if IsInternalViewType(itemViewType) then
                 viewHolder.ContentView = GetContentViewByInternalViewType(self, itemViewType)
+            else
+                self:InstallEvents(itemView)
             end
             itemView.ViewHolder = viewHolder
         end
@@ -1523,8 +1568,8 @@ class "RecyclerView"(function()
         self.__ItemViews = {}
         self.__ItemDecorations = {}
 
-        self.OnMouseWheel = self.OnMouseWheel + OnMouseWheel
-        self.OnSizeChanged = self.OnSizeChanged + OnSizeChanged
+        self.OnMouseWheel   = self.OnMouseWheel + OnMouseWheel
+        self.OnSizeChanged  = self.OnSizeChanged + OnSizeChanged
 
         -- set scroll child
         local scrollChild = self:GetChild("ScrollChild")
