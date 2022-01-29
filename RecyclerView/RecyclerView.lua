@@ -15,13 +15,14 @@ class "RecyclerView" { ScrollFrame }
 --                     ScrollBar                         --
 -----------------------------------------------------------
 
--- 滑块表示当前显示的列表项的数目的滚动条，每次滚动只移动1，对应列表1个item
--- todo
 __Sealed__()
 class "ScrollBar"(function()
     inherit "Frame"
 
     local function ScrollToCursorValue(self)
+        local recyclerView = self:GetParent()
+        if not recyclerView then return end
+
         local uiScale, cursorX, cursorY = self:GetEffectiveScale(),  GetCursorPosition()
         local left, top = self:GetLeft(), self:GetTop()
         cursorX, cursorY = cursorX/uiScale, cursorY/uiScale
@@ -42,12 +43,12 @@ class "ScrollBar"(function()
             offset = 0
         end
 
-        local value = math.floor(offset / length * self.Range + 0.5)
-        if value < 1 then
-            value = 1
+        local value = offset / length * self.__Range
+        if value < 0 then
+            value = 0
         end
 
-        self:SetValue(value, true)
+        recyclerView:ScrollToLength(value)
     end
 
     local function Thumb_OnUpdate(self, elapsed)
@@ -70,15 +71,11 @@ class "ScrollBar"(function()
     end
 
     local function OnMouseWheel(self, delta)
-        local value = self:GetValue() - delta
-        if value < 1 then
-            value = 1
-        elseif value > self.Range then
-            value = self.Range
+        local recyclerView = self:GetParent()
+        if recyclerView then
+            recyclerView:OnMouseWheel(delta)
         end
-        self:SetValue(value, true)
     end
-
     
     local function OnMouseDown(self, button)
         ScrollToCursorValue(self)
@@ -151,17 +148,12 @@ class "ScrollBar"(function()
         OnLeave(self:GetParent())
     end
 
-    local function RefreshThumbAndScrollButton(self)
-        local recyclerView = self:GetParent()
-        if not recyclerView then return end
-
-        local value = self:GetValue()
+    local function RefreshThumbAndScrollButton(self, from, to, total)
         -- update thumb
         local thumb = self:GetChild("Thumb")
-        local thumbRange = recyclerView:GetVisibleItemViewCount()
         local length = self:GetLength()
-        local thumbLength = (thumbRange or 1) / self.Range * length
-        local offset = (value - 1) / self.Range * length
+        local thumbLength = math.abs(to - from) / total * length
+        local offset = from / total * length
         local point = "TOPLEFT"
         
         if offset + thumbLength > length then
@@ -187,31 +179,17 @@ class "ScrollBar"(function()
         -- update scroll button
         local scrollUpButton = self:GetChild("ScrollUpButton")
         local scrollDownButton = self:GetChild("ScrollDownButton")
-        if value <= 1 then
+        if from <= 0 then
             scrollUpButton:Disable()
         else
             scrollUpButton:Enable()
         end
 
-        if value + thumbRange - 1 >= self.Range or recyclerView:IsScrollToBottom() then
+        if to >= total then
             scrollDownButton:Disable()
         else
             scrollDownButton:Enable()
         end
-    end
-
-    local function OnValueChanged(self, value, userInput)
-        Show(self)
-        if userInput then
-            local recyclerView = self:GetParent()
-            if recyclerView then
-                recyclerView:ScrollToPosition(self:GetValue())
-            end
-        end
-    end
-
-    local function OnRangeChanged(self)
-        self:SetValue(self:GetValue())
     end
 
     __Final__()
@@ -222,34 +200,13 @@ class "ScrollBar"(function()
             return self:GetHeight()
         end
     end
-    
-    __Final__()
-    __Arguments__{ NaturalNumber, Boolean/false }
-    function SetValue(self, value, userInput)
-        local max = self.Range
-
-        if value > max then
-            value = max
-        end
-
-        local oldValue = self.Value
-        self.Value = value
-
-        if value ~= oldValue then
-            OnValueChanged(self, value, userInput)
-        end
-        RefreshThumbAndScrollButton(self)
-    end
 
     __Final__()
-    function GetValue(self)
-        return self.Value or 1
-    end
-
-    __Final__()
-    __Arguments__{ NaturalNumber }
-    function SetRange(self, range)
-        self.Range = range
+    __Arguments__{ Number, Number, Number }
+    function Refresh(self, from, to, total)
+        self.__Range = total
+        Show(self)
+        RefreshThumbAndScrollButton(self, from, to, total)
     end
 
     -- 渐隐
@@ -274,13 +231,6 @@ class "ScrollBar"(function()
     property "FadeoutDelay"     {
         type                    = Number,
         default                 = 2
-    }
-
-    -- 范围
-    property "Range"            {
-        type                    = NaturalNumber,
-        default                 = 1,
-        handler                 = OnRangeChanged
     }
 
     -- 方向
@@ -376,6 +326,45 @@ class "ViewHolder"(function()
         return not self:IsHeaderView() and not self:IsFooterView() and not self:IsEmptyView()
     end
 
+    __Arguments__{ NEString }
+    function GetChild(self, name)
+        return self.ContentView and self.ContentView:GetChild(name)
+    end
+
+    __Arguments__{ NEString, -LayoutFrame }
+    function GetChild(self, name, class)
+        if not self.ContentView then return end
+
+        local view = self.ContentView:GetChild(name)
+        if not view then
+            view = class(name, self.ContentView)
+        end
+
+        return view
+    end
+
+    function GetContentLength(self)
+        local length = 0
+        if self.Orientation == Orientation.VERTICAL then
+            length = self.ContentView:GetHeight()
+        elseif self.Orientation == Orientation.HORIZONTAL then
+            length = self.ContentView:GetWidth()
+        end
+        return length
+    end
+
+    __Arguments__{ Number}
+    function SetContentLength(self, length)
+        if not self.ContentView then return end
+        if length < 0 then length = 0 end
+
+        if self.Orientation == Orientation.VERTICAL then
+            self.ContentView:SetHeight(length)
+        elseif self.Orientation == Orientation.HORIZONTAL then
+            self.ContentView:SetWidth(length)
+        end
+    end
+
     __Arguments__{ LayoutFrame, Integer }
     function __ctor(self, contentView, itemViewType)
         self.ContentView = contentView
@@ -386,17 +375,6 @@ class "ViewHolder"(function()
     function __ctor(self, itemViewType)
         self.ItemViewType = itemViewType
     end
-
-end)
-
------------------------------------------------------------
---                   ItemAnimation                       --
------------------------------------------------------------
-
-__Sealed__()
-class "ItemAnimation"(function()
-
-    
 
 end)
 
@@ -419,7 +397,10 @@ class "ItemView"(function()
 
     property "DecorationViews"      {
         type                        = RawTable,
-        default                     = function() return {} end,
+        get                         = function(self)
+            self.__DecorationViews = self.__DecorationViews or {}
+            return self.__DecorationViews
+        end,
         set                         = false
     }
 
@@ -433,15 +414,7 @@ class "ItemView"(function()
     }
 
     function GetContentLength(self)
-        local length = 0
-        if self.ViewHolder then
-            if self.Orientation == Orientation.VERTICAL then
-                length = self.ViewHolder.ContentView:GetHeight()
-            elseif self.Orientation == Orientation.HORIZONTAL then
-                length = self.ViewHolder.ContentView:GetWidth()
-            end
-        end
-        return length
+        return self.ViewHolder and self.ViewHolder:GetContentLength()
     end
 
     function GetLength(self)
@@ -662,10 +635,6 @@ class "Adapter"(function()
         end
     }
 
-    property "SelectMode"           {
-        type                        = 
-    }
-
     -- 刷新
     __Final__()
     __Arguments__{ Boolean/true }
@@ -673,6 +642,11 @@ class "Adapter"(function()
         if self.RecyclerView then
             self.RecyclerView:Refresh(keepPosition)
         end
+    end
+
+    -- 点击事件
+    __Arguments__{ RecyclerView, ViewHolder, Any, NaturalNumber }
+    function OnItemClick(self, recyclerView, holder, data, dataPosition)
     end
 
     -- 数据源为空
@@ -763,6 +737,12 @@ class "Adapter"(function()
         return viewType == HEADER_VIEW or viewType == FOOTER_VIEW or viewType == EMPTY_VIEW
     end
 
+    -- 将Data position转换成Adapter position
+    __Arguments__{ NaturalNumber }
+    function ConvertDataPositionToAdapterPosition(self, position)
+        return position + (self.HeaderView and 1 or 0)
+    end
+
     -- 创建ViewHolder
     __Final__()
     __Arguments__{ Integer }
@@ -800,14 +780,14 @@ class "Adapter"(function()
             -- 去掉头布局才是真正的Data position
             -- 走到这个分支时，说明Data一定有数据，所以无需判断HeaderWithEmptyEnable
             position = self.HeaderView and (position - 1) or position
-            self:OnBindViewHolder(holder, position)
+            self:OnBindViewHolder(holder, self.Data[position], position)
         end
     end
 
     -- 重写该方法实现数据绑定
-    __Arguments__{ ViewHolder, NaturalNumber }
+    __Arguments__{ ViewHolder, Any, NaturalNumber }
     __Abstract__()
-    function OnBindViewHolder(self, holder, position)
+    function OnBindViewHolder(self, holder, data, dataPosition)
     end
 
     -- 判断是否需要刷新
@@ -953,7 +933,7 @@ class "LayoutManager"(function()
                 contentLength = self:OnLayout(position, self.LayoutOffset)
             end
 
-            self.RecyclerView:OnLayoutChanged(contentLength, position)
+            self.RecyclerView:OnLayoutChanged(contentLength)
         end
     end
 
@@ -974,6 +954,7 @@ class "LayoutManager"(function()
     function GetVisibleItemViewCount(self)
     end
 
+    -- 获取第一个完整可见的item
     -- @return
     -- @param itemView 返回第一个完整可见的item
     -- @param index itemView index
@@ -982,19 +963,60 @@ class "LayoutManager"(function()
     function GetFirstCompletelyVisibleItemView(self)
     end
 
+    -- 获取第一个可见的item
+    -- @return
+    -- @param itemView 返回第一个可见的item
+    -- @param index itemView index
+    -- @param offset 该item在屏幕外的长度
+    __Abstract__()
+    function GetFirstVisibleItemView(self)
+    end
+
     -- 请求重新布局
     -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
+    __Final__()
     __Arguments__{ Boolean/false }
     function RequestLayout(self, keepPosition)
-        self:Layout(keepPosition and self.LayoutPosition or 1, 0, true)
+        wipe(self.__RowLength)
+        self.__RowCount = 0
+        self.__MinRowLength = 2147483648
+
+        local position = 1
+        if keepPosition then
+            local itemView = self:GetFirstVisibleItemView()
+            if itemView then 
+                position = itemView.ViewHolder.Position
+            end
+        end
+        self:Layout(position, 0)
     end
 
     -- 滚动到指定位置
     -- @param position:数据源位置
+    __Abstract__()
     function ScrollToPosition(self, position)
-        if position ~= self.LayoutPosition or self.LayoutOffset ~= 0 then
-            self:Layout(position, 0)
-        end
+    end
+
+    -- 滚动到指定位置
+    -- @param length:长度
+    __Abstract__()
+    function ScrollToLength(self, length)
+    end
+
+    -- 获取总长度
+    -- 没有加载的项，可以使用最小值预估
+    -- @return
+    -- @param totalLength: 总长度
+    -- @param beforeDisplayLength:展示的内容区域之前的长度
+    -- @param afterDisplayLength: 展示的内容区域之后的长度
+    __Abstract__()
+    function GetTotalLength(self)
+    end
+
+    function __ctor(self)
+        self.__RowLength = {}
+        self.__MinRowLength = 2147483648
+        self.__RowCount = 0
     end
 
 end)
@@ -1171,6 +1193,15 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 跳转到指定位置
+    -- @param length: 长度
+    __Arguments__{Number }
+    function ScrollToLength(self, length)
+        if self.LayoutManager then
+            self.LayoutManager:ScrollToLength(length)
+        end
+    end
+
     -- 获取Scrollbar
     function GetScrollBar(self)
         if self.Orientation == Orientation.HORIZONTAL then
@@ -1309,6 +1340,14 @@ class "RecyclerView"(function()
         end
     end
 
+    -- 通过DataPosition获取ItemView，可能为nil
+    function GetItemViewByDataPosition(self, position)
+        if self.Adapter then
+            position = self.Adapter:ConvertDataPositionToAdapterPosition(position)
+            return self:GetItemViewByAdapterPosition(position)
+        end
+    end
+
     -- @itemView 返回第一个完整可见的item
     -- @return
     -- @param itemView: ItemView
@@ -1327,6 +1366,12 @@ class "RecyclerView"(function()
         end
 
         return self.LayoutManager:GetVisibleItemViewCount()
+    end
+
+    function GetFirstVisibleItemView(self)
+        if not self.LayoutManager then return end
+
+        return self.LayoutManager:GetFirstVisibleItemView()
     end
 
     -- 是否滚动到底部
@@ -1409,25 +1454,21 @@ class "RecyclerView"(function()
     end 
 
      -- 显示/隐藏ScrollBar
-     __Arguments__{ Boolean, NaturalNumber/1 }
-     function SetScrollBarShown(self, shown, value)
+     __Arguments__{ Boolean}
+     function SetScrollBarShown(self, shown)
         local scrollBar = self:GetScrollBar()
         scrollBar:SetShown(shown)
-        local adapter = self.Adapter
-        if adapter and shown then
-            local count = adapter:GetItemCount()
-            if count > 0 then
-                scrollBar:SetRange(count)
-                scrollBar:SetValue(value)
-            end
+        if shown then
+            local totalLength, beforeDisplayLength = self.LayoutManager:GetTotalLength()
+            scrollBar:Refresh(beforeDisplayLength, beforeDisplayLength + self:GetLength(), totalLength)
         end
     end
 
     -- 布局完成
-    __Arguments__{ Number/0, NaturalNumber/1 }
-    function OnLayoutChanged(self, contentLength, position)
+    __Arguments__{ Number/0 }
+    function OnLayoutChanged(self, contentLength)
         if contentLength > self:GetLength() then
-            self:SetScrollBarShown(true, position)
+            self:SetScrollBarShown(true)
         else
             self:SetScrollBarShown(false)
         end

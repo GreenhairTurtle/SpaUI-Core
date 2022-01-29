@@ -18,15 +18,9 @@ function adapter:OnCreateContentView(viewType)
     return frame
 end
 
-function adapter:OnBindViewHolder(holder, position)
-    local data = self.Data[position]
-    local contentView = holder.ContentView
-    contentView:GetChild("Text"):SetText("测试" .. data)
-    if holder.Orientation == Orientation.VERTICAL then
-        contentView:SetHeight(math.max(data * 10, 50))
-    else
-        contentView:SetWidth(math.max(data * 10, 50))
-    end
+function adapter:OnBindViewHolder(holder, data, dataPosition)
+    holder:GetChild("Text"):SetText("测试" .. data)
+    holder:SetContentLength(math.max(data * 10, 50))
 end
 
 EmptyView = FontString("EmptyText")
@@ -103,18 +97,20 @@ end
 function Divider:OnCreateOverlayView()
     local frame = Frame("OverlayView")
     local texture = Texture("Overlay", frame)
-    -- texture:SetColorTexture(0, 1, 0)
+    texture:SetColorTexture(0, 1, 0)
     texture:SetAllPoints()
     frame:SetHeight(50)
+    local text = FontString("Text", frame)
+    text:SetPoint("CENTER")
     return frame
 end
 
 function Divider:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("TOPLEFT")
     overlayView:SetPoint("TOPRIGHT")
-    -- local itemViewCount = recyclerView:GetItemViewCount()
-    -- local itemView, index, offset = recyclerView:GetFirstCompletelyVisibleItemView()
-    -- print(itemViewCount, itemView.ViewHolder.Position, index, offset)
+    local itemViewCount = recyclerView:GetItemViewCount()
+    local itemView, index, offset = recyclerView:GetFirstVisibleItemView()
+    overlayView:GetChild("Text"):SetText(tostring(itemView.ViewHolder.Position))
 end
 
 RightBG = ItemDecoration("RightBG")
@@ -137,8 +133,8 @@ function RightBG:DrawOver(recyclerView, overlayView)
     overlayView:SetPoint("BOTTOMRIGHT")
 end
 
-layoutManager = GridLayoutManager(2)
--- layoutManager = LinearLayoutManager()
+-- layoutManager = GridLayoutManager(2)
+layoutManager = LinearLayoutManager()
 
 TestRecyclerView.Adapter = adapter
 -- TestRecyclerView.Orientation = Orientation.HORIZONTAL
