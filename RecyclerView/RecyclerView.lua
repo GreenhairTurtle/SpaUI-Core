@@ -305,6 +305,7 @@ class "ViewHolder"(function()
         self.Orientation = nil
         self.Position = nil
         self.DataPosition = nil
+
         -- 对于正常的Item，ContentView不可能为nil
         -- 但Header、Footer、Empty所在的ViewHolder则会在回收时将ContentView设置为nil
         if self.ContentView then
@@ -312,9 +313,13 @@ class "ViewHolder"(function()
             self.ContentView:ClearAllPoints()
             self.ContentView:SetParent(nil)
         end
+
+        -- 清除子控件事件
+        if self.__ChildScripts then
+            wipe(self.__ChildScripts)
+        end
     end
 
-    
     function IsHeaderView(self)
         return Adapter.HEADER_VIEW == self.ItemViewType
     end
@@ -346,6 +351,31 @@ class "ViewHolder"(function()
         end
 
         return view
+    end
+
+    -- 为子控件添加Script处理
+    -- 只有添加了Script处理的子组件才会被Adapter的ItemChildListener回调
+    __Arguments__{ UIObject, ScriptsType }
+    function AddChildScript(self, child, script)
+        if not child:HasScript(script) then return end
+
+        if not self.__ChildScripts then
+            self.__ChildScripts = {}
+        end
+
+        local scripts = self.__ChildScripts[child]
+        if not scripts then
+            scripts = {}
+            self.__ChildScripts[child] = scripts
+        end
+        
+        if not tContains(scripts, script) then
+            tinsert(scripts, script)
+        end
+    end
+
+    function GetChildScripts(self)
+        return self.__ChildScripts
     end
 
     function GetContentLength(self)
@@ -657,6 +687,13 @@ class "Adapter"(function()
         type                        = RawTable
     }
 
+    -- Item child监听，需要定义同名Script方法
+    -- 例如 function ChildListener.OnClick
+    -- Script handler返回的第一个参数为adapter
+    property "ItemChildListener"    {
+        type                        = RawTable
+    }
+
     -- ItemView:RegisterForClicks
     property "RegisterForClicks"    {
         type                        = struct { String },
@@ -825,7 +862,7 @@ class "Adapter"(function()
     end
 
     -- 获取回收池内ViewHolder数量
-    function GetViewHolderCount(self)
+    function GetViewHolderCacheCount(self)
         local count = 0
         for _, cache in pairs(self.__ViewHolderCache) do
             count = count + #cache
@@ -874,8 +911,7 @@ class "Adapter"(function()
         end
     end
 
-    -- @todo 子组件事件
-    function InstallEvents(self, itemView)
+    local function InstallEvents(self, itemView)
         if self.ItemListener then
             if self.RegisterForClicks then
                 itemView:RegisterForClicks(unpack(self.RegisterForClicks))
@@ -887,6 +923,22 @@ class "Adapter"(function()
                 if itemView:HasScript(script) and type(handler) == "function" then
                     itemView[script] = function(...)
                         handler(self, ...)
+                    end
+                end
+            end
+        end
+
+        if self.ItemChildListener then
+            local childScripts = itemView.ViewHolder:GetChildScripts()
+            if not childScripts then return end
+
+            for child, scripts in pairs(childScripts) do
+                for _, script in ipairs(scripts) do
+                    local handler = self.ItemChildListener[script]
+                    if handler and type(handler) == "function" then
+                        child[script] = function(...)
+                            handler(self, ...)
+                        end
                     end
                 end
             end
@@ -916,7 +968,7 @@ class "Adapter"(function()
             if IsInternalViewType(itemViewType) then
                 viewHolder.ContentView = GetContentViewByInternalViewType(self, itemViewType)
             else
-                self:InstallEvents(itemView)
+                InstallEvents(self, itemView)
             end
             itemView.ViewHolder = viewHolder
         end
@@ -935,6 +987,16 @@ end)
 -----------------------------------------------------------
 --                  LayoutManager                        --
 -----------------------------------------------------------
+
+-- LayoutManager是RecyclerView运作的核心实现类
+-- 它没有那么抽象，可供实现的方法也不多。
+-- 一般来说，使用RecyclerView不推荐自定义LayoutManager
+
+-- 自定义LayoutManager需要主要需要实现OnLayout方法，在该方法内进行
+-- ItemView的绘制、计算大小、绘制ItemDecoration及布局操作
+-- 值得注意的是，构造方法中初始化生成的__RowCount,__MinRowLength,__RowLength
+-- 这三个变量决定了列表中显示的行数、每行对应长度及行最小长度，
+-- 子类应当使用这三个变量来实现逻辑
 
 __Sealed__()
 class "LayoutManager"(function()
@@ -988,10 +1050,6 @@ class "LayoutManager"(function()
     __Abstract__()
     __Arguments__{ NaturalNumber, Number }
     function OnLayout(self, position, offset)
-    end
-
-    __Abstract__()
-    function LayoutItemViews(self)
     end
 
     -- 获取可见的ItemView数量
@@ -1058,6 +1116,9 @@ class "LayoutManager"(function()
     function GetTotalLength(self)
     end
 
+    -- __RowLength:每行对应长度
+    -- __MinRowLength:行最小长度
+    -- __RowCount:行数量
     function __ctor(self)
         self.__RowLength = {}
         self.__MinRowLength = 2147483648
