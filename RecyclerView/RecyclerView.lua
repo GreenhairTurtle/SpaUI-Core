@@ -355,6 +355,7 @@ class "ViewHolder"(function()
 
     -- 为子控件添加Script处理
     -- 只有添加了Script处理的子组件才会被Adapter的ItemChildListener回调
+    -- 只应该在Adapter.OnBindViewHolder函数内使用
     __Arguments__{ UIObject, ScriptsType }
     function AddChildScript(self, child, script)
         if not child:HasScript(script) then return end
@@ -603,6 +604,12 @@ end)
 __Sealed__()
 class "Adapter"(function()
 
+    enum "SelectMode" {
+        "NONE",
+        "SINGLE",
+        "MULTIPLE"
+    }
+
     local HEADER_VIEW = 0x10000111
     local FOOTER_VIEW = 0x10000222
     local EMPTY_VIEW  = 0x10000333
@@ -698,6 +705,12 @@ class "Adapter"(function()
     property "RegisterForClicks"    {
         type                        = struct { String },
         default                     = { "LeftButtonUp" }
+    }
+
+    -- 单选/多选
+    propety "SelectMode"            {
+        type                        = SelectMode,
+        default                     = SelectMode.NONE
     }
 
     -- 刷新
