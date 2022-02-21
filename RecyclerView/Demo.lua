@@ -1,5 +1,7 @@
 Scorpio "SpaUI.Widget.RecyclerView.Demo" ""
 
+import "SpaUI.Widget.Recycler"
+
 -- if not TestRecyclerView then return end
 
 TestRecyclerView = RecyclerView("TestRecylcerView")
@@ -15,11 +17,18 @@ function adapter:OnCreateContentView(viewType)
     local bg = Texture("Bg", frame, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal")
+
+    local button = UIPanelButton("Button", frame)
+    button:SetPoint("RIGHT")
+    button:SetSize(128, 64)
+    button:SetText("点我")
     return frame
 end
 
 function adapter:OnBindViewHolder(holder, data)
     holder:GetChild("Text"):SetText("测试" .. data)
+    holder:AddChildScript("Button", "OnClick")
+    holder:AddChildScript("Button", "OnDoubleClick")
     holder:SetContentLength(math.max(data * 10, 50))
 end
 
@@ -33,6 +42,17 @@ function listener.OnDoubleClick(adapter, itemView, button, down)
     print(itemView.ViewHolder.Position, itemView.ViewHolder.DataPosition)
 end
 adapter.ItemListener = listener
+
+childListener = {}
+function childListener.OnClick(adapter, itemView, child, button, down)
+    print("Child OnClick", child:GetName(), button, down)
+    print(itemView.ViewHolder.Position, itemView.ViewHolder.DataPosition)
+end
+function childListener.OnDoubleClick(adapter, itemView, child, button, down)
+    print("Child OnDoubeClick", child:GetName(), button, down)
+    print(itemView.ViewHolder.Position, itemView.ViewHolder.DataPosition)
+end
+adapter.ItemChildListener = childListener
 
 EmptyView = FontString("EmptyText")
 EmptyView:SetText("没有数据哦~")
