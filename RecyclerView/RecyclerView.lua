@@ -1,7 +1,6 @@
 -----------------------------------------------------------
 --         Warcraft version of Android recyclerView      --
 -----------------------------------------------------------
--- Scorpio "SpaUI.Widget.RecyclerView" ""
 
 PLoop(function(ENV)
 
