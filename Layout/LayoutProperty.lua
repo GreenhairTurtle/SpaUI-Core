@@ -23,9 +23,17 @@ PLoop(function(ENV)
         end
     end)
 
+    -- 表明子元素相对父元素的相对位置
+    __Flags__()
     __Sealed__()
-    struct "Gravity"(function()
-        
-    end)
+    enum "Gravity"{
+        "TOP",
+        "BOTTOM",
+        "START",
+        "END",
+        "CENTER",
+        "CENTER_HORIZONTAL",
+        "CENTER_VERTICAL"
+    }
 
 end)
