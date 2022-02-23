@@ -1,10 +1,14 @@
-PLoop(function(ENV)
+-- package.path = package.path .. ";D:/Github/?/init.lua;D:/Github/?.lua"
+-- require "PLoop"
+-- require "Extend"
+
+PLoop(function()
 
     namespace "SpaUI.Widget"
 
     __Sealed__()
     struct "Padding"(function()
-        member "left"   { Type = NonNegativeNumber, require = true }
+        member "left"   { Type = NonNegativeNumber, Require = true }
         member "top"    { Type = NonNegativeNumber }
         member "right"  { Type = NonNegativeNumber }
         member "bottom" { Type = NonNegativeNumber }
@@ -23,6 +27,13 @@ PLoop(function(ENV)
         end
     end)
 
+    __Sealed__()
+    struct "Margin"(function()
+
+        __base = Padding
+
+    end)
+
     -- 表明子元素相对父元素的相对位置
     __Flags__()
     __Sealed__()
@@ -35,5 +46,22 @@ PLoop(function(ENV)
         "CENTER_HORIZONTAL",
         "CENTER_VERTICAL"
     }
+
+    -- 布局大小模式
+    __Sealed__()
+    enum "LayoutSizeMode"{
+        -- 填满父布局
+        ["MATCH_PARENT"] = -1,
+        -- 根据自身内容而定
+        ["WRAP_CONTENT"] = -2
+    }
+
+    __Sealed__()
+    struct "LayoutParams"(function()
+
+        member "width"  { Type = NonNegativeNumber + LayoutSizeMode }
+        member "height" { Type = NonNegativeNumber + LayoutSizeMode }
+
+    end)
 
 end)

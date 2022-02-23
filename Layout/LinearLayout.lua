@@ -1,12 +1,15 @@
-PLoop(function(ENV)
+PLoop(function()
 
     namespace "SpaUI.Widget.Layout"
 
     __Sealed__()
     class "LinearLayout"(function()
-        inherit "ScrollFrame"
+        inherit "BaseLayout"
 
-        
+        property "Orientation"      {
+            type                    = Orientation,
+            default                 = Orientation.VERTICAL
+        }
 
     end)
 
