@@ -4,12 +4,17 @@ PLoop(function()
 
     __Sealed__()
     class "LinearLayout"(function()
-        inherit "BaseLayout"
+        inherit "ViewGroup"
 
         property "Orientation"      {
             type                    = Orientation,
             default                 = Orientation.VERTICAL
         }
+
+        -- @Override
+        function SetupScrollChild(self)
+            
+        end
 
     end)
 

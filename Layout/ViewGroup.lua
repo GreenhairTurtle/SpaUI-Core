@@ -1,13 +1,21 @@
 PLoop(function()
 
     namespace "SpaUI.Widget.Layout"
+    import "SpaUI.Widget"
+
+    export {
+        tinsert         = table.insert,
+        tremove         = table.remove,
+        tDeleteItem     = tDeleteItem,
+        tContains       = tContains
+    }
 
     -------------------------------
     --          ViewGroup        --
     -------------------------------
 
     class "ViewGroup"(function()
-        extend "ScrollFrame"
+        inherit "ScrollFrame"
 
         local wrapContentLayoutParams = LayoutParams(LayoutSizeMode.WRAP_CONTENT, LayoutSizeMode.WRAP_CONTENT)
 
@@ -47,12 +55,17 @@ PLoop(function()
         end
 
         __Final__()
-        __Arguments__{ LayoutFrame, LayoutParams/wrapContentLayoutParams }
+        __Arguments__{ LayoutFrame, LayoutParams/wrapContentLayoutParams }:Throwable()
         function AddChild(self, child, layoutParams)
+            if tContains(self.__Children, child) then
+                throw("The child has already been added")
+            end
+
             child:ClearAllPoints()
             child:SetParent(self)
             InstallEventsToChild(child)
-            self.__LayoutParams[child] = layoutParams
+            tinsert(self.__Children, child)
+            self.__Children[child] = layoutParams
             self:RequestLayout()
         end
 
@@ -60,18 +73,20 @@ PLoop(function()
         __Arguments__{ NEString }
         function RemoveChild(self, childName)
             local child = self:GetChild(childName)
+            if not child then return end
+
             self:RemoveChild(child)
-            self:RequestLayout()
         end
 
         __Final__()
-        __Arguments__{ LayoutFrame/nil }
+        __Arguments__{ LayoutFrame }
         function RemoveChild(self, child)
-            if not child then return end
-
-            self.__LayoutParams[child] = nil
-            child:SetParent(nil)
-            self:RequestLayout()
+            if child:GetParent() == self then
+                tDeleteItem(self.__Children, child)
+                self.__Children[child] = nil
+                child:SetParent(nil)
+                self:RequestLayout()
+            end
         end
 
         __Abstract__()
@@ -84,7 +99,7 @@ PLoop(function()
         end
 
         function __ctor(self)
-            self.__LayoutParams = {}
+            self.__Children = {}
             self:SetupScrollChild()
         end
 
