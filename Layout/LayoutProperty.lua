@@ -1,6 +1,6 @@
--- package.path = package.path .. ";D:/Github/?/init.lua;D:/Github/?.lua"
--- require "PLoop"
--- require "Extend"
+package.path = package.path .. ";D:/Github/?/init.lua;D:/Github/?.lua"
+require "PLoop"
+require "Extend"
 
 PLoop(function()
 
@@ -47,6 +47,12 @@ PLoop(function()
         "CENTER_VERTICAL"
     }
 
+    __AutoIndex__()
+    enum "LayoutDirection"{
+        "LEFT_TO_RIGHT",
+        "RIGHT_TO_LEFT"
+    }
+
     -- 布局大小模式
     __Sealed__()
     enum "LayoutSizeMode"{
@@ -61,7 +67,8 @@ PLoop(function()
 
         member "width"  { Type = NonNegativeNumber + LayoutSizeMode }
         member "height" { Type = NonNegativeNumber + LayoutSizeMode }
+        member "margin" { Type = Margin }
 
     end)
-
+    
 end)

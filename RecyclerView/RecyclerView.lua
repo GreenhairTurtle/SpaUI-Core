@@ -571,7 +571,7 @@ PLoop(function(ENV)
 
                 if not overlayView then
                     overlayView = self:OnCreateOverlayView()
-                    if not overlayView or not Class.ValidateValue(Frame, overlayView) then
+                    if not overlayView or not Class.ValidateValue(Frame, overlayView, true) then
                         throw("OverlayView必须是Frame或其子类型")
                     end
                 end
@@ -832,7 +832,7 @@ PLoop(function(ENV)
             else
                 local viewHolder = ViewHolder(viewType)
                 local contentView = self:OnCreateContentView(viewType)
-                if not contentView or not Class.ValidateValue(LayoutFrame, contentView) then
+                if not contentView or not Class.ValidateValue(LayoutFrame, contentView, true) then
                     throw("ContentView 必须是LayoutFrame或其子类型")
                 end
                 viewHolder.ContentView = contentView
