@@ -14,6 +14,11 @@ PLoop(function()
     --          ViewGroup        --
     -------------------------------
 
+    -- Subclass need to implement the following functions:
+    -- 1. OnGetViewGroupSize
+    -- 2. OnLayout
+
+    -- For more details, see method comment
     class "ViewGroup"(function()
         inherit "Frame"
 
@@ -134,6 +139,8 @@ PLoop(function()
             self:OnLayout()
         end
 
+        -- Implement this function to layout child position
+        -- The size of the viewgroup is determined when this function is called
         __Abstract__()
         function OnLayout(self)
         end
@@ -143,6 +150,10 @@ PLoop(function()
         function GetViewGroupSize(self)
             if self.__LayoutRequested or not self.__Width or not self.__Height then
                 local width, height = self:OnGetViewGroupSize()
+                if type(width) ~= "number" or type(height) ~= "number" then
+                    error("ViewGroup's size must be number", 2)
+                end
+                
                 self.__Width = width
                 self.__Height = height
                 self.__LayoutRequested = false
@@ -150,12 +161,13 @@ PLoop(function()
             return self.__Width, self.__Height
         end
 
-        -- Return width and height
-        -- must call GetChildSize function to get child size instead of child:GetSize()
+        -- Implement this function return view group width and height
+        -- You must call GetChildSize function to get child size instead of child:GetSize()
         __Abstract__()
         function OnGetViewGroupSize(self)
         end
 
+        -- Get child size
         __Final__()
         function GetChildSize(self, child)
             if ViewGroup.IsViewGroup(child) then
@@ -165,6 +177,7 @@ PLoop(function()
             end
         end
 
+        -- Check object is view group
         __Static__()
         function IsViewGroup(viewGroup)
             return Class.ValidateValue(ViewGroup, viewGroup, true) and true or false
@@ -178,12 +191,6 @@ PLoop(function()
             type                = Padding,
             require             = true,
             default             = Padding(0)
-        }
-
-        property "Margin"       {
-            type                = Margin,
-            require             = true,
-            default             = Margin(0)
         }
 
         property "Direction"    {
