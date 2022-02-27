@@ -22,24 +22,24 @@ PLoop(function()
     class "ViewGroup"(function()
         inherit "Frame"
 
-        local wrapContentLayoutParams = LayoutParams(LayoutSizeMode.WRAP_CONTENT, LayoutSizeMode.WRAP_CONTENT)
+        local wrapContentLayoutParams = LayoutParams(SizeMode.WRAP_CONTENT, SizeMode.WRAP_CONTENT)
 
         -- @Override
         __Final__()
         function SetWidth(self, width)
-            error("You can not call SetWidth directly in ViewGroup. Change LayoutParams property instead")
+            error("You can not call SetWidth directly in ViewGroup. Change LayoutParams property instead", 2)
         end
 
         -- @Override
         __Final__()
         function SetHeight(self, height)
-            error("You can not call SetHeight directly in ViewGroup. Change LayoutParams property instead")
+            error("You can not call SetHeight directly in ViewGroup. Change LayoutParams property instead", 2)
         end
 
         -- @Override
         __Final__()
         function SetSize(self, width, height)
-            error("You can not call SetSize directly in ViewGroup. Change LayoutParams property instead")
+            error("You can not call SetSize directly in ViewGroup. Change LayoutParams property instead", 2)
         end
 
         local function OnChildShow(child)
@@ -54,22 +54,28 @@ PLoop(function()
             child:GetParent():Refresh()
         end
 
-        local function InstallEventsToChild(self, child)
+        local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
             child.OnShow = child.OnShow + OnChildShow
             child.OnHide = child.OnHide + OnChildHidev
             child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
         end
 
-        local function UninstallEventsFromChild(self, child)
+        local function OnChildRemoved(self, child)
             child = UI.GetWrapperUI(child)
             child.OnShow = child.OnShow - OnChildShow
             child.OnHide = child.OnHide - OnChildHide
             child.OnSizeChanged = child.OnSizeChanged - OnChildSizeChanged
         end
 
+        __Arguments__{ LayoutFrame, NaturalNumber/nil }:Throwable()
         __Final__()
-        __Arguments__{ LayoutFrame, NaturalNumber/nil, -LayoutParams/wrapContentLayoutParams }:Throwable()
+        function AddChild(self, child, index)
+            self:AddChild(child, index, wrapContentLayoutParams)
+        end
+
+        __Arguments__{ LayoutFrame, NaturalNumber/nil, LayoutParams/wrapContentLayoutParams }:Throwable()
+        __Final__()
         function AddChild(self, child, index, layoutParams)
             if tContains(self.__Children, child) then
                 throw("The child has already been added")
@@ -81,10 +87,16 @@ PLoop(function()
 
             child:ClearAllPoints()
             child:SetParent(self)
-            InstallEventsToChild(child)
+            OnChildAdded(child)
             tinsert(self.__Children, index, child)
-            self.__Children[child] = layoutParams
-            self:Refresh()
+            self.__ChildLayoutParams[child] = layoutParams
+
+            if ViewGroup.IsViewGroup(child) then
+                -- set layout params will trigger refresh
+                child.LayoutParams = layoutParams
+            else
+                self:Refresh()
+            end
         end
 
         __Final__()
@@ -100,12 +112,18 @@ PLoop(function()
         __Arguments__{ LayoutFrame }
         function RemoveChild(self, child)
             if child:GetParent() == self then
-                self.__Children[child] = nil
+                self.__ChildLayoutParams[child] = nil
                 tDeleteItem(self.__Children, child)
-                UninstallEventsFromChild(self, child)
+                OnChildRemoved(self, child)
                 child:SetParent(nil)
                 self:Refresh()
             end
+        end
+
+        -- return iterator for child layout params
+        __Final__()
+        function GetChildLayoutParams(self)
+            return pairs(self.__ChildLayoutParams)
         end
 
         __Final__()
@@ -113,12 +131,11 @@ PLoop(function()
             self.__LayoutRequested = true
 
             local width, height = self:GetSize()
-            local newWidth, newHeight = self:GetViewGroupSize()
+            -- todo
+            local newWidth, newHeight = self:SetViewGroupSize(width, height)
 
             if newWidth ~= width or newHeight ~= height then
-                super.SetSize(newWidth, newHeight)
-                
-                -- Will trigger OnSizeChanged in parent view group
+                -- Will trigger OnSizeChanged in parent view group because function:OnChildAdded
                 -- So there is no need to continue
                 local parent = self:GetParent()
                 if parent and ViewGroup.IsViewGroup(parent) then
@@ -145,17 +162,27 @@ PLoop(function()
         function OnLayout(self)
         end
 
+        -- @param maxWidth: the max width this viewgroup can be set, useful when SizeMode is MACTH_PARENT
+        -- @param maxHeight: the max height this viewgroup can be set, useful when SizeMode is MATCH_PARENT
         -- Return width and height
         __Final__()
-        function GetViewGroupSize(self)
-            if self.__LayoutRequested or not self.__Width or not self.__Height then
-                local width, height = self:OnGetViewGroupSize()
+        __Arguments__{ Number, Number }:Throwable()
+        function SetViewGroupSize(self, maxWidth, maxHeight)
+            if not self:IsShown() then
+                self.__Width = 0
+                self.__Height = 0
+            elseif self.__LayoutRequested or not self.__Width or not self.__Height 
+                or not self.__MaxWidth or self.__MaxWidth ~= maxWidth
+                or not self.__MaxHeight or self.__MaxHeight ~= maxHeight then
+                local width, height = self:OnGetViewGroupSize(maxWidth, maxHeight)
                 if type(width) ~= "number" or type(height) ~= "number" then
-                    error("ViewGroup's size must be number", 2)
+                    throw("ViewGroup's size must be number")
                 end
                 
                 self.__Width = width
                 self.__Height = height
+                self.__MaxWidth = maxWidth
+                self.__MaxHeight = maxHeight
                 self.__LayoutRequested = false
             end
             return self.__Width, self.__Height
@@ -163,15 +190,20 @@ PLoop(function()
 
         -- Implement this function return view group width and height
         -- You must call GetChildSize function to get child size instead of child:GetSize()
+        -- @param maxWidth: the max width this viewgroup can be set, useful when SizeMode is MACTH_PARENT
+        -- @param maxHeight: the max height this viewgroup can be set, useful when SizeMode is MATCH_PARENT
         __Abstract__()
-        function OnGetViewGroupSize(self)
+        function OnGetViewGroupSize(self, maxWidth, maxHeight)
         end
 
         -- Get child size
+        -- @param maxWidth: the max width this viewgroup can be set, useful when SizeMode is MACTH_PARENT
+        -- @param maxHeight: the max height this viewgroup can be set, useful when SizeMode is MATCH_PARENT
         __Final__()
-        function GetChildSize(self, child)
+        __Arguments__{ Number, Number }
+        function GetChildSize(self, child, maxWidth, maxHeight)
             if ViewGroup.IsViewGroup(child) then
-                return child:GetViewGroupSize()
+                return child:SetViewGroupSize(maxWidth, maxHeight)
             else
                 return child:GetSize()
             end
@@ -185,6 +217,7 @@ PLoop(function()
 
         function __ctor(self)
             self.__Children = {}
+            self.__ChildLayoutParams = {}
         end
 
         property "Padding"      {
@@ -199,7 +232,7 @@ PLoop(function()
         }
 
         property "LayoutParams" {
-            type                = -LayoutParams,
+            type                = LayoutParams,
             require             = true,
             default             = wrapContentLayoutParams,
             handler             = "Refresh"

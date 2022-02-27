@@ -1,7 +1,6 @@
 PLoop(function()
 
     namespace "SpaUI.Widget.Layout"
-    import "SpaUI.Widget"
 
     __Sealed__()
     class "LinearLayout"(function()
@@ -10,7 +9,7 @@ PLoop(function()
         __Sealed__()
         struct "LayoutParams"(function()
         
-            __base = LayoutParams
+            __base = SpaUI.Widget.LayoutParams
 
             member "gravity"    { Type = Gravity }
             member "weight"     { Type = NonNegativeNumber }
@@ -39,28 +38,30 @@ PLoop(function()
             end
         end
 
-        local function getVerticalSize(self)
-            for index, child in ipairs(self.__Children) do
-                local layoutParams = self.__Children[child]
-
-            end
-        end
-
-        local function getHorizontalSize(self)
-        end
-
         -- @Override
-        function OnGetViewGroupSize(self)
-            local layoutParams = self.LayoutParams
-            if layoutParams.width >= 0 and layoutParams.height >= 0 then
-                return layoutParams.width, layoutParams.height
+        function OnGetViewGroupSize(self, maxWidth, maxHeight)
+            local width = self.LayoutParams.width
+            local height = self.LayoutParams.height
+            
+            local wFlag, hFlag = false, false
+
+            if width == SizeMode.MATCH_PARENT then
+                width = maxWidth
+            elseif width == SizeMode.WRAP_CONTENT then
+                wFlag = true
             end
 
-            if self.Orientation == Orientation.VERTICAL then
-                return getVerticalSize(self)
-            else
-                return getHorizontalSize(self)
+            if height == SizeMode.MATCH_PARENT then
+                height = maxHeight
+            elseif height == SizeMode.WRAP_CONTENT then
+                hFlag = true
             end
+
+            for child, layoutParams in pairs(self:GetChildLayoutParams()) do
+                local childWidth, childHeight = 
+            end
+
+            -- return width, height
         end
 
     end)
