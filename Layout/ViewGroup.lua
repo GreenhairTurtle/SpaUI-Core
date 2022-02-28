@@ -139,18 +139,6 @@ PLoop(function()
             end
         end
 
-        -- return iterator for childs
-        __Final__()
-        function GetLayoutChilds(self)
-            return ipairs(self.__Children)
-        end
-
-        -- return iterator for child layout params
-        __Final__()
-        function GetChildLayoutParams(self)
-            return pairs(self.__ChildLayoutParams)
-        end
-
         __Final__()
         function Refresh()
             -- reduce multi call when layout
@@ -219,6 +207,7 @@ PLoop(function()
         end
 
         -- Implement this function to layout child position
+        -- You must set each child size except viewgroup self by call ViewGroup.SetChildSize
         -- The size of the viewgroup is determined when this function is called
         __Abstract__()
         function OnLayout(self)
@@ -241,7 +230,6 @@ PLoop(function()
         end
 
         -- Implement this function return view group width and height
-        -- You must set each child size except viewgroup self by call ViewGroup.SetChildSize
         -- Note: If child is viewgroup, please call child:Measure function to get correct size!
         -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
         -- @param heightMeasureSpec: vertical space requirements as imposed by the parent

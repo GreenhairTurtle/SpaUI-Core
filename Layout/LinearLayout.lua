@@ -40,15 +40,10 @@ PLoop(function()
 
         -- @Override
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
-            local width, height, childWidthMeasureSpec, childHeightMeasureSpec = self:CalcSizeAndChildMeasureSpec(widthMeasureSpec, heightMeasureSpec)
-            
-            local contentWidth, contentHeight = 0, 0
-            for child, layoutParams in self:GetChildLayoutParams() do
-                if ViewGroup.IsViewGroup(child) then
-                    local childWidth, childHeight = child:Measure(childWidthMeasureSpec, childHeightMeasureSpec)
-                    contentWidth = contentWidth + childWidth
-                    contentHeight = contentHeight + contentHeight
-                end
+            local width, height
+            if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+            elseif widthMeasureSpec.mode == MeasureSpecMode.AT_MOST then
+
             end
 
             return width, height
