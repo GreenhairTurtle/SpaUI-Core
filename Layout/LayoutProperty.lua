@@ -3,7 +3,7 @@
 -- require "Extend"
 
 PLoop(function()
-
+    
     namespace "SpaUI.Widget"
 
     __Sealed__()
@@ -54,7 +54,7 @@ PLoop(function()
     end)
 
     -- Indicates the position of the child relative to the parent
-    -- Can be combined arbitrarily, like Gravity.TOP | Gravity.START
+    -- Can be combined arbitrarily, like Gravity.TOP + Gravity.START
     __Flags__()
     __Sealed__()
     enum "Gravity"{
@@ -68,7 +68,7 @@ PLoop(function()
     }
 
     -- Layout direction
-    -- Can be combined arbitrarily, like LEFT_TO_RIGHT | BOTTOM_TO_TOP
+    -- Can be combined arbitrarily, like LEFT_TO_RIGHT + BOTTOM_TO_TOP
     __Flags__()
     __Sealed__()
     enum "LayoutDirection"{
@@ -84,6 +84,38 @@ PLoop(function()
         ["MATCH_PARENT"] = -1,
         ["WRAP_CONTENT"] = -2
     }
+
+    -- A MeasureSpec encapsulates the layout requirements passed from parent to child.
+    -- Each MeasureSpec represents a requirement for either the width or the height.
+    -- A MeasureSpec is comprised of a size and a mode. There are three possible modes:
+    __Sealed__()
+    __AutoIndex__()
+    enum "MeasureSpecMode"{
+        -- The parent has not imposed any constraint on the child.
+        -- It can be whatever size it wants.
+        UNSPECIFIED,
+        -- The parent has determined an exact size for the child.
+        -- The child is going to be given those bounds regardless of how big it wants to be.
+        -- This situation is usually not considered.
+        EXACTLY,
+        -- The child can be as large as it wants up to the specified size.
+        AT_MOST
+    }
+
+    -- MeasureSpecMode and width/height struct
+    __Sealed__()
+    struct "MeasureSpec"(function()
+
+        member "mode"   { Type = MeasureSpecMode,   Require = true }
+        member "size"   { Type = NonNegativeNumber }
+
+        __valid = function(self, value)
+            if value.mode ~= MeasureSpecMode.UNSPECIFIED and not value.size then
+                return "%s.size can not be nil"
+            end
+        end
+        
+    end)
 
     __Sealed__()
     struct "LayoutParams"(function()

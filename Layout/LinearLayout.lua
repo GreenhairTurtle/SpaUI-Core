@@ -39,29 +39,19 @@ PLoop(function()
         end
 
         -- @Override
-        function OnGetViewGroupSize(self, maxWidth, maxHeight)
-            local width = self.LayoutParams.width
-            local height = self.LayoutParams.height
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+            local width, height, childWidthMeasureSpec, childHeightMeasureSpec = self:CalcSizeAndChildMeasureSpec(widthMeasureSpec, heightMeasureSpec)
             
-            local wFlag, hFlag = false, false
-
-            if width == SizeMode.MATCH_PARENT then
-                width = maxWidth
-            elseif width == SizeMode.WRAP_CONTENT then
-                wFlag = true
+            local contentWidth, contentHeight = 0, 0
+            for child, layoutParams in self:GetChildLayoutParams() do
+                if ViewGroup.IsViewGroup(child) then
+                    local childWidth, childHeight = child:Measure(childWidthMeasureSpec, childHeightMeasureSpec)
+                    contentWidth = contentWidth + childWidth
+                    contentHeight = contentHeight + contentHeight
+                end
             end
 
-            if height == SizeMode.MATCH_PARENT then
-                height = maxHeight
-            elseif height == SizeMode.WRAP_CONTENT then
-                hFlag = true
-            end
-
-            for child, layoutParams in pairs(self:GetChildLayoutParams()) do
-                local childWidth, childHeight = 
-            end
-
-            -- return width, height
+            return width, height
         end
 
     end)

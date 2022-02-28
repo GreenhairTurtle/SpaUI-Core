@@ -7,7 +7,8 @@ PLoop(function()
         tinsert         = table.insert,
         tremove         = table.remove,
         tDeleteItem     = tDeleteItem,
-        tContains       = tContains
+        tContains       = tContains,
+        math            = math
     }
 
     -------------------------------
@@ -15,7 +16,7 @@ PLoop(function()
     -------------------------------
 
     -- Subclass need to implement the following functions:
-    -- 1. OnGetViewGroupSize
+    -- 1. OnMeasure
     -- 2. OnLayout
 
     -- For more details, see method comment
@@ -42,6 +43,22 @@ PLoop(function()
             error("You can not call SetSize directly in ViewGroup. Change LayoutParams property instead", 2)
         end
 
+        -- Call this function instead SetSize, only internal use
+        -- This function will not change the original size mode of layout params
+        __Final__()
+        __Arguments__{ NonNegativeNumber, NonNegativeNumber }
+        function SetSizeInternal(self, width, height)
+            if width > 0 and self.LayoutParams.width > 0 then
+                self.LayoutParams.width = width
+            end
+
+            if height > 0 and self.LayoutParams.height > 0 then
+                self.LayoutParams.height = height
+            end
+
+            super.SetSize(self, width, height)
+        end
+
         local function OnChildShow(child)
             child:GetParent():Refresh()
         end
@@ -57,8 +74,10 @@ PLoop(function()
         local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
             child.OnShow = child.OnShow + OnChildShow
-            child.OnHide = child.OnHide + OnChildHidev
-            child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
+            child.OnHide = child.OnHide + OnChildHide
+            if not ViewGroup.IsViewGroup(child) then
+                child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
+            end
         end
 
         local function OnChildRemoved(self, child)
@@ -120,6 +139,12 @@ PLoop(function()
             end
         end
 
+        -- return iterator for childs
+        __Final__()
+        function GetLayoutChilds(self)
+            return ipairs(self.__Children)
+        end
+
         -- return iterator for child layout params
         __Final__()
         function GetChildLayoutParams(self)
@@ -128,22 +153,59 @@ PLoop(function()
 
         __Final__()
         function Refresh()
+            -- reduce multi call when layout
+            if self.__LayoutRequested then
+                return
+            end
             self.__LayoutRequested = true
 
-            local width, height = self:GetSize()
-            -- todo
-            local newWidth, newHeight = self:SetViewGroupSize(width, height)
-
-            if newWidth ~= width or newHeight ~= height then
-                -- Will trigger OnSizeChanged in parent view group because function:OnChildAdded
-                -- So there is no need to continue
-                local parent = self:GetParent()
-                if parent and ViewGroup.IsViewGroup(parent) then
-                    return
-                end
+            local layoutParams = self.LayoutParams
+            local parent = self:GetParent()
+            local inViewGroup = parent and ViewGroup.IsViewGroup(parent)
+            -- if ViewGroup's size mode is wrap content, so call parent's refresh function and stop further processing
+            if inViewGroup and (layoutParams.width == SizeMode.WRAP_CONTENT or layoutParams.height == SizeMode.WRAP_CONTENT) then
+                parent:Refresh()
+                return
             end
 
+            -- must be the topest viewgroup whose size needs to be changed now.
+
+            -- generate measure spec
+
+            local widthMeasureSpec, heightMeasureSpec
+            -- calc width
+            if layoutParams.width == SizeMode.WRAP_CONTENT then
+                -- width wrap content means no view group parent
+                widthMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
+            elseif layoutParams.width == SizeMode.MATCH_PARENT then
+                if inViewGroup then
+                    widthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, parent:GetWidth())
+                else
+                    widthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, self:GetWidth())
+                end
+            else
+                widthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, layoutParams.width)
+            end
+
+            -- calc height
+            if layoutParams.width == SizeMode.WRAP_CONTENT then
+                -- height wrap content means not view group parent
+                heightMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
+            elseif layoutParams.height == SizeMode.MATCH_PARENT then
+                if inViewGroup then
+                    heightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, parent:GetHeight())
+                else
+                    heightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, self:GetHeight())
+                end
+            else
+                heightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, layoutParams.height)
+            end
+
+            local newWidth, newHeight = self:Measure(widthMeasureSpec, heightMeasureSpec)
+            self:SetSizeInternal(newWidth, newHeight)
             self:LayoutChildren()
+
+            self.__LayoutRequested = false
         end
 
         __Final__()
@@ -162,57 +224,45 @@ PLoop(function()
         function OnLayout(self)
         end
 
-        -- @param maxWidth: the max width this viewgroup can be set, useful when SizeMode is MACTH_PARENT
-        -- @param maxHeight: the max height this viewgroup can be set, useful when SizeMode is MATCH_PARENT
+        -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
+        -- @param heightMeasureSpec: vertical space requirements as imposed by the parent
         -- Return width and height
         __Final__()
-        __Arguments__{ Number, Number }:Throwable()
-        function SetViewGroupSize(self, maxWidth, maxHeight)
-            if not self:IsShown() then
-                self.__Width = 0
-                self.__Height = 0
-            elseif self.__LayoutRequested or not self.__Width or not self.__Height 
-                or not self.__MaxWidth or self.__MaxWidth ~= maxWidth
-                or not self.__MaxHeight or self.__MaxHeight ~= maxHeight then
-                local width, height = self:OnGetViewGroupSize(maxWidth, maxHeight)
+        __Arguments__{ MeasureSpec, MeasureSpec }:Throwable()
+        function Measure(self, widthMeasureSpec, heightMeasureSpec)
+            local width, height = 0, 0
+            if self:IsShown() then
+                width, height = self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
                 if type(width) ~= "number" or type(height) ~= "number" then
                     throw("ViewGroup's size must be number")
                 end
-                
-                self.__Width = width
-                self.__Height = height
-                self.__MaxWidth = maxWidth
-                self.__MaxHeight = maxHeight
-                self.__LayoutRequested = false
             end
-            return self.__Width, self.__Height
+            return width, height
         end
 
         -- Implement this function return view group width and height
-        -- You must call GetChildSize function to get child size instead of child:GetSize()
-        -- @param maxWidth: the max width this viewgroup can be set, useful when SizeMode is MACTH_PARENT
-        -- @param maxHeight: the max height this viewgroup can be set, useful when SizeMode is MATCH_PARENT
+        -- You must set each child size except viewgroup self by call ViewGroup.SetChildSize
+        -- Note: If child is viewgroup, please call child:Measure function to get correct size!
+        -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
+        -- @param heightMeasureSpec: vertical space requirements as imposed by the parent
         __Abstract__()
-        function OnGetViewGroupSize(self, maxWidth, maxHeight)
-        end
-
-        -- Get child size
-        -- @param maxWidth: the max width this viewgroup can be set, useful when SizeMode is MACTH_PARENT
-        -- @param maxHeight: the max height this viewgroup can be set, useful when SizeMode is MATCH_PARENT
-        __Final__()
-        __Arguments__{ Number, Number }
-        function GetChildSize(self, child, maxWidth, maxHeight)
-            if ViewGroup.IsViewGroup(child) then
-                return child:SetViewGroupSize(maxWidth, maxHeight)
-            else
-                return child:GetSize()
-            end
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
         end
 
         -- Check object is view group
         __Static__()
         function IsViewGroup(viewGroup)
             return Class.ValidateValue(ViewGroup, viewGroup, true) and true or false
+        end
+
+        __Static__()
+        __Arguments__{ LayoutFrame }
+        function SetChildSize(child, width, height)
+            if ViewGroup.IsViewGroup(child) then
+                child:SetSizeInternal(width, height)
+            else
+                child:SetSize(width, height)
+            end
         end
 
         function __ctor(self)
@@ -228,14 +278,21 @@ PLoop(function()
 
         property "Direction"    {
             type                = LayoutDirection,
-            default             = LayoutDirection.LEFT_TO_RIGHT
+            default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM
         }
 
         property "LayoutParams" {
             type                = LayoutParams,
             require             = true,
             default             = wrapContentLayoutParams,
-            handler             = "Refresh"
+            handler             = function(self, layoutParams)
+                local parent = self:GetParent()
+                if ViewGroup.IsViewGroup(parent) then
+                    parent.__ChildLayoutParams[self] = layoutParams
+                end
+
+                self:Refresh()
+            end
         }
 
     end)
