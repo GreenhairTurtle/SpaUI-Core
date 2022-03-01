@@ -152,8 +152,7 @@ PLoop(function()
             local inViewGroup = parent and ViewGroup.IsViewGroup(parent)
             -- if ViewGroup's size mode is wrap content, so call parent's refresh function and stop further processing
             if inViewGroup and (layoutParams.width == SizeMode.WRAP_CONTENT or layoutParams.height == SizeMode.WRAP_CONTENT) then
-                parent:Refresh()
-                return
+                return parent:Refresh()
             end
 
             -- must be the topest viewgroup whose size needs to be changed now.
@@ -230,87 +229,115 @@ PLoop(function()
         end
 
         -- Implement this function return view group width and height
-        -- Note: If child is viewgroup, please call child:Measure function to get correct size!
+        -- Note: please call MeasureChild function to get child correct size!
         -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
         -- @param heightMeasureSpec: vertical space requirements as imposed by the parent
         __Abstract__()
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
         end
 
-        -- Call this function to get size and child measure spec
-        -- Note: size will be nil, you need to call child:Measure function get correct size in subclass
-        -- More detail can see LinearLayout
+        -- Measure child size
         -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
         -- @param heightMeasureSpec: vertical space requirements as imposed by the parent
-        __Arguments__{ MeasureSpec, MeasureSpec }
-        function CalcSizeAndChildMeasureSpec(self, widthMeasureSpec, heightMeasureSpec)
-            local layoutParams = self.LayoutParams
-            local padding = self.Padding
-            local width, height, maxWidth, maxHeight
-
-            local childWidthMeasureSpec, childHeightMeasureSpec
-            -- calc width
-            if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                -- have a specific width
-                if layoutParams.width >= 0 then
-                    width = layoutParams.width
-                    local childWidth = math.max(0, width - padding.left - padding.right)
-                    childWidthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childWidth)
-                else
-                    childWidthMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
+        -- @return child measure width and height
+        __Final__()
+        __Arguments__{ LayoutFrame, MeasureSpec, MeasureSpec }
+        function MeasureChild(self, child, widthMeasureSpec, heightMeasureSpec)
+            if ViewGroup.IsViewGroup(child) then
+                return child:Measure(widthMeasureSpec, heightMeasureSpec)
+            else
+                local childLayoutParams = self.__ChildLayoutParams[child]
+                if not LayoutParams.IsValid(child, childLayoutParams) then
+                    throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified")
                 end
-            elseif widthMeasureSpec.mode == MeasureSpecMode.AT_MOST then
-                if layoutParams.width >= 0 then
-                    width = math.min(widthMeasureSpec.size, layoutParams.width)
-                    local childWidth = math.max(0, width - padding.left - padding.right)
-                    childWidthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childWidth)
-                elseif layoutParams.width == SizeMode.MATCH_PARENT then
-                    width = widthMeasureSpec.size
-                    local childWidth = math.max(0, width - padding.left - padding.right)
-                    childWidthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childWidth)
+
+                local width, height
+                -- calc width
+                if childLayoutParams.width >= 0 then
+                    width = childLayoutParams.width
+                elseif childLayoutParams.width == SizeMode.MATCH_PARENT then
+                    if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                        width = childLayoutParams.prefWidth
+                    else
+                        width = widthMeasureSpec.size
+                    end
                 else
-                    maxWidth = widthMeasureSpec.size
-                    local childWidth = math.max(0, widthMeasureSpec.size - padding.left, padding.right)
-                    childWidthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childWidth)
+                    -- wrap content
+                    if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                        width = childLayoutParams.prefWidth
+                    else
+                        width = math.min(childLayoutParams.prefWidth, widthMeasureSpec.size)
+                    end
+                end
+
+                -- calc height
+                if childLayoutParams.height >= 0 then
+                    height = childLayoutParams.height
+                elseif childLayoutParams.height == SizeMode.MATCH_PARENT then
+                    if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                        height = childLayoutParams.prefHeight
+                    else
+                        height = widthMeasureSpec.size
+                    end
+                else
+                    -- wrap content
+                    if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                        height = childLayoutParams.prefHeight
+                    else
+                        height = math.min(childLayoutParams.prefWidth, heightMeasureSpec.size)
+                    end
+                end
+
+                return width, height
+            end
+        end
+
+        -- Get measure size, max size, child measurespec mode
+        -- Note: measure size, max size will be nil
+        -- @param measureSpec: measuresepc
+        -- @param orientation: horizontal or vertical, correspond layoutParams width or height
+        __Arguments__{ MeasureSpec, Orientation }
+        function GetMeasureSizeAndChildMeasureSpec(self, measureSpec, orientation)
+            local size, mode, measureSize, maxSize
+            if orientation == Orientation.VERTICAL then
+                size = self.LayoutParams.height
+            else
+                size = self.LayoutParams.width
+            end
+            
+            -- we respect view group declared size
+            if size >= 0 then
+                measureSize = size
+                mode = MeasureSpecMode.AT_MOST
+            elseif size == SizeMode.MATCH_PARENT then
+                if measureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                    mode = MeasureSpecMode.UNSPECIFIED
+                else
+                    -- if measurespec mode is EXACTLY, we also set child measurespec mode AT_MOST,
+                    -- you can override this function to implement yourself
+                    measureSize = measureSpec.size
+                    mode = MeasureSpecMode.AT_MOST
                 end
             else
-                -- width mode = MeasureSpecMode.EXACTLY
-                width = widthMeasureSpec.size
-                local childWidth = math.max(0, width - padding.left - padding.right)
-                childWidthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childWidth)
+                -- wrap content
+                if measureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                    mode = MeasureSpecMode.UNSPECIFIED
+                elseif measureSpec.mode == MeasureSpecMode.AT_MOST then
+                    maxSize = measureSpec.size
+                    mode = MeasureSpecMode.AT_MOST
+                else
+                    -- if measurespec mode is EXACTLY, we also set child measurespec mode AT_MOST,
+                    -- you can override this function to implement yourself
+                    measureSize = measureSpec.size
+                    mode = MeasureSpecMode.AT_MOST
+                end
             end
 
-            -- calc height
-            if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                -- have a specific height
-                if layoutParams.height >= 0 then
-                    height = layoutParams.height
-                    local childHeight = math.max(0, height - padding.top - padding.bottom)
-                    childHeightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childHeight)
-                else
-                    childHeightMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
-                end
-            elseif heightMeasureSpec.mode == MeasureSpecMode.AT_MOST then
-                if layoutParams.height >= 0 then
-                    height = math.min(widthMeasureSpec.size, layoutParams.height)
-                    local childHeight = math.max(0, height - padding.top - padding.bottom)
-                    childHeightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childHeight)
-                elseif layoutParams.width == SizeMode.MATCH_PARENT then
-                    height = widthMeasureSpec.size
-                    local childHeight = math.max(0, height - padding.top - padding.bottom)
-                    childHeightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childHeight)
-                else
-                    local childHeight = math.max(0, heightMeasureSpec.size - padding.top, padding.bottom)
-                    childHeightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childHeight)
-                end
-            else
-                -- height mode = MeasureSpecMode.EXACTLY
-                height = heightMeasureSpec.size
-                local childHeight = math.max(0, height - padding.top - padding.bottom)
-                childHeightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, childHeight)
+            if not maxSize and measureSize then
+                maxSize = measureSize
             end
 
-            return width, height, childWidthMeasureSpec, childHeightMeasureSpec
+            return measureSize, maxSize, mode
         end
 
         -- Check object is view group

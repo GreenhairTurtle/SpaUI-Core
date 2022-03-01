@@ -107,11 +107,17 @@ PLoop(function()
     struct "MeasureSpec"(function()
 
         member "mode"   { Type = MeasureSpecMode,   Require = true }
-        member "size"   { Type = NonNegativeNumber }
+        member "size"   { Type = Number }
 
         __valid = function(self, value)
             if value.mode ~= MeasureSpecMode.UNSPECIFIED and not value.size then
                 return "%s.size can not be nil"
+            end
+        end
+
+        __init = function(self, value)
+            if value.size < 0 then
+                value.size = 0
             end
         end
         
@@ -120,9 +126,25 @@ PLoop(function()
     __Sealed__()
     struct "LayoutParams"(function()
 
-        member "width"  { Type = NonNegativeNumber + SizeMode, Require = true }
-        member "height" { Type = NonNegativeNumber + SizeMode, Require = true }
-        member "margin" { Type = Margin }
+        member "width"      { Type = NonNegativeNumber + SizeMode, Require = true }
+        member "height"     { Type = NonNegativeNumber + SizeMode, Require = true }
+        -- used to width is wrap content
+        member "prefWidth"  { Type = NonNegativeNumber }
+        -- used to height is wrap content
+        member "prefHeight" { Type = NonNegativeNumber }
+        member "margin"     { Type = Margin }
+
+        -- check layoutparams is valid for view
+        __Static__()
+        __Arguments__{ LayoutFrame, LayoutParams }
+        function IsValid(view, layoutParams)
+            if not ViewGroup.IsViewGroup(view) and ((layoutParams.width < 0 and not layoutParams.prefWidth)
+                or (layoutParams.height < 0 and not layoutParams.prefHeight)) then
+                return false
+            end
+
+            return true
+        end
 
     end)
     
