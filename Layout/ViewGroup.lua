@@ -44,18 +44,9 @@ PLoop(function()
         end
 
         -- Call this function instead SetSize, only internal use
-        -- This function will not change the original size mode of layout params
         __Final__()
         __Arguments__{ NonNegativeNumber, NonNegativeNumber }
         function SetSizeInternal(self, width, height)
-            if width > 0 and self.LayoutParams.width > 0 then
-                self.LayoutParams.width = width
-            end
-
-            if height > 0 and self.LayoutParams.height > 0 then
-                self.LayoutParams.height = height
-            end
-
             super.SetSize(self, width, height)
         end
 
@@ -70,13 +61,28 @@ PLoop(function()
         local function OnChildSizeChanged(child)
             child:GetParent():Refresh()
         end
+        
+        local function getLayoutPoint(self)
+            local direction = self.LayoutDirection
+            local point = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and "TOP" or "BOTTOM"
+            point = point + Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and "LEFT" or "RIGHT"
+            return point
+        end
 
         local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
-            child.OnShow = child.OnShow + OnChildShow
-            child.OnHide = child.OnHide + OnChildHide
-            if not ViewGroup.IsViewGroup(child) then
-                child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
+            child:ClearAllPoints()
+            child:SetParent(self)
+            child:SetPoint(getLayoutPoint(self))
+
+            if Class.ValidateValue(Frame, child, true) then
+                child:SetFrameStrata(self:GetFrameStrata())
+                child:SetFrameLevel(self:GetFrameLevel() + 1)
+                child.OnShow = child.OnShow + OnChildShow
+                child.OnHide = child.OnHide + OnChildHide
+                if not ViewGroup.IsViewGroup(child) then
+                    child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
+                end
             end
         end
 
@@ -93,8 +99,8 @@ PLoop(function()
             self:AddChild(child, index, wrapContentLayoutParams)
         end
 
-        __Arguments__{ LayoutFrame, NaturalNumber/nil, LayoutParams/wrapContentLayoutParams }:Throwable()
         __Final__()
+        __Arguments__{ LayoutFrame, NaturalNumber/nil, LayoutParams/wrapContentLayoutParams }:Throwable()
         function AddChild(self, child, index, layoutParams)
             if tContains(self.__Children, child) then
                 throw("The child has already been added")
@@ -104,8 +110,7 @@ PLoop(function()
                 index = #self.__Children + 1
             end
 
-            child:ClearAllPoints()
-            child:SetParent(self)
+            -- @todo FontString和Texture特殊处理
             OnChildAdded(child)
             tinsert(self.__Children, index, child)
             self.__ChildLayoutParams[child] = layoutParams
@@ -139,13 +144,31 @@ PLoop(function()
             end
         end
 
+        -- check is refreshing now
         __Final__()
-        function Refresh()
+        function IsRefreshing()
+            local parent = self:GetParent()
+            if parent and ViewGroup.IsViewGroup(parent) then
+                return parent:IsRefreshing()
+            end
+
+            return self.__Refresh
+        end
+
+        __Final__()
+        __Arguments__{ Boolean }
+        function SetRefreshStatus(isRefresh)
+            self.__Refresh = isRefresh
+        end
+
+        __Final__()
+        function Refresh(self)
             -- reduce multi call when layout
-            if self.__LayoutRequested then
+            -- because child OnSizeChanged maybe call multi times in OnMeasure
+            if self:IsRefreshing() then
                 return
             end
-            self.__LayoutRequested = true
+            self:SetRefreshStatus(true)
 
             local layoutParams = self.LayoutParams
             local parent = self:GetParent()
@@ -190,19 +213,19 @@ PLoop(function()
 
             local newWidth, newHeight = self:Measure(widthMeasureSpec, heightMeasureSpec)
             self:SetSizeInternal(newWidth, newHeight)
-            self:LayoutChildren()
-
-            self.__LayoutRequested = false
+            self:Layout()
         end
 
         __Final__()
-        function LayoutChildren(self)
+        function Layout(self)
             for _, child in ipairs(self.__Children) do
                 if (ViewGroup.IsViewGroup(child)) then
-                    child:LayoutChildren()
+                    child:Layout()
                 end
             end
             self:OnLayout()
+            -- clear refresh status
+            self:SetRefreshStatus(false)
         end
 
         -- Implement this function to layout child position
@@ -293,7 +316,9 @@ PLoop(function()
         end
 
         -- Get measure size, max size, child measurespec mode
-        -- Note: measure size, max size will be nil
+        -- measure size, max size will be nil.
+        -- if measure size has value, means parent's size is not determined by childs.
+        -- if max size has value, means child is wrap_content but has max size limit
         -- @param measureSpec: measuresepc
         -- @param orientation: horizontal or vertical, correspond layoutParams width or height
         __Arguments__{ MeasureSpec, Orientation }
@@ -306,7 +331,7 @@ PLoop(function()
             end
             
             -- we respect view group declared size
-            if size >= 0 then
+            if size > 0 then
                 measureSize = size
                 mode = MeasureSpecMode.AT_MOST
             elseif size == SizeMode.MATCH_PARENT then
@@ -367,9 +392,18 @@ PLoop(function()
             default             = Padding(0)
         }
 
-        property "Direction"    {
+        property "LayoutDirection"{
             type                = LayoutDirection,
-            default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM
+            default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
+            handler             = function(self)
+                local point = getLayoutPoint(self)
+                for _, child in ipairs(self.__Children) do
+                    child:ClearAllPoints()
+                    child:SetPoint(point)
+                end
+
+                self:Layout()
+            end
         }
 
         property "LayoutParams" {

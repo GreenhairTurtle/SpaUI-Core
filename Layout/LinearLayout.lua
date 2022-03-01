@@ -12,7 +12,9 @@ PLoop(function()
             __base = SpaUI.Widget.LayoutParams
 
             member "gravity"    { Type = Gravity }
-            member "weight"     { Type = NonNegativeNumber }
+            -- This property indicates the weight of the length of the child
+            -- in the orientation of the Linearlayout to the remaining allocated space
+            member "weight"     { Type = PositiveNumber }
 
         end)
 
@@ -38,8 +40,11 @@ PLoop(function()
             end
         end
 
-        local function measureVertical(self, widthMeasureSpec, heightMeasureSpec)
+        -- @Override
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+            local layoutParams = self.LayoutParams
             local padding = self.Padding
+            local orientation = self.Orientation
 
             local measureWidth, maxWidth, childWidthMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpecMode(widthMeasureSpec, Orientation.HORIZONTAL)
             local measureHeight, maxHeight, childHeightMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpecMode(heightMeasureSpec, Orientation.VERTICAL)
@@ -53,18 +58,49 @@ PLoop(function()
             end
 
             -- we calculate the content size of viewgroup here, also set child size
-            local contentWidth, contentHeight = 0, 0
-            for index, child in ipairs(self.__Children) do
-                local childLayoutParams = self.__ChildLayoutParams[child]
-                local margin = childLayoutParams.margin
+            local contentWidth, contentHeight, weightSum = 0, 0, 0
+            if orientation == Orientation.VERTICAL then
+                for _, child in ipairs(self.__Children) do
+                    local childLayoutParams = self.__ChildLayoutParams[child]
+                    local margin = childLayoutParams.margin
 
-                childHeightAvaliable = childHeightAvaliable and (childHeightAvaliable - margin.top - margin.bottom)
+                    -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                    if childLayoutParams.height <= 0 then
+                        weightSum = weightSum + (childLayoutParams.weight or 0)
+                    end
 
-                local childWidth, childHeight = self:MeasureChild(child, MeasureSpec(childWidthMeasureSpecMode, childWidthAvaliable - margin.left - margin.right),
-                    MeasureSpec(childHeightMeasureSpecMode, childHeightAvaliable))
-                contentWidth = math.max(childWidth + margin.left + margin.right, contentWidth)
-                contentHeight = contentHeight + childHeight + margin.top + margin.bottom
+                    childHeightAvaliable = childHeightAvaliable and (childHeightAvaliable - margin.top - margin.bottom)
+
+                    local childWidth, childHeight = self:MeasureChild(child,
+                        MeasureSpec(childWidthMeasureSpecMode, childWidthAvaliable and (childWidthAvaliable - margin.left - margin.right)),
+                        MeasureSpec(childHeightMeasureSpecMode, childHeightAvaliable))
+                    self:SetChildSize(child, childWidth, childHeight)
+                    contentWidth = math.max(childWidth + margin.left + margin.right, contentWidth)
+                    contentHeight = contentHeight + childHeight + margin.top + margin.bottom
+                end
+            else
+                for _, child in ipairs(self.__Children) do
+                    local childLayoutParams = self.__ChildLayoutParams[child]
+                    local margin = childLayoutParams.margin
+
+                    -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                    if childLayoutParams.width <= 0 then
+                        weightSum = weightSum + (childLayoutParams.weight or 0)
+                    end
+
+                    childWidthAvaliable = childWidthAvaliable and (childWidthAvaliable - margin.left - margin.right)
+
+                    local childWidth, childHeight = self:MeasureChild(child,
+                        MeasureSpec(childWidthMeasureSpecMode, childWidthAvaliable),
+                        MeasureSpec(childHeightMeasureSpecMode, childHeightAvaliable and (childHeightAvaliable - margin.top - margin.bottom)))
+                    self:SetChildSize(child, childWidth, childHeight)
+                    contentWidth = contentWidth + childWidth + margin.left + margin.right
+                    contentHeight = math.max(childHeight + margin.top + margin.bottom, contentHeight)
+                end
             end
+
+            -- if measure width or height has value here, means LinearLayout's size is not determined by childs
+            local checkWeight = weightSum > 0 and ((orientation == Orientation.VERTICAL and measureHeight) or (orientation == Orientation.HORIZONTAL and measureWidth))
 
             -- if we have not measure size, so content size is that we need
             if not measureWidth then
@@ -74,16 +110,45 @@ PLoop(function()
                 measureHeight = math.min(contentHeight, maxHeight)
             end
 
-            return measureWidth, measureHeight
-        end
-
-        -- @Override
-        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
-            if self.Orientation == Orientation.VERTICAL then
-                return measureVertical(self, widthMeasureSpec, heightMeasureSpec)
-            else
-                return measureHorizontal(self, widthMeasureSpec, heightMeasureSpec)
+            -- Now that we have determined the LinearLayout size, it's time to recalculate the size of the child.
+            -- Because of the weight, some child need to be re-distributed in size
+            if checkWeight then
+                if orientation == Orientation.VERTICAL then
+                    local childHeightRemain = measureHeight - contentHeight
+                    if childHeightRemain ~= 0 then
+                        for _, child in ipairs(self.__Children) do
+                            local childLayoutParams = self.__ChildLayoutParams[child]
+                            -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                            if childLayoutParams.weight and childLayoutParams.height <= 0 then
+                                local newHeight = math.max(0, child:GetHeight() + childHeightRemain * childLayoutParams.weight/weightSum)
+                                -- remeasure child to make child's child resize
+                                local childWidth, childHeight = self:MeasureChild(child,
+                                    MeasureSpec(childWidthMeasureSpecMode, child:GetWidth()),
+                                    MeasureSpec(childHeightMeasureSpecMode, newHeight))
+                                self:SetChildSize(childWidth, childHeight)
+                            end
+                        end
+                    end
+                else
+                    local childWidthRemain = measureWidth - contentWidth
+                    if childWidthRemain ~= 0 then
+                        for _, child in ipairs(self.__Children) do
+                            local childLayoutParams = self.__ChildLayoutParams[child]
+                            -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                            if childLayoutParams.weight and childLayoutParams.width <= 0 then
+                                local newWidth = math.max(0, child:GetWidth() + childWidthRemain * childLayoutParams.weight/weightSum)
+                                -- remeasure child to make child's child resize
+                                local childWidth, childHeight = self:MeasureChild(child,
+                                    MeasureSpec(childWidthMeasureSpecMode, newWidth),
+                                    MeasureSpec(childHeightMeasureSpecMode, child:GetHeight()))
+                                self:SetChildSize(childWidth, childHeight)
+                            end
+                        end
+                    end
+                end
             end
+
+            return measureWidth, measureHeight
         end
 
     end)
