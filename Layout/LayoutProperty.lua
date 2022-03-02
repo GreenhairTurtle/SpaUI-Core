@@ -26,6 +26,20 @@ PLoop(function()
                 value.bottom = value.bottom or 0
             end
         end
+
+        -- @param leftToRight: whether LayoutDirection.LEFT_TO_RIGHT or LayoutDirection.RIGHT_TO_LEFT
+        -- @param topToBottom: whether LayoutDirection.TOP_TO_BOTTOM or LayoutDirection.BOTTOM_TO_TOP
+        -- @return left top right bottom
+        __Static__()
+        __Arguments__{ Padding, Boolean, Boolean }
+        function GetMirrorPadding(padding, leftToRight, topToBottom)
+            local left = leftToRight and padding.left or padding.right
+            local right = leftToRight and padding.right or padding.left
+            local top = topToBottom and padding.top or padding.bottom
+            local bottom = topToBottom and padding.bottom or padding.top
+            return left, top, right, bottom
+        end
+
     end)
 
     __Sealed__()
@@ -51,6 +65,19 @@ PLoop(function()
             end
         end
 
+        -- @param leftToRight: whether LayoutDirection.LEFT_TO_RIGHT or LayoutDirection.RIGHT_TO_LEFT
+        -- @param topToBottom: whether LayoutDirection.TOP_TO_BOTTOM or LayoutDirection.BOTTOM_TO_TOP
+        -- @return left top right bottom
+        __Static__()
+        __Arguments__{ Margin, Boolean, Boolean }
+        function GetMirrorMargin(margin, leftToRight, topToBottom)
+            local left = leftToRight and margin.left or margin.right
+            local right = leftToRight and margin.right or margin.left
+            local top = topToBottom and margin.top or margin.bottom
+            local bottom = topToBottom and margin.bottom or margin.top
+            return left, top, right, bottom
+        end
+
     end)
 
     -- Indicates the position of the child relative to the parent
@@ -60,9 +87,10 @@ PLoop(function()
     enum "Gravity"{
         "TOP",
         "BOTTOM",
+        -- left or right, depends on layout direction
         "START",
+        -- right or left, depends on layout direction
         "END",
-        "CENTER",
         "CENTER_HORIZONTAL",
         "CENTER_VERTICAL"
     }

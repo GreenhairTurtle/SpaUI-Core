@@ -23,9 +23,28 @@ PLoop(function()
             default                 = Orientation.VERTICAL
         }
 
+        -- This property determines the layout alignment of childs
+        property "Gravity"          {
+            type                    = Gravity,
+            default                 = Gravity.TOP + Gravity.START
+        }
+
 
         local function layoutVertical(self)
-            
+            local direction = self.LayoutDirection
+            local gravity = self.Gravity
+
+            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM) and true or false
+            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT) and true or false
+            local paddingLeft, paddingTop, paddingRight, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
+            local width, height = self:GetSize()
+
+            -- if gravity is bottom, We need to traverse from the end
+            local iterator = Enum.ValidateFlags(Gravity.BOTTOM, gravity) and ipairs or ipairs_reverse
+            local totalHeight = 0
+            for _, child in ipairs(self.__Children) do
+                totalHeight = totalHeight + child:GetHeight()
+            end
         end
 
         local function layoutHorizontal(self)
@@ -42,7 +61,6 @@ PLoop(function()
 
         -- @Override
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
-            local layoutParams = self.LayoutParams
             local padding = self.Padding
             local orientation = self.Orientation
 
@@ -64,7 +82,7 @@ PLoop(function()
                     local childLayoutParams = self.__ChildLayoutParams[child]
                     local margin = childLayoutParams.margin
 
-                    -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                    -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
                     if childLayoutParams.height <= 0 then
                         weightSum = weightSum + (childLayoutParams.weight or 0)
                     end
@@ -83,7 +101,7 @@ PLoop(function()
                     local childLayoutParams = self.__ChildLayoutParams[child]
                     local margin = childLayoutParams.margin
 
-                    -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                    -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
                     if childLayoutParams.width <= 0 then
                         weightSum = weightSum + (childLayoutParams.weight or 0)
                     end
@@ -118,7 +136,7 @@ PLoop(function()
                     if childHeightRemain ~= 0 then
                         for _, child in ipairs(self.__Children) do
                             local childLayoutParams = self.__ChildLayoutParams[child]
-                            -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                            -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
                             if childLayoutParams.weight and childLayoutParams.height <= 0 then
                                 local newHeight = math.max(0, child:GetHeight() + childHeightRemain * childLayoutParams.weight/weightSum)
                                 -- remeasure child to make child's child resize
@@ -134,7 +152,7 @@ PLoop(function()
                     if childWidthRemain ~= 0 then
                         for _, child in ipairs(self.__Children) do
                             local childLayoutParams = self.__ChildLayoutParams[child]
-                            -- weight only worked when size is WRAP_CONTENT, MATCH_PARENT and 0
+                            -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
                             if childLayoutParams.weight and childLayoutParams.width <= 0 then
                                 local newWidth = math.max(0, child:GetWidth() + childWidthRemain * childLayoutParams.weight/weightSum)
                                 -- remeasure child to make child's child resize

@@ -61,19 +61,11 @@ PLoop(function()
         local function OnChildSizeChanged(child)
             child:GetParent():Refresh()
         end
-        
-        local function getLayoutPoint(self)
-            local direction = self.LayoutDirection
-            local point = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and "TOP" or "BOTTOM"
-            point = point + Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and "LEFT" or "RIGHT"
-            return point
-        end
 
         local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
             child:ClearAllPoints()
             child:SetParent(self)
-            child:SetPoint(getLayoutPoint(self))
 
             if Class.ValidateValue(Frame, child, true) then
                 child:SetFrameStrata(self:GetFrameStrata())
@@ -229,10 +221,31 @@ PLoop(function()
         end
 
         -- Implement this function to layout child position
-        -- You must set each child size except viewgroup self by call ViewGroup.SetChildSize
         -- The size of the viewgroup is determined when this function is called
+        -- You can call LayoutChild function to layout child
         __Abstract__()
         function OnLayout(self)
+        end
+
+        -- Call this function to layout child. This function will automatically calculate the positions corresponding to different layoutdirections
+        __Arguments__{ LayoutFrame, NonNegativeNumber, NonNegativeNumber }
+        function LayoutChild(self, child, xOffset, yOffset)
+            local direction = self.LayoutDirection
+            local point
+            if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
+                point = "TOP"
+                yOffset = -yOffset
+            else
+                point = "BOTTOM"
+            end
+            if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
+                point = point .. "LEFT"
+            else
+                point = point .. "RIGHT"
+                xOffset = -xOffset
+            end
+            child:ClearAllPoints()
+            child:SetPoint(point, xOffset, yOffset)
         end
 
         -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
@@ -251,8 +264,9 @@ PLoop(function()
             return width, height
         end
 
-        -- Implement this function return view group width and height
-        -- Note: please call MeasureChild function to get child correct size!
+        -- Implement this function to measure viewgroup and child size, return view group size
+        -- Note: Please call MeasureChild function to get child correct size!
+        -- Note: You must call SetChildSize function to set child size!
         -- @param widthMeasureSpec: horizontal space requirements as imposed by the parent.
         -- @param heightMeasureSpec: vertical space requirements as imposed by the parent
         __Abstract__()
@@ -396,12 +410,6 @@ PLoop(function()
             type                = LayoutDirection,
             default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
             handler             = function(self)
-                local point = getLayoutPoint(self)
-                for _, child in ipairs(self.__Children) do
-                    child:ClearAllPoints()
-                    child:SetPoint(point)
-                end
-
                 self:Layout()
             end
         }
