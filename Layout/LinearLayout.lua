@@ -1,6 +1,7 @@
 PLoop(function()
 
     namespace "SpaUI.Widget.Layout"
+    import "SpaUI.Widget"
 
     __Sealed__()
     class "LinearLayout"(function()
@@ -39,7 +40,7 @@ PLoop(function()
             local paddingLeft, paddingTop, paddingRight, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
             local width, height = self:GetSize()
 
-            -- if gravity is bottom, We need to traverse from the end
+            -- if gravity is bottom, we need to traverse from the end
             local iterator = Enum.ValidateFlags(Gravity.BOTTOM, gravity) and ipairs or ipairs_reverse
             local totalHeight = 0
             for _, child in ipairs(self.__Children) do
