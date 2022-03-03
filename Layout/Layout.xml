@@ -2,4 +2,5 @@
     <Script file="LayoutProperty.lua"/>
     <Script file="ViewGroup.lua"/>
     <Script file="LinearLayout.lua"/>
+    <Script file="Demo.lua"/>
 </Ui>

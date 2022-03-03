@@ -150,8 +150,8 @@ PLoop(function()
             local padding = self.Padding
             local orientation = self.Orientation
 
-            local measureWidth, maxWidth, childWidthMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpecMode(widthMeasureSpec, Orientation.HORIZONTAL)
-            local measureHeight, maxHeight, childHeightMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpecMode(heightMeasureSpec, Orientation.VERTICAL)
+            local measureWidth, maxWidth, childWidthMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpec(widthMeasureSpec, Orientation.HORIZONTAL)
+            local measureHeight, maxHeight, childHeightMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpec(heightMeasureSpec, Orientation.VERTICAL)
             
             local widthAvaliable, heightAvaliable
             if measureWidth or maxWidth then

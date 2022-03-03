@@ -138,7 +138,7 @@ PLoop(function()
 
         -- check is refreshing now
         __Final__()
-        function IsRefreshing()
+        function IsRefreshing(self)
             local parent = self:GetParent()
             if parent and ViewGroup.IsViewGroup(parent) then
                 return parent:IsRefreshing()
@@ -149,7 +149,7 @@ PLoop(function()
 
         __Final__()
         __Arguments__{ Boolean }
-        function SetRefreshStatus(isRefresh)
+        function SetRefreshStatus(self, isRefresh)
             self.__Refresh = isRefresh
         end
 

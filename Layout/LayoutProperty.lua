@@ -121,13 +121,13 @@ PLoop(function()
     enum "MeasureSpecMode"{
         -- The parent has not imposed any constraint on the child.
         -- It can be whatever size it wants.
-        UNSPECIFIED,
+        "UNSPECIFIED",
         -- The parent has determined an exact size for the child.
         -- The child is going to be given those bounds regardless of how big it wants to be.
         -- This situation is usually not considered.
-        EXACTLY,
+        "EXACTLY",
         -- The child can be as large as it wants up to the specified size.
-        AT_MOST
+        "AT_MOST"
     }
 
     -- MeasureSpecMode and width/height struct
@@ -137,13 +137,13 @@ PLoop(function()
         member "mode"   { Type = MeasureSpecMode,   Require = true }
         member "size"   { Type = Number }
 
-        __valid = function(self, value)
+        __valid = function(value)
             if value.mode ~= MeasureSpecMode.UNSPECIFIED and not value.size then
                 return "%s.size can not be nil"
             end
         end
 
-        __init = function(self, value)
+        __init = function(value)
             if value.size < 0 then
                 value.size = 0
             end
