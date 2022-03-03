@@ -160,7 +160,7 @@ PLoop(function()
         member "prefWidth"  { Type = NonNegativeNumber }
         -- used to height is wrap content
         member "prefHeight" { Type = NonNegativeNumber }
-        member "margin"     { Type = Margin }
+        member "margin"     { Type = Margin, Default = Margin(0) }
 
         -- check layoutparams is valid for view
         __Static__()

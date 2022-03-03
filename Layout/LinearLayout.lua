@@ -30,25 +30,110 @@ PLoop(function()
             default                 = Gravity.TOP + Gravity.START
         }
 
-
         local function layoutVertical(self)
+            local function getHorizontalGravity(gravity)
+                if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
+                    return Gravity.CENTER_HORIZONTAL
+                elseif Enum.ValidateFlags(Gravity.END, gravity) then
+                    return Gravity.END
+                else
+                    return Gravity.START
+                end
+            end
+
             local direction = self.LayoutDirection
             local gravity = self.Gravity
 
-            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM) and true or false
-            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT) and true or false
-            local paddingLeft, paddingTop, paddingRight, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
+            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and true or false
+            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and true or false
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
             local width, height = self:GetSize()
 
-            -- if gravity is bottom, we need to traverse from the end
-            local iterator = Enum.ValidateFlags(Gravity.BOTTOM, gravity) and ipairs or ipairs_reverse
-            local totalHeight = 0
-            for _, child in ipairs(self.__Children) do
-                totalHeight = totalHeight + child:GetHeight()
+            local heightAvaliable = height - paddingTop - paddingBottom
+            local widthAvaliable = width - paddingStart - paddingEnd
+            local defaultHGravity = getHorizontalGravity(gravity)
+            -- if bottom to top, we layout child from end
+            local iterator = topToBottom and ipairs or ipairs_reverse
+
+            local yOffset
+            if Enum.ValidateFlags(Gravity.CENTER_VERTICAL, gravity) then
+                local centerYOffset = paddingTop + heightAvaliable/2
+                yOffset = centerYOffset - self.__ContentHeight/2
+            elseif Enum.ValidateFlags(Gravity.BOTTOM, gravity) then
+                yOffset = paddingTop + (heightAvaliable - self.__ContentHeight)
+            else
+                yOffset = paddingTop
+            end
+
+            for _, child in iterator(self.__Children) do
+                local childLp = self.__ChildLayoutParams[child]
+                local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
+                local childHGravity = childLp.gravity and getHorizontalGravity(childLp.gravity) or defaultHGravity
+                local xOffset
+                if childHGravity == Gravity.CENTER_HORIZONTAL then
+                    xOffset = paddingStart + widthAvaliable/2 - (child:GetWidth() + marginStart + marginEnd)/2
+                elseif childHGravity == Gravity.END then
+                    xOffset = width - paddingEnd - marginEnd - child:GetWidth()
+                else
+                    xOffset = paddingStart
+                end
+                yOffset = yOffset + marginTop
+                self:LayoutChild(child, xOffset, yOffset)
+                yOffset = yOffset + child:GetHeight() + marginBottom
             end
         end
 
         local function layoutHorizontal(self)
+            local function getVerticalGravity(gravity)
+                if Enum.ValidateFlags(Gravity.CENTER_VERTICAL, gravity) then
+                    return Gravity.CENTER_VERTICAL
+                elseif Enum.ValidateFlags(Gravity.BOTTOM, gravity) then
+                    return Gravity.BOTTOM
+                else
+                    return Gravity.TOP
+                end
+            end
+
+            local direction = self.LayoutDirection
+            local gravity = self.Gravity
+
+            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and true or false
+            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and true or false
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
+            local width, height = self:GetSize()
+
+            local heightAvaliable = height - paddingTop - paddingBottom
+            local widthAvaliable = width - paddingStart - paddingEnd
+            local defaultVGravity = getVerticalGravity(gravity)
+            -- if right to left, we layout child from end
+            local iterator = leftToRight and ipairs or ipairs_reverse
+
+            local xOffset
+            if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
+                local centerXOffset = paddingStart + widthAvaliable/2
+                xOffset = centerXOffset - self.__ContentWidth/2
+            elseif Enum.ValidateFlags(Gravity.END, gravity) then
+                xOffset = paddingStart + (widthAvaliable - self.__ContentWidth)
+            else
+                xOffset = paddingStart
+            end
+
+            for _, child in iterator(self.__Children) do
+                local childLp = self.__ChildLayoutParams[child]
+                local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
+                local childVGravity = childLp.gravity and getVerticalGravity(childLp.gravity) or defaultVGravity
+                local yOffset
+                if childVGravity == Gravity.CENTER_VERTICAL then
+                    yOffset = paddingTop + heightAvaliable/2 - (child:GetHeight() + marginTop + marginBottom)/2
+                elseif childVGravity == Gravity.BOTTOM then
+                    yOffset = height - paddingBottom - marginBottom - child:GetHeight()
+                else
+                    yOffset = paddingTop
+                end
+                xOffset = xOffset + marginStart
+                self:LayoutChild(child, xOffset, yOffset)
+                xOffset = xOffset + child:GetWidth() + marginEnd
+            end
         end
 
         -- Override
@@ -68,12 +153,12 @@ PLoop(function()
             local measureWidth, maxWidth, childWidthMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpecMode(widthMeasureSpec, Orientation.HORIZONTAL)
             local measureHeight, maxHeight, childHeightMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpecMode(heightMeasureSpec, Orientation.VERTICAL)
             
-            local childWidthAvaliable, childHeightAvaliable
+            local widthAvaliable, heightAvaliable
             if measureWidth or maxWidth then
-                childWidthAvaliable = (measureWidth or maxWidth) - padding.left - padding.right
+                widthAvaliable = (measureWidth or maxWidth) - padding.left - padding.right
             end
             if measureHeight or maxHeight then
-                childHeightAvaliable = (measureHeight or maxHeight) - padding.top - padding.bottom
+                heightAvaliable = (measureHeight or maxHeight) - padding.top - padding.bottom
             end
 
             -- we calculate the content size of viewgroup here, also set child size
@@ -88,11 +173,11 @@ PLoop(function()
                         weightSum = weightSum + (childLayoutParams.weight or 0)
                     end
 
-                    childHeightAvaliable = childHeightAvaliable and (childHeightAvaliable - margin.top - margin.bottom)
+                    heightAvaliable = heightAvaliable and (heightAvaliable - margin.top - margin.bottom)
 
                     local childWidth, childHeight = self:MeasureChild(child,
-                        MeasureSpec(childWidthMeasureSpecMode, childWidthAvaliable and (childWidthAvaliable - margin.left - margin.right)),
-                        MeasureSpec(childHeightMeasureSpecMode, childHeightAvaliable))
+                        MeasureSpec(childWidthMeasureSpecMode, widthAvaliable and (widthAvaliable - margin.left - margin.right)),
+                        MeasureSpec(childHeightMeasureSpecMode, heightAvaliable))
                     self:SetChildSize(child, childWidth, childHeight)
                     contentWidth = math.max(childWidth + margin.left + margin.right, contentWidth)
                     contentHeight = contentHeight + childHeight + margin.top + margin.bottom
@@ -107,16 +192,19 @@ PLoop(function()
                         weightSum = weightSum + (childLayoutParams.weight or 0)
                     end
 
-                    childWidthAvaliable = childWidthAvaliable and (childWidthAvaliable - margin.left - margin.right)
+                    widthAvaliable = widthAvaliable and (widthAvaliable - margin.left - margin.right)
 
                     local childWidth, childHeight = self:MeasureChild(child,
-                        MeasureSpec(childWidthMeasureSpecMode, childWidthAvaliable),
-                        MeasureSpec(childHeightMeasureSpecMode, childHeightAvaliable and (childHeightAvaliable - margin.top - margin.bottom)))
+                        MeasureSpec(childWidthMeasureSpecMode, widthAvaliable),
+                        MeasureSpec(childHeightMeasureSpecMode, heightAvaliable and (heightAvaliable - margin.top - margin.bottom)))
                     self:SetChildSize(child, childWidth, childHeight)
                     contentWidth = contentWidth + childWidth + margin.left + margin.right
                     contentHeight = math.max(childHeight + margin.top + margin.bottom, contentHeight)
                 end
             end
+
+            self.__ContentWidth = contentWidth
+            self.__ContentHeight = contentHeight
 
             -- if measure width or height has value here, means LinearLayout's size is not determined by childs
             local checkWeight = weightSum > 0 and ((orientation == Orientation.VERTICAL and measureHeight) or (orientation == Orientation.HORIZONTAL and measureWidth))
@@ -135,6 +223,7 @@ PLoop(function()
                 if orientation == Orientation.VERTICAL then
                     local childHeightRemain = measureHeight - contentHeight
                     if childHeightRemain ~= 0 then
+                        self.__ContentWidth, self.__ContentHeight = 0, 0
                         for _, child in ipairs(self.__Children) do
                             local childLayoutParams = self.__ChildLayoutParams[child]
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
@@ -146,11 +235,14 @@ PLoop(function()
                                     MeasureSpec(childHeightMeasureSpecMode, newHeight))
                                 self:SetChildSize(childWidth, childHeight)
                             end
+                            self.__ContentWidth = self.__ContentWidth + child:GetWidth()
+                            self.__ContentHeight = self.__ContentHeight + child:GetHeight()
                         end
                     end
                 else
                     local childWidthRemain = measureWidth - contentWidth
                     if childWidthRemain ~= 0 then
+                        self.__ContentWidth, self.__ContentHeight = 0, 0
                         for _, child in ipairs(self.__Children) do
                             local childLayoutParams = self.__ChildLayoutParams[child]
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
@@ -162,6 +254,8 @@ PLoop(function()
                                     MeasureSpec(childHeightMeasureSpecMode, child:GetHeight()))
                                 self:SetChildSize(childWidth, childHeight)
                             end
+                            self.__ContentWidth = self.__ContentWidth + child:GetWidth()
+                            self.__ContentHeight = self.__ContentHeight + child:GetHeight()
                         end
                     end
                 end

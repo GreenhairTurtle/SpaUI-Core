@@ -215,7 +215,9 @@ PLoop(function()
                     child:Layout()
                 end
             end
-            self:OnLayout()
+            if self:IsShown() and #self.__Children > 0 then
+                self:OnLayout()
+            end
             -- clear refresh status
             self:SetRefreshStatus(false)
         end
@@ -228,15 +230,15 @@ PLoop(function()
         end
 
         -- Call this function to layout child. This function will automatically calculate the positions corresponding to different layoutdirections
-        __Arguments__{ LayoutFrame, NonNegativeNumber, NonNegativeNumber }
+        __Arguments__{ LayoutFrame, Number, Number }
         function LayoutChild(self, child, xOffset, yOffset)
             local direction = self.LayoutDirection
             local point
             if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
                 point = "TOP"
-                yOffset = -yOffset
             else
                 point = "BOTTOM"
+                yOffset = -yOffset
             end
             if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
                 point = point .. "LEFT"
@@ -283,6 +285,10 @@ PLoop(function()
             if ViewGroup.IsViewGroup(child) then
                 return child:Measure(widthMeasureSpec, heightMeasureSpec)
             else
+                if not child:IsShown() then
+                    return 0, 0
+                end
+
                 local childLayoutParams = self.__ChildLayoutParams[child]
                 if not LayoutParams.IsValid(child, childLayoutParams) then
                     throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified")
