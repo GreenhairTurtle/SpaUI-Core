@@ -156,9 +156,9 @@ PLoop(function()
 
         member "width"      { Type = NonNegativeNumber + SizeMode, Require = true }
         member "height"     { Type = NonNegativeNumber + SizeMode, Require = true }
-        -- used to width is wrap content
+        -- used to width is wrap content or match parent
         member "prefWidth"  { Type = NonNegativeNumber }
-        -- used to height is wrap content
+        -- used to height is wrap content or match parent
         member "prefHeight" { Type = NonNegativeNumber }
         member "margin"     { Type = Margin, Default = Margin(0) }
 
