@@ -417,6 +417,26 @@ PLoop(function()
             end
         end
 
+        __Arguments__{ NonNegativeNumber/nil, NonNegativeNumber/nil, NonNegativeNumber/nil, NonNegativeNumber/nil }
+        function SetPadding(self, left, top, right, bottom)
+            local padding = self.Padding
+            padding.left = left or padding.left
+            padding.top = top or padding.top
+            padding.right = right or padding.right
+            padding.bottom = bottom or padding.bottom
+            self:Refresh()
+        end
+
+        __Arguments__{ NonNegativeNumber/nil, NonNegativeNumber/nil, NonNegativeNumber/nil, NonNegativeNumber/nil }
+        function SetMargin(self, left, top, right, bottom)
+            local margin = self.LayoutParams.margin
+            margin.left = left or margin.left
+            margin.top = top or margin.top
+            margin.right = right or margin.right
+            margin.bottom = bottom or margin.bottom
+            self:Refresh()
+        end
+
         -- Check object is view group
         __Static__()
         function IsViewGroup(viewGroup)
@@ -431,7 +451,8 @@ PLoop(function()
         property "Padding"      {
             type                = Padding,
             require             = true,
-            default             = Padding(0)
+            default             = Padding(0),
+            handler             = "Refresh"
         }
 
         property "LayoutDirection"{

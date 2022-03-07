@@ -21,7 +21,10 @@ PLoop(function()
 
         property "Orientation"      {
             type                    = Orientation,
-            default                 = Orientation.VERTICAL
+            default                 = Orientation.VERTICAL,
+            handler                 = function(self)
+                self:Layout()
+            end
         }
 
         -- This property determines the layout alignment of childs
@@ -155,12 +158,9 @@ PLoop(function()
             print("OnMeasure", GetTime())
             local padding = self.Padding
             local orientation = self.Orientation
-            local direction = self.LayoutDirection
 
             local measureWidth, maxWidth, childWidthMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpec(widthMeasureSpec, Orientation.HORIZONTAL)
             local measureHeight, maxHeight, childHeightMeasureSpecMode = self:GetMeasureSizeAndChildMeasureSpec(heightMeasureSpec, Orientation.VERTICAL)
-            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and true or false
-            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and true or false
             
             local widthAvaliable, heightAvaliable
             if measureWidth or maxWidth then
@@ -173,8 +173,7 @@ PLoop(function()
             -- we calculate the content size of viewgroup here, also set child size
             local contentWidth, contentHeight, weightSum = 0, 0, 0
             if orientation == Orientation.VERTICAL then
-                local iterator = topToBottom and ipairs or ipairs_reverse
-                for _, child in iterator(self.__Children) do
+                for _, child in ipairs(self.__Children) do
                     local childLayoutParams = self.__ChildLayoutParams[child]
                     local margin = childLayoutParams.margin
 
@@ -194,8 +193,7 @@ PLoop(function()
                     heightAvaliable = heightAvaliable and (heightAvaliable - childHeight)
                 end
             else
-                local iterator = leftToRight and ipairs or ipairs_reverse
-                for _, child in iterator(self.__Children) do
+                for _, child in ipairs(self.__Children) do
                     local childLayoutParams = self.__ChildLayoutParams[child]
                     local margin = childLayoutParams.margin
 

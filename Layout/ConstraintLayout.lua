@@ -4,7 +4,13 @@ PLoop(function()
 
     class "ConstraintLayout"(function()
         
-        
+        struct "LayoutParams"(function()
+
+            __base = SpaUI.Widget.LayoutParams
+
+
+
+        end)
 
     end)
 
