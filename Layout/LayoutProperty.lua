@@ -154,24 +154,22 @@ PLoop(function()
     __Sealed__()
     struct "LayoutParams"(function()
 
-        member "width"      { Type = NonNegativeNumber + SizeMode, Require = true }
-        member "height"     { Type = NonNegativeNumber + SizeMode, Require = true }
+        member "width"      { Type = NonNegativeNumber + SizeMode }
+        member "height"     { Type = NonNegativeNumber + SizeMode }
         -- used to width is wrap content or match parent
         member "prefWidth"  { Type = NonNegativeNumber }
         -- used to height is wrap content or match parent
         member "prefHeight" { Type = NonNegativeNumber }
         member "margin"     { Type = Margin, Default = Margin(0) }
+        -- use self size, so width,height,prefWidth and prefHeight will be ignored
+        member "useSelfSize"{ Type = Boolean }
 
-        -- check layoutparams is valid for view
-        __Static__()
-        __Arguments__{ LayoutFrame, LayoutParams }
-        function IsValid(view, layoutParams)
-            if not ViewGroup.IsViewGroup(view) and ((layoutParams.width < 0 and not layoutParams.prefWidth)
-                or (layoutParams.height < 0 and not layoutParams.prefHeight)) then
-                return false
+        __valid = function(value, onlyValid)
+            if not value.useSelfSize then
+                if not value.width or not value.height then
+                    return onlyValid or "the %s must have width and height when 'useSelfSize' is false"
+                end
             end
-
-            return true
         end
 
     end)

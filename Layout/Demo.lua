@@ -4,7 +4,34 @@ import "SpaUI.Widget.Layout"
 import "SpaUI.Widget"
 
 TestLinearLayout = LinearLayout("TestLinearLayout")
-TestLinearLayout.LayoutParams = LayoutParams(1920, 1080)
+TestLinearLayout.LayoutParams = LayoutParams(500, 800)
+TestLinearLayout.Gravity = Gravity.CENTER_HORIZONTAL + Gravity.CENTER_VERTICAL
 TestLinearLayout:SetPoint("CENTER")
 
-print(TestLinearLayout:GetSize())
+TestButton = UIPanelButton("TestButton")
+TestButton:SetText("测试")
+local layoutParams = {
+    width = SizeMode.WRAP_CONTENT,
+    height = SizeMode.WRAP_CONTENT,
+    prefWidth = 100,
+    prefHeight = 50,
+    weight = 0.5
+}
+TestLinearLayout:AddChild(TestButton, layoutParams)
+print("Add Button1")
+
+TestButton2 = UIPanelButton("TestButton2")
+TestButton2:SetText("测试2")
+local layoutParams2 = {
+    width = SizeMode.WRAP_CONTENT,
+    height = SizeMode.WRAP_CONTENT,
+    prefWidth = 150,
+    prefHeight = 200,
+    weight = 1
+}
+TestLinearLayout:AddChild(TestButton2, layoutParams2)
+print("Add Button2")
+
+Delay(10, function()
+TestLinearLayout.Gravity = Gravity.START
+end)

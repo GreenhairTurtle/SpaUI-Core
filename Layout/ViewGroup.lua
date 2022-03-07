@@ -85,10 +85,15 @@ PLoop(function()
             child.OnSizeChanged = child.OnSizeChanged - OnChildSizeChanged
         end
 
-        __Arguments__{ LayoutFrame, NaturalNumber/nil }:Throwable()
         __Final__()
+        __Arguments__{ LayoutFrame, NaturalNumber/nil }:Throwable()
         function AddChild(self, child, index)
             self:AddChild(child, index, wrapContentLayoutParams)
+        end
+
+        __Arguments__{ LayoutFrame, LayoutParams }:Throwable()
+        function AddChild(self, child, layoutParams)
+            self:AddChild(child, nil, layoutParams)
         end
 
         __Final__()
@@ -103,7 +108,7 @@ PLoop(function()
             end
 
             -- @todo FontString和Texture特殊处理
-            OnChildAdded(child)
+            OnChildAdded(self, child)
             tinsert(self.__Children, index, child)
             self.__ChildLayoutParams[child] = layoutParams
 
@@ -176,7 +181,9 @@ PLoop(function()
 
             local widthMeasureSpec, heightMeasureSpec
             -- calc width
-            if layoutParams.width == SizeMode.WRAP_CONTENT then
+            if layoutParams.useSelfSize then
+                widthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, self:GetWidth())
+            elseif layoutParams.width == SizeMode.WRAP_CONTENT then
                 -- width wrap content means no view group parent
                 widthMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
             elseif layoutParams.width == SizeMode.MATCH_PARENT then
@@ -190,7 +197,9 @@ PLoop(function()
             end
 
             -- calc height
-            if layoutParams.width == SizeMode.WRAP_CONTENT then
+            if layoutParams.useSelfSize then
+                heightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, self:GetHeight())
+            elseif layoutParams.width == SizeMode.WRAP_CONTENT then
                 -- height wrap content means not view group parent
                 heightMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
             elseif layoutParams.height == SizeMode.MATCH_PARENT then
@@ -236,9 +245,9 @@ PLoop(function()
             local point
             if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
                 point = "TOP"
+                yOffset = -yOffset
             else
                 point = "BOTTOM"
-                yOffset = -yOffset
             end
             if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
                 point = point .. "LEFT"
@@ -290,21 +299,26 @@ PLoop(function()
                 end
 
                 local childLayoutParams = self.__ChildLayoutParams[child]
-                if not LayoutParams.IsValid(child, childLayoutParams) then
-                    throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified")
-                end
 
                 local width, height
                 -- calc width
-                if childLayoutParams.width >= 0 then
+                if childLayoutParams.useSelfSize then
+                    width = child:GetWidth()
+                elseif childLayoutParams.width >= 0 then
                     width = childLayoutParams.width
                 elseif childLayoutParams.width == SizeMode.MATCH_PARENT then
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                        if not childLayoutParams.prefWidth then
+                            throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                        end
                         width = childLayoutParams.prefWidth
                     else
                         width = widthMeasureSpec.size
                     end
                 else
+                    if not childLayoutParams.prefWidth then
+                        throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                    end
                     -- wrap content
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
                         width = childLayoutParams.prefWidth
@@ -314,20 +328,28 @@ PLoop(function()
                 end
 
                 -- calc height
-                if childLayoutParams.height >= 0 then
+                if childLayoutParams.useSelfSize then
+                    height = child:GetHeight()
+                elseif childLayoutParams.height >= 0 then
                     height = childLayoutParams.height
                 elseif childLayoutParams.height == SizeMode.MATCH_PARENT then
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
+                        if not childLayoutParams.prefHeight then
+                            throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                        end
                         height = childLayoutParams.prefHeight
                     else
-                        height = widthMeasureSpec.size
+                        height = heightMeasureSpec.size
                     end
                 else
+                    if not childLayoutParams.prefHeight then
+                        throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                    end
                     -- wrap content
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
                         height = childLayoutParams.prefHeight
                     else
-                        height = math.min(childLayoutParams.prefWidth, heightMeasureSpec.size)
+                        height = math.min(childLayoutParams.prefHeight, heightMeasureSpec.size)
                     end
                 end
 
@@ -344,14 +366,15 @@ PLoop(function()
         __Arguments__{ MeasureSpec, Orientation }
         function GetMeasureSizeAndChildMeasureSpec(self, measureSpec, orientation)
             local size, mode, measureSize, maxSize
+            local layoutParams = self.LayoutParams
             if orientation == Orientation.VERTICAL then
-                size = self.LayoutParams.height
+                size = layoutParams.useSelfSize and self:GetHeight() or layoutParams.height
             else
-                size = self.LayoutParams.width
+                size = layoutParams.useSelfSize and self:GetWidth() or layoutParams.width
             end
             
             -- we respect view group declared size
-            if size > 0 then
+            if size >= 0 then
                 measureSize = size
                 mode = MeasureSpecMode.AT_MOST
             elseif size == SizeMode.MATCH_PARENT then
@@ -385,20 +408,19 @@ PLoop(function()
             return measureSize, maxSize, mode
         end
 
-        -- Check object is view group
-        __Static__()
-        function IsViewGroup(viewGroup)
-            return Class.ValidateValue(ViewGroup, viewGroup, true) and true or false
-        end
-
-        __Static__()
-        __Arguments__{ LayoutFrame }
-        function SetChildSize(child, width, height)
+        __Arguments__{ LayoutFrame, NonNegativeNumber, NonNegativeNumber }
+        function SetChildSize(self, child, width, height)
             if ViewGroup.IsViewGroup(child) then
                 child:SetSizeInternal(width, height)
             else
                 child:SetSize(width, height)
             end
+        end
+
+        -- Check object is view group
+        __Static__()
+        function IsViewGroup(viewGroup)
+            return Class.ValidateValue(ViewGroup, viewGroup, true) and true or false
         end
 
         function __ctor(self)
