@@ -1,7 +1,3 @@
--- package.path = package.path .. ";D:/Github/?/init.lua;D:/Github/?.lua"
--- require "PLoop"
--- require "Extend"
-
 PLoop(function()
     
     namespace "SpaUI.Widget"

@@ -309,7 +309,7 @@ PLoop(function()
                 elseif childLayoutParams.width == SizeMode.MATCH_PARENT then
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
                         if not childLayoutParams.prefWidth then
-                            throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                            throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
                         end
                         width = childLayoutParams.prefWidth
                     else
@@ -317,7 +317,7 @@ PLoop(function()
                     end
                 else
                     if not childLayoutParams.prefWidth then
-                        throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                        throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
                     end
                     -- wrap content
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
@@ -335,7 +335,7 @@ PLoop(function()
                 elseif childLayoutParams.height == SizeMode.MATCH_PARENT then
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
                         if not childLayoutParams.prefHeight then
-                            throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                            throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
                         end
                         height = childLayoutParams.prefHeight
                     else
@@ -343,7 +343,7 @@ PLoop(function()
                     end
                 else
                     if not childLayoutParams.prefHeight then
-                        throw("The layoutparams must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
+                        throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
                     end
                     -- wrap content
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then

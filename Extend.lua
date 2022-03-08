@@ -1,4 +1,4 @@
-PLoop(function(ENV)
+PLoop(function()
 
     __Sealed__()
     struct "System.NonNegativeNumber" {
