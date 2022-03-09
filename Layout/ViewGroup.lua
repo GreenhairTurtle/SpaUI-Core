@@ -28,19 +28,19 @@ PLoop(function()
         -- @Override
         __Final__()
         function SetWidth(self, width)
-            error("You can not call SetWidth directly in ViewGroup. Change LayoutParams property instead", 2)
+            error("You can not call SetWidth directly in ViewGroup. Call SetLayoutParams instead", 2)
         end
 
         -- @Override
         __Final__()
         function SetHeight(self, height)
-            error("You can not call SetHeight directly in ViewGroup. Change LayoutParams property instead", 2)
+            error("You can not call SetHeight directly in ViewGroup. Call SetLayoutParams instead", 2)
         end
 
         -- @Override
         __Final__()
         function SetSize(self, width, height)
-            error("You can not call SetSize directly in ViewGroup. Change LayoutParams property instead", 2)
+            error("You can not call SetSize directly in ViewGroup. Call SetLayoutParams instead", 2)
         end
 
         -- Call this function instead SetSize, only internal use
@@ -51,15 +51,24 @@ PLoop(function()
         end
 
         local function OnChildShow(child)
-            child:GetParent():Refresh()
+            local parent = child:GetParent()
+            if parent then
+                parent:Refresh()
+            end
         end
 
         local function OnChildHide(child)
-            child:GetParent():Refresh()
+            local parent = child:GetParent()
+            if parent then
+                parent:Refresh()
+            end
         end
 
         local function OnChildSizeChanged(child)
-            child:GetParent():Refresh()
+            local parent = child:GetParent()
+            if parent then
+                parent:Refresh()
+            end
         end
 
         local function OnChildAdded(self, child)
@@ -67,22 +76,35 @@ PLoop(function()
             child:ClearAllPoints()
             child:SetParent(self)
 
+            if not ViewGroup.IsViewGroup(child) then
+                child.SetLayoutParams = ViewGroup.SetLayoutParams
+                child.GetLayoutParams = ViewGroup.GetLayoutParams
+                child.SetVisibility = ViewGroup.SetVisibility
+                child.GetVisibility = ViewGroup.GetVisibility
+            end
+
             if Class.ValidateValue(Frame, child, true) then
                 child:SetFrameStrata(self:GetFrameStrata())
                 child:SetFrameLevel(self:GetFrameLevel() + 1)
                 child.OnShow = child.OnShow + OnChildShow
                 child.OnHide = child.OnHide + OnChildHide
-                if not ViewGroup.IsViewGroup(child) then
-                    child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
-                end
+                child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
             end
         end
 
         local function OnChildRemoved(self, child)
             child = UI.GetWrapperUI(child)
+            child.SetLayoutParams = nil
             child.OnShow = child.OnShow - OnChildShow
             child.OnHide = child.OnHide - OnChildHide
             child.OnSizeChanged = child.OnSizeChanged - OnChildSizeChanged
+
+            if not ViewGroup.IsViewGroup(child) then
+                child.SetLayoutParams = nil
+                child.GetLayoutParams = nil
+                child.SetVisibility = nil
+                child.GetVisibility = nil
+            end
         end
 
         __Final__()
@@ -110,14 +132,9 @@ PLoop(function()
             -- @todo FontString和Texture特殊处理
             OnChildAdded(self, child)
             tinsert(self.__Children, index, child)
-            self.__ChildLayoutParams[child] = layoutParams
 
-            if ViewGroup.IsViewGroup(child) then
-                -- set layout params will trigger refresh
-                child.LayoutParams = layoutParams
-            else
-                self:Refresh()
-            end
+            -- SetLayoutParams has installed in OnChildAdded
+            child:SetLayoutParams(layoutParams)
         end
 
         __Final__()
@@ -133,13 +150,68 @@ PLoop(function()
         __Arguments__{ LayoutFrame }
         function RemoveChild(self, child)
             if child:GetParent() == self then
-                self.__ChildLayoutParams[child] = nil
                 tDeleteItem(self.__Children, child)
                 OnChildRemoved(self, child)
                 child:SetParent(nil)
                 self:Refresh()
             end
         end
+
+        -------------------------------------
+        --        Universal functions      --
+        -------------------------------------
+
+        -- will copy to child
+        __Arguments__{ LayoutParams }
+        function SetLayoutParams(self, layoutParams)
+            self.__LayoutParams = layoutParams
+            -- if not viewgroup and parent is viewgroup, call parent's refresh
+            if not ViewGroup.IsViewGroup(self) then
+                local parent = self:GetParent()
+                if ViewGroup.IsViewGroup(parent) then
+                    parent:Refresh()
+                end
+            else
+                self:Refresh()
+            end
+        end
+
+        -- will copy to child
+        function GetLayoutParams(self)
+            return self.__LayoutParams or wrapContentLayoutParams
+        end
+
+        __Arguments__{ Visibility }
+        function SetVisibility(self, visibility)
+            self.__Visibility = visibility
+            if visibility == visibility.VISIBLE then
+                self:Show()
+            else
+                self:Hide()
+            end
+        end
+
+        function GetVisibility(self)
+            local shown = self:IsShown()
+            if shown then
+                self.__Visibility = Visibility.VISIBLE
+            else
+                -- not shown
+                if self.__Visibility == Visibility.VISIBLE then
+                    self.__Visibility = Visibility.GONE
+                end
+            end
+
+            if not self.__Visibility then
+                self.__Visibility = shown and Visibility.VISIBLE or Visibility.GONE
+            end
+
+            return self.__Visibility
+        end
+
+        -------------------------------------
+        --     Universal functions end     --
+        -------------------------------------
 
         -- check is refreshing now
         __Final__()
@@ -167,7 +239,7 @@ PLoop(function()
             end
             self:SetRefreshStatus(true)
 
-            local layoutParams = self.LayoutParams
+            local layoutParams = self:GetLayoutParams()
             local parent = self:GetParent()
             local inViewGroup = parent and ViewGroup.IsViewGroup(parent)
             -- if ViewGroup's size mode is wrap content, so call parent's refresh function and stop further processing
@@ -224,7 +296,7 @@ PLoop(function()
                     child:Layout()
                 end
             end
-            if self:IsShown() and #self.__Children > 0 then
+            if self:GetVisibility() ~= Visibility.GONE and #self.__Children > 0 then
                 self:OnLayout()
             end
             -- clear refresh status
@@ -266,7 +338,7 @@ PLoop(function()
         __Arguments__{ MeasureSpec, MeasureSpec }:Throwable()
         function Measure(self, widthMeasureSpec, heightMeasureSpec)
             local width, height = 0, 0
-            if self:IsShown() then
+            if self:GetVisibility() ~= Visibility.GONE then
                 width, height = self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
                 if type(width) ~= "number" or type(height) ~= "number" then
                     throw("ViewGroup's size must be number")
@@ -294,11 +366,11 @@ PLoop(function()
             if ViewGroup.IsViewGroup(child) then
                 return child:Measure(widthMeasureSpec, heightMeasureSpec)
             else
-                if not child:IsShown() then
+                if child:GetVisibility() == Visibility.GONE then
                     return 0, 0
                 end
 
-                local childLayoutParams = self.__ChildLayoutParams[child]
+                local childLayoutParams = child:GetLayoutParams()
 
                 local width, height
                 -- calc width
@@ -366,7 +438,7 @@ PLoop(function()
         __Arguments__{ MeasureSpec, Orientation }
         function GetMeasureSizeAndChildMeasureSpec(self, measureSpec, orientation)
             local size, mode, measureSize, maxSize
-            local layoutParams = self.LayoutParams
+            local layoutParams = self:GetLayoutParams()
             if orientation == Orientation.VERTICAL then
                 size = layoutParams.useSelfSize and self:GetHeight() or layoutParams.height
             else
@@ -429,7 +501,7 @@ PLoop(function()
 
         __Arguments__{ NonNegativeNumber/nil, NonNegativeNumber/nil, NonNegativeNumber/nil, NonNegativeNumber/nil }
         function SetMargin(self, left, top, right, bottom)
-            local margin = self.LayoutParams.margin
+            local margin = self:GetLayoutParams().margin
             margin.left = left or margin.left
             margin.top = top or margin.top
             margin.right = right or margin.right
@@ -445,7 +517,6 @@ PLoop(function()
 
         function __ctor(self)
             self.__Children = {}
-            self.__ChildLayoutParams = {}
         end
 
         property "Padding"      {
@@ -460,20 +531,6 @@ PLoop(function()
             default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
             handler             = function(self)
                 self:Layout()
-            end
-        }
-
-        property "LayoutParams" {
-            type                = LayoutParams,
-            require             = true,
-            default             = wrapContentLayoutParams,
-            handler             = function(self, layoutParams)
-                local parent = self:GetParent()
-                if ViewGroup.IsViewGroup(parent) then
-                    parent.__ChildLayoutParams[self] = layoutParams
-                end
-
-                self:Refresh()
             end
         }
 

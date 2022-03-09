@@ -109,6 +109,16 @@ PLoop(function()
         ["WRAP_CONTENT"] = -2
     }
 
+    __Sealed__()
+    enum "Visiblity"{
+        -- This view is Shown
+        "VISIBLE",
+        -- This view is invisible, but it still takes up space for layout purposes
+        "INVISIBLE",
+        -- This view is hidden
+        "GONE"
+    }
+
     -- A MeasureSpec encapsulates the layout requirements passed from parent to child.
     -- Each MeasureSpec represents a requirement for either the width or the height.
     -- A MeasureSpec is comprised of a size and a mode. There are three possible modes:

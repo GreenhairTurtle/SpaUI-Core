@@ -72,7 +72,7 @@ PLoop(function()
             end
 
             for _, child in iterator(self.__Children) do
-                local childLp = self.__ChildLayoutParams[child]
+                local childLp = child:GetLayoutParams()
                 local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
                 local childHGravity = childLp.gravity and getHorizontalGravity(childLp.gravity) or defaultHGravity
                 local childWidth, childHeight = child:GetSize()
@@ -126,7 +126,7 @@ PLoop(function()
             end
 
             for _, child in iterator(self.__Children) do
-                local childLp = self.__ChildLayoutParams[child]
+                local childLp = child:GetLayoutParams()
                 local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
                 local childVGravity = childLp.gravity and getVerticalGravity(childLp.gravity) or defaultVGravity
                 local childWidth, childHeight = child:GetSize()
@@ -174,7 +174,7 @@ PLoop(function()
             local contentWidth, contentHeight, weightSum = 0, 0, 0
             if orientation == Orientation.VERTICAL then
                 for _, child in ipairs(self.__Children) do
-                    local childLayoutParams = self.__ChildLayoutParams[child]
+                    local childLayoutParams = child:GetLayoutParams()
                     local margin = childLayoutParams.margin
 
                     -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
@@ -194,7 +194,7 @@ PLoop(function()
                 end
             else
                 for _, child in ipairs(self.__Children) do
-                    local childLayoutParams = self.__ChildLayoutParams[child]
+                    local childLayoutParams = child:GetLayoutParams()
                     local margin = childLayoutParams.margin
 
                     -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
@@ -236,7 +236,7 @@ PLoop(function()
                     if childHeightRemain ~= 0 then
                         self.__ContentWidth, self.__ContentHeight = 0, 0
                         for _, child in ipairs(self.__Children) do
-                            local childLayoutParams = self.__ChildLayoutParams[child]
+                            local childLayoutParams = child:GetLayoutParams()
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
                             if childLayoutParams.weight and childLayoutParams.height <= 0 then
                                 local newHeight = math.max(0, child:GetHeight() + childHeightRemain * childLayoutParams.weight/weightSum)
@@ -259,7 +259,7 @@ PLoop(function()
                     if childWidthRemain ~= 0 then
                         self.__ContentWidth, self.__ContentHeight = 0, 0
                         for _, child in ipairs(self.__Children) do
-                            local childLayoutParams = self.__ChildLayoutParams[child]
+                            local childLayoutParams = child:GetLayoutParams()
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
                             if childLayoutParams.weight and childLayoutParams.width <= 0 then
                                 local newWidth = math.max(0, child:GetWidth() + childWidthRemain * childLayoutParams.weight/weightSum)
