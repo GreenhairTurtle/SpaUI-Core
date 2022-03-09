@@ -23,7 +23,7 @@ PLoop(function()
             type                    = Orientation,
             default                 = Orientation.VERTICAL,
             handler                 = function(self)
-                self:Layout()
+                self:Refresh()
             end
         }
 
@@ -58,8 +58,6 @@ PLoop(function()
             local heightAvaliable = height - paddingTop - paddingBottom
             local widthAvaliable = width - paddingStart - paddingEnd
             local defaultHGravity = getHorizontalGravity(gravity)
-            -- if bottom to top, we layout child from end
-            local iterator = topToBottom and ipairs or ipairs_reverse
 
             local yOffset
             if Enum.ValidateFlags(Gravity.CENTER_VERTICAL, gravity) then
@@ -71,7 +69,7 @@ PLoop(function()
                 yOffset = paddingTop
             end
 
-            for _, child in iterator(self.__Children) do
+            for _, child in ipairs(self.__Children) do
                 local childLp = child:GetLayoutParams()
                 local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
                 local childHGravity = childLp.gravity and getHorizontalGravity(childLp.gravity) or defaultHGravity
@@ -85,6 +83,7 @@ PLoop(function()
                     xOffset = paddingStart
                 end
                 yOffset = yOffset + marginTop
+                print(child:GetName(), xOffset, yOffset)
                 self:LayoutChild(child, xOffset, yOffset)
                 yOffset = yOffset + childHeight + marginBottom
             end
@@ -112,8 +111,6 @@ PLoop(function()
             local heightAvaliable = height - paddingTop - paddingBottom
             local widthAvaliable = width - paddingStart - paddingEnd
             local defaultVGravity = getVerticalGravity(gravity)
-            -- if right to left, we layout child from end
-            local iterator = leftToRight and ipairs or ipairs_reverse
 
             local xOffset
             if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
@@ -125,7 +122,7 @@ PLoop(function()
                 xOffset = paddingStart
             end
 
-            for _, child in iterator(self.__Children) do
+            for _, child in ipairs(self.__Children) do
                 local childLp = child:GetLayoutParams()
                 local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
                 local childVGravity = childLp.gravity and getVerticalGravity(childLp.gravity) or defaultVGravity
@@ -178,7 +175,7 @@ PLoop(function()
                     local margin = childLayoutParams.margin
 
                     -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
-                    if childLayoutParams.height <= 0 then
+                    if childLayoutParams.height <= 0 and child:GetVisibility() ~= Visibility.GONE then
                         weightSum = weightSum + (childLayoutParams.weight or 0)
                     end
 
@@ -198,7 +195,7 @@ PLoop(function()
                     local margin = childLayoutParams.margin
 
                     -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
-                    if childLayoutParams.width <= 0 then
+                    if childLayoutParams.width <= 0 and child:GetVisibility() ~= Visibility.GONE then
                         weightSum = weightSum + (childLayoutParams.weight or 0)
                     end
 
@@ -222,10 +219,10 @@ PLoop(function()
 
             -- if we have not measure size, so content size is that we need
             if not measureWidth then
-                measureWidth = math.min(contentWidth, maxWidth)
+                measureWidth = maxWidth and math.min(contentWidth, maxWidth) or contentWidth
             end
             if not measureHeight then
-                measureHeight = math.min(contentHeight, maxHeight)
+                measureHeight = maxHeight and math.min(contentHeight, maxHeight) or contentHeight
             end
 
             -- Now that we have determined the LinearLayout size, it's time to recalculate the size of the child.
@@ -238,7 +235,7 @@ PLoop(function()
                         for _, child in ipairs(self.__Children) do
                             local childLayoutParams = child:GetLayoutParams()
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
-                            if childLayoutParams.weight and childLayoutParams.height <= 0 then
+                            if childLayoutParams.weight and childLayoutParams.height <= 0 and child:GetVisibility() ~= Visibility.GONE then
                                 local newHeight = math.max(0, child:GetHeight() + childHeightRemain * childLayoutParams.weight/weightSum)
                                 --if child is viewgroup, remeasure child to make child's children resize
                                 if ViewGroup.IsViewGroup(child) then
@@ -261,7 +258,7 @@ PLoop(function()
                         for _, child in ipairs(self.__Children) do
                             local childLayoutParams = child:GetLayoutParams()
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
-                            if childLayoutParams.weight and childLayoutParams.width <= 0 then
+                            if childLayoutParams.weight and childLayoutParams.width <= 0 and child:GetVisibility() ~= Visibility.GONE then
                                 local newWidth = math.max(0, child:GetWidth() + childWidthRemain * childLayoutParams.weight/weightSum)
                                 -- if child is viewgroup, remeasure child to make child's children resize
                                 if ViewGroup.IsViewGroup(child) then

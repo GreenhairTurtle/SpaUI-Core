@@ -110,7 +110,8 @@ PLoop(function()
     }
 
     __Sealed__()
-    enum "Visiblity"{
+    __AutoIndex__()
+    enum "Visibility"{
         -- This view is Shown
         "VISIBLE",
         -- This view is invisible, but it still takes up space for layout purposes
@@ -140,7 +141,7 @@ PLoop(function()
     __Sealed__()
     struct "MeasureSpec"(function()
 
-        member "mode"   { Type = MeasureSpecMode,   Require = true }
+        member "mode"   { Type = MeasureSpecMode, Require = true }
         member "size"   { Type = Number }
 
         __valid = function(value)
@@ -150,7 +151,7 @@ PLoop(function()
         end
 
         __init = function(value)
-            if value.size < 0 then
+            if not value.size or value.size < 0 then
                 value.size = 0
             end
         end

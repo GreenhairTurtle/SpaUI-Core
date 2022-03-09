@@ -4,7 +4,7 @@ import "SpaUI.Widget.Layout"
 import "SpaUI.Widget"
 
 TestLinearLayout = LinearLayout("TestLinearLayout")
-TestLinearLayout.LayoutParams = LayoutParams(500, 800)
+TestLinearLayout:SetLayoutParams(LayoutParams(500, 800))
 TestLinearLayout.Gravity = Gravity.CENTER_HORIZONTAL + Gravity.CENTER_VERTICAL
 TestLinearLayout:SetPoint("CENTER")
 
@@ -32,6 +32,10 @@ local layoutParams2 = {
 TestLinearLayout:AddChild(TestButton2, layoutParams2)
 print("Add Button2")
 
+Delay(5, function()
+    TestLinearLayout.Orientation = Orientation.HORIZONTAL
+end)
+
 Delay(10, function()
-TestLinearLayout.Gravity = Gravity.START
+    TestLinearLayout.LayoutDirection = LayoutDirection.RIGHT_TO_LEFT
 end)

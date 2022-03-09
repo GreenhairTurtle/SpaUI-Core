@@ -184,7 +184,7 @@ PLoop(function()
         __Arguments__{ Visibility }
         function SetVisibility(self, visibility)
             self.__Visibility = visibility
-            if visibility == visibility.VISIBLE then
+            if visibility == Visibility.VISIBLE then
                 self:Show()
             else
                 self:Hide()
@@ -367,6 +367,7 @@ PLoop(function()
                 return child:Measure(widthMeasureSpec, heightMeasureSpec)
             else
                 if child:GetVisibility() == Visibility.GONE then
+                    print("return 0, 0")
                     return 0, 0
                 end
 
@@ -433,7 +434,7 @@ PLoop(function()
         -- measure size, max size will be nil.
         -- if measure size has value, means parent's size is not determined by childs.
         -- if max size has value, means child is wrap_content but has max size limit
-        -- @param measureSpec: measuresepc
+        -- @param measureSpec: self measuresepc
         -- @param orientation: horizontal or vertical, correspond layoutParams width or height
         __Arguments__{ MeasureSpec, Orientation }
         function GetMeasureSizeAndChildMeasureSpec(self, measureSpec, orientation)
@@ -530,6 +531,7 @@ PLoop(function()
             type                = LayoutDirection,
             default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
             handler             = function(self)
+                print("LayoutDirection")
                 self:Layout()
             end
         }
