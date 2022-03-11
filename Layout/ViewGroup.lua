@@ -367,7 +367,6 @@ PLoop(function()
                 return child:Measure(widthMeasureSpec, heightMeasureSpec)
             else
                 if child:GetVisibility() == Visibility.GONE then
-                    print("return 0, 0")
                     return 0, 0
                 end
 

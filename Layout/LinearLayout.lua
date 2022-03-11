@@ -83,7 +83,6 @@ PLoop(function()
                     xOffset = paddingStart
                 end
                 yOffset = yOffset + marginTop
-                print(child:GetName(), xOffset, yOffset)
                 self:LayoutChild(child, xOffset, yOffset)
                 yOffset = yOffset + childHeight + marginBottom
             end
@@ -152,7 +151,6 @@ PLoop(function()
 
         -- @Override
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
-            print("OnMeasure", GetTime())
             local padding = self.Padding
             local orientation = self.Orientation
 
