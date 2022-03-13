@@ -161,22 +161,55 @@ PLoop(function()
     __Sealed__()
     struct "LayoutParams"(function()
 
-        member "width"      { Type = NonNegativeNumber + SizeMode }
-        member "height"     { Type = NonNegativeNumber + SizeMode }
-        -- used to width is wrap content or match parent
-        member "prefWidth"  { Type = NonNegativeNumber }
-        -- used to height is wrap content or match parent
-        member "prefHeight" { Type = NonNegativeNumber }
+        member "width"      { Type = NonNegativeNumber + SizeMode, Require = true }
+        member "height"     { Type = NonNegativeNumber + SizeMode, Require = true }
+        -- Works when width is wrap content or match parent
+        -- if pref width is wrap content also, use view's width
+        -- pref width can not be set to match parent
+        member "prefWidth"  { Type = NonNegativeNumber + SizeMode }
+        -- Works when height is wrap content or match parent
+        -- if pref height is wrap content also, use view's height
+        -- pref height can not be set to match parent
+        member "prefHeight" { Type = NonNegativeNumber + SizeMode }
         member "margin"     { Type = Margin, Default = Margin(0) }
-        -- use self size, so width,height,prefWidth and prefHeight will be ignored
-        member "useSelfSize"{ Type = Boolean }
 
         __valid = function(value, onlyValid)
-            if not value.useSelfSize then
-                if not value.width or not value.height then
-                    return onlyValid or "the %s must have width and height when 'useSelfSize' is false"
+            if value.width < 0 then
+                if not value.prefWidth then
+                    return onlyValid or "the %s's prefWidth can not be nil when width is wrap content or match parent"
+                end
+                if value.prefWidth == SizeMode.MATCH_PARENT then
+                    return onlyValid or "the %s's prefWidth can not be set to match parent"
                 end
             end
+            if value.height < 0 then
+                if not value.prefHeight then
+                    return onlyValid or "the %s's prefHeight can not be nil when height is wrap content or match parent"
+                end
+                if value.prefHeight == SizeMode.MATCH_PARENT then
+                    return onlyValid or "the %s's prefHeight can not be set to match parent"
+                end
+            end
+        end
+
+        __Static__()
+        __Arguments__{ LayoutFrame, LayoutParams }
+        function GetPrefWidth(view, layoutParams)
+            if layoutParams.prefWidth == SizeMode.WRAP_CONTENT then
+                return view:GetWidth()
+            end
+
+            return layoutParams.prefWidth
+        end
+
+        __Static__()
+        __Arguments__{ LayoutFrame, LayoutParams }
+        function GetPrefHeight(view, layoutParams)
+            if layoutParams.prefHeight == SizeMode.WRAP_CONTENT then
+                return view:GetHeight()
+            end
+
+            return layoutParams.prefHeight
         end
 
     end)

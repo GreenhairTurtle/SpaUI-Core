@@ -253,9 +253,7 @@ PLoop(function()
 
             local widthMeasureSpec, heightMeasureSpec
             -- calc width
-            if layoutParams.useSelfSize then
-                widthMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, self:GetWidth())
-            elseif layoutParams.width == SizeMode.WRAP_CONTENT then
+            if layoutParams.width == SizeMode.WRAP_CONTENT then
                 -- width wrap content means no view group parent
                 widthMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
             elseif layoutParams.width == SizeMode.MATCH_PARENT then
@@ -269,10 +267,8 @@ PLoop(function()
             end
 
             -- calc height
-            if layoutParams.useSelfSize then
-                heightMeasureSpec = MeasureSpec(MeasureSpecMode.AT_MOST, self:GetHeight())
-            elseif layoutParams.width == SizeMode.WRAP_CONTENT then
-                -- height wrap content means not view group parent
+            if layoutParams.width == SizeMode.WRAP_CONTENT then
+                -- height wrap content means no view group parent
                 heightMeasureSpec = MeasureSpec(MeasureSpecMode.UNSPECIFIED)
             elseif layoutParams.height == SizeMode.MATCH_PARENT then
                 if inViewGroup then
@@ -374,52 +370,36 @@ PLoop(function()
 
                 local width, height
                 -- calc width
-                if childLayoutParams.useSelfSize then
-                    width = child:GetWidth()
-                elseif childLayoutParams.width >= 0 then
+                if childLayoutParams.width >= 0 then
                     width = childLayoutParams.width
                 elseif childLayoutParams.width == SizeMode.MATCH_PARENT then
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        if not childLayoutParams.prefWidth then
-                            throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
-                        end
-                        width = childLayoutParams.prefWidth
+                        width = LayoutParams.GetPrefWidth(child, childLayoutParams)
                     else
                         width = widthMeasureSpec.size
                     end
                 else
-                    if not childLayoutParams.prefWidth then
-                        throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
-                    end
                     -- wrap content
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        width = childLayoutParams.prefWidth
+                        width = LayoutParams.GetPrefWidth(child, childLayoutParams)
                     else
                         width = math.min(childLayoutParams.prefWidth, widthMeasureSpec.size)
                     end
                 end
 
                 -- calc height
-                if childLayoutParams.useSelfSize then
-                    height = child:GetHeight()
-                elseif childLayoutParams.height >= 0 then
+                if childLayoutParams.height >= 0 then
                     height = childLayoutParams.height
                 elseif childLayoutParams.height == SizeMode.MATCH_PARENT then
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        if not childLayoutParams.prefHeight then
-                            throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
-                        end
-                        height = childLayoutParams.prefHeight
+                        height = LayoutParams.GetPrefHeight(child, childLayoutParams)
                     else
                         height = heightMeasureSpec.size
                     end
                 else
-                    if not childLayoutParams.prefHeight then
-                        throw("The layoutparams of " .. child:GetName() .. " must set prefWidth or prefHeight if with/height unspecified in viewgroup:" .. self:GetName())
-                    end
                     -- wrap content
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        height = childLayoutParams.prefHeight
+                        height = LayoutParams.GetPrefHeight(child, childLayoutParams)
                     else
                         height = math.min(childLayoutParams.prefHeight, heightMeasureSpec.size)
                     end
@@ -440,9 +420,9 @@ PLoop(function()
             local size, mode, measureSize, maxSize
             local layoutParams = self:GetLayoutParams()
             if orientation == Orientation.VERTICAL then
-                size = layoutParams.useSelfSize and self:GetHeight() or layoutParams.height
+                size = layoutParams.height
             else
-                size = layoutParams.useSelfSize and self:GetWidth() or layoutParams.width
+                size = layoutParams.width
             end
             
             -- we respect view group declared size
