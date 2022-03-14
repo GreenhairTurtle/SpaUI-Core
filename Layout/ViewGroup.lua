@@ -71,6 +71,14 @@ PLoop(function()
             end
         end
 
+        -- @todo
+        -- add size perception to texture and fontstring
+        local function AddSizePerception(child)
+            child.__Original_SetWidth = child.SetWidth
+            child.__Original_SetHeight = child.SetHeight
+            child.__Original_SetSize = child.SetSize
+        end
+
         local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
             child:ClearAllPoints()
@@ -89,6 +97,10 @@ PLoop(function()
                 child.OnShow = child.OnShow + OnChildShow
                 child.OnHide = child.OnHide + OnChildHide
                 child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
+            end
+
+            if Class.ValidateValue(Texture, child, true) then
+                
             end
         end
 
@@ -510,7 +522,6 @@ PLoop(function()
             type                = LayoutDirection,
             default             = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
             handler             = function(self)
-                print("LayoutDirection")
                 self:Layout()
             end
         }

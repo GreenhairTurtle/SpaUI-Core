@@ -18,7 +18,6 @@ local layoutParams = {
     weight = 0.5
 }
 TestLinearLayout:AddChild(TestButton, layoutParams)
-print("Add Button1")
 
 TestButton2 = UIPanelButton("TestButton2")
 TestButton2:SetText("测试2")
@@ -30,7 +29,6 @@ local layoutParams2 = {
     weight = 1
 }
 TestLinearLayout:AddChild(TestButton2, layoutParams2)
-print("Add Button2")
 
 Delay(5, function()
     TestLinearLayout.Orientation = Orientation.HORIZONTAL
