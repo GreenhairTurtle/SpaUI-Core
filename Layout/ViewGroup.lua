@@ -71,12 +71,63 @@ PLoop(function()
             end
         end
 
-        -- @todo
-        -- add size perception to texture and fontstring
-        local function AddSizePerception(child)
+        -- add size changed and visible changed script to texture and fontstring
+        local function AddScriptToTextureAndFontString(child)
             child.__Original_SetWidth = child.SetWidth
             child.__Original_SetHeight = child.SetHeight
             child.__Original_SetSize = child.SetSize
+            child.__Original_Show = child.Show
+            child.__Original_Hide = child.Hide
+            child.__Original_SetShown = child.SetShown
+
+            -- replace size function
+            child.SetWidth = function(self, width)
+                if width ~= self:GetWidth() then
+                    self.__Original_SetWidth(self, width)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            child.SetHeight = function(self, height)
+                if height ~= self:GetHeight() then
+                    self.__Original_SetHeight(self, height)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            child.SetSize = function(self, width, height)
+                if width ~= self:GetWidth() or height ~= self:GetHeight() then
+                    self.__Original_SetSize(self, width, height)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            -- replace visibility function
+            child.Show = function(self)
+                if not self:IsShown() then
+                    self.__Original_Show(self)
+                    OnChildShow(self)
+                end
+            end
+
+            child.Hide = function(self)
+                if self:IsShown() then
+                    self.__Original_Hide(self)
+                    OnChildHide(self)
+                end
+            end
+
+            child.SetShown = function(self, shown)
+                local current = self:IsShown()
+                if shown ~= current then
+                    self.__Original_SetShown(self, shown)
+                    if current then
+                        OnChildHide(self)
+                    else
+                        OnChildShow(self)
+                    end
+                end
+            end
         end
 
         local function OnChildAdded(self, child)
@@ -100,7 +151,11 @@ PLoop(function()
             end
 
             if Class.ValidateValue(Texture, child, true) then
-                
+                AddScriptToTextureAndFontString(child)
+            end
+
+            if Class.ValidateValue(FontString, child, true) then
+                AddScriptToTextureAndFontString(child)
             end
         end
 
