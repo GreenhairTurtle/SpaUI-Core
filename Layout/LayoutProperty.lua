@@ -23,19 +23,6 @@ PLoop(function()
             end
         end
 
-        -- @param leftToRight: whether LayoutDirection.LEFT_TO_RIGHT or LayoutDirection.RIGHT_TO_LEFT
-        -- @param topToBottom: whether LayoutDirection.TOP_TO_BOTTOM or LayoutDirection.BOTTOM_TO_TOP
-        -- @return left top right bottom
-        __Static__()
-        __Arguments__{ Padding, Boolean, Boolean }
-        function GetMirrorPadding(padding, leftToRight, topToBottom)
-            local left = leftToRight and padding.left or padding.right
-            local right = leftToRight and padding.right or padding.left
-            local top = topToBottom and padding.top or padding.bottom
-            local bottom = topToBottom and padding.bottom or padding.top
-            return left, top, right, bottom
-        end
-
     end)
 
     __Sealed__()
@@ -59,19 +46,6 @@ PLoop(function()
                 value.right = value.right or 0
                 value.bottom = value.bottom or 0
             end
-        end
-
-        -- @param leftToRight: whether LayoutDirection.LEFT_TO_RIGHT or LayoutDirection.RIGHT_TO_LEFT
-        -- @param topToBottom: whether LayoutDirection.TOP_TO_BOTTOM or LayoutDirection.BOTTOM_TO_TOP
-        -- @return left top right bottom
-        __Static__()
-        __Arguments__{ Margin, Boolean, Boolean }
-        function GetMirrorMargin(margin, leftToRight, topToBottom)
-            local left = leftToRight and margin.left or margin.right
-            local right = leftToRight and margin.right or margin.left
-            local top = topToBottom and margin.top or margin.bottom
-            local bottom = topToBottom and margin.bottom or margin.top
-            return left, top, right, bottom
         end
 
     end)
@@ -175,17 +149,11 @@ PLoop(function()
 
         __valid = function(value, onlyValid)
             if value.width < 0 then
-                if not value.prefWidth then
-                    return onlyValid or "the %s's prefWidth can not be nil when width is wrap content or match parent"
-                end
                 if value.prefWidth == SizeMode.MATCH_PARENT then
                     return onlyValid or "the %s's prefWidth can not be set to match parent"
                 end
             end
             if value.height < 0 then
-                if not value.prefHeight then
-                    return onlyValid or "the %s's prefHeight can not be nil when height is wrap content or match parent"
-                end
                 if value.prefHeight == SizeMode.MATCH_PARENT then
                     return onlyValid or "the %s's prefHeight can not be set to match parent"
                 end
@@ -193,8 +161,11 @@ PLoop(function()
         end
 
         __Static__()
-        __Arguments__{ LayoutFrame, LayoutParams }
+        __Arguments__{ LayoutFrame, LayoutParams }:Throwable()
         function GetPrefWidth(view, layoutParams)
+            if not layoutParams.prefWidth then
+                return throw("the " .. view:GetName() .. "'s prefWidth can not be nil when width is wrap content or match parent")
+            end
             if layoutParams.prefWidth == SizeMode.WRAP_CONTENT then
                 return view:GetWidth()
             end
@@ -203,8 +174,11 @@ PLoop(function()
         end
 
         __Static__()
-        __Arguments__{ LayoutFrame, LayoutParams }
+        __Arguments__{ LayoutFrame, LayoutParams }:Throwable()
         function GetPrefHeight(view, layoutParams)
+            if not layoutParams.prefHeight then
+                return throw("the " .. view:GetName() .. "'s prefHeight can not be nil when height is wrap content or match parent")
+            end
             if layoutParams.prefHeight == SizeMode.WRAP_CONTENT then
                 return view:GetHeight()
             end

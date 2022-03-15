@@ -47,12 +47,9 @@ PLoop(function()
                 end
             end
 
-            local direction = self.LayoutDirection
             local gravity = self.Gravity
-
-            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and true or false
-            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and true or false
-            local paddingStart, paddingTop, paddingEnd, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
+            local padding = self.Padding
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
             local width, height = self:GetSize()
 
             local heightAvaliable = height - paddingTop - paddingBottom
@@ -71,7 +68,8 @@ PLoop(function()
 
             for _, child in ipairs(self.__Children) do
                 local childLp = child:GetLayoutParams()
-                local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
+                local margin = childLp.margin
+                local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
                 local childHGravity = childLp.gravity and getHorizontalGravity(childLp.gravity) or defaultHGravity
                 local childWidth, childHeight = child:GetSize()
                 local xOffset
@@ -99,12 +97,10 @@ PLoop(function()
                 end
             end
 
-            local direction = self.LayoutDirection
             local gravity = self.Gravity
+            local padding = self.Padding
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
 
-            local topToBottom = Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) and true or false
-            local leftToRight = Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) and true or false
-            local paddingStart, paddingTop, paddingEnd, paddingBottom = Padding.GetMirrorPadding(self.Padding, leftToRight, topToBottom)
             local width, height = self:GetSize()
 
             local heightAvaliable = height - paddingTop - paddingBottom
@@ -123,7 +119,8 @@ PLoop(function()
 
             for _, child in ipairs(self.__Children) do
                 local childLp = child:GetLayoutParams()
-                local marginStart, marginTop, marginEnd, marginBottom = Margin.GetMirrorMargin(childLp.margin, leftToRight, topToBottom)
+                local margin = childLp.margin
+                local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
                 local childVGravity = childLp.gravity and getVerticalGravity(childLp.gravity) or defaultVGravity
                 local childWidth, childHeight = child:GetSize()
                 local yOffset
@@ -217,24 +214,27 @@ PLoop(function()
 
             -- if we have not measure size, so content size is that we need
             if not measureWidth then
-                measureWidth = maxWidth and math.min(contentWidth, maxWidth) or contentWidth
+                local newMeasureWidth = contentWidth + padding.left + padding.right
+                measureWidth = maxWidth and math.min(newMeasureWidth, maxWidth) or newMeasureWidth
             end
             if not measureHeight then
-                measureHeight = maxHeight and math.min(contentHeight, maxHeight) or contentHeight
+                local newMeasureHeight = contentHeight + padding.top + padding.bottom
+                measureHeight = maxHeight and math.min(newMeasureHeight, maxHeight) or newMeasureHeight
             end
 
             -- Now that we have determined the LinearLayout size, it's time to recalculate the size of the child.
             -- Because of the weight, some child need to be re-distributed in size
             if checkWeight then
                 if orientation == Orientation.VERTICAL then
-                    local childHeightRemain = measureHeight - contentHeight
+                    local childHeightRemain = measureHeight - contentHeight - padding.top - padding.bottom
                     if childHeightRemain ~= 0 then
                         self.__ContentWidth, self.__ContentHeight = 0, 0
                         for _, child in ipairs(self.__Children) do
-                            local childLayoutParams = child:GetLayoutParams()
+                            local childLp = child:GetLayoutParams()
+                            local margin = childLp.margin
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
-                            if childLayoutParams.weight and childLayoutParams.height <= 0 and child:GetVisibility() ~= Visibility.GONE then
-                                local newHeight = math.max(0, child:GetHeight() + childHeightRemain * childLayoutParams.weight/weightSum)
+                            if childLp.weight and childLp.height <= 0 and child:GetVisibility() ~= Visibility.GONE then
+                                local newHeight = math.max(0, child:GetHeight() + childHeightRemain * childLp.weight/weightSum)
                                 --if child is viewgroup, remeasure child to make child's children resize
                                 if ViewGroup.IsViewGroup(child) then
                                     local childWidth, childHeight = self:MeasureChild(child,
@@ -245,19 +245,20 @@ PLoop(function()
                                     child:SetHeight(newHeight)
                                 end
                             end
-                            self.__ContentWidth = self.__ContentWidth + child:GetWidth()
-                            self.__ContentHeight = self.__ContentHeight + child:GetHeight()
+                            self.__ContentWidth = math.max(child:GetWidth() + margin.left + margin.right, self.__ContentWidth)
+                            self.__ContentHeight = self.__ContentHeight + child:GetHeight() + margin.top + margin.bottom
                         end
                     end
                 else
-                    local childWidthRemain = measureWidth - contentWidth
+                    local childWidthRemain = measureWidth - contentWidth - padding.left - padding.right
                     if childWidthRemain ~= 0 then
                         self.__ContentWidth, self.__ContentHeight = 0, 0
                         for _, child in ipairs(self.__Children) do
-                            local childLayoutParams = child:GetLayoutParams()
+                            local childLp = child:GetLayoutParams()
+                            local margin = childLp.margin
                             -- weight only work when size is WRAP_CONTENT, MATCH_PARENT and 0
-                            if childLayoutParams.weight and childLayoutParams.width <= 0 and child:GetVisibility() ~= Visibility.GONE then
-                                local newWidth = math.max(0, child:GetWidth() + childWidthRemain * childLayoutParams.weight/weightSum)
+                            if childLp.weight and childLp.width <= 0 and child:GetVisibility() ~= Visibility.GONE then
+                                local newWidth = math.max(0, child:GetWidth() + childWidthRemain * childLp.weight/weightSum)
                                 -- if child is viewgroup, remeasure child to make child's children resize
                                 if ViewGroup.IsViewGroup(child) then
                                     local childWidth, childHeight = self:MeasureChild(child,
@@ -268,8 +269,8 @@ PLoop(function()
                                     child:SetWidth(newWidth)
                                 end
                             end
-                            self.__ContentWidth = self.__ContentWidth + child:GetWidth()
-                            self.__ContentHeight = self.__ContentHeight + child:GetHeight()
+                            self.__ContentWidth = self.__ContentWidth + child:GetWidth() + margin.left + margin.right
+                            self.__ContentHeight = math.max(child:GetHeight() + margin.top + margin.bottom, self.__ContentHeight)
                         end
                     end
                 end
