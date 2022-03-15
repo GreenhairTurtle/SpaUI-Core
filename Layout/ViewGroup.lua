@@ -65,9 +65,13 @@ PLoop(function()
         end
 
         local function OnChildSizeChanged(child)
-            local parent = child:GetParent()
-            if parent then
-                parent:Refresh()
+            local layoutParams = child:GetLayoutParams()
+            -- only refresh when child layout params's width or height <=0
+            if layoutParams and layoutParams.width <= 0 or layoutParams.height <= 0 then
+                local parent = child:GetParent()
+                if parent then
+                    parent:Refresh()
+                end
             end
         end
 
@@ -130,6 +134,68 @@ PLoop(function()
             end
         end
 
+        local function RemoveScriptToTextureAddFontString(child)
+            child.SetWidth = child.__Original_SetWidth
+            child.SetHeight = child.__Original_SetHeight
+            child.SetSize = child.__Original_SetSize
+            child.Show = child.__Original_Show
+            child.Hide = child.__Original_Hide
+            child.SetShown = child.__Original_SetShown
+        end
+
+        -- @todo
+        local function AddScriptToFontString(child)
+            child.__Original_SetText = child.SetText
+            child.__Original_SetFormattedText = child.SetFormattedText
+            child.__Original_SetMaxLines = child.SetMaxLines
+            child.__Original_SetTextScale = child.SetTextScale
+            child.__Original_SetTextHeight = child.SetTextHeight
+            child.__Original_SetWordWrap = child.SetWordWrap
+
+            child.SetText = function(self, text)
+                local originalText = self:GetText()
+                if originalText ~= text then
+                    self.__Original_SetText(self, text)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            child.SetFormattedText = function(self, format, ...)
+                self.__Original_SetFormattedText(self, format, ...)
+                OnChildSizeChanged(self)
+            end
+
+            child.SetMaxLines = function(self, maxLines)
+                local originalMaxLines = self:GetMaxLines()
+                if originalMaxLines ~= maxLines then
+                    self.__Original_SetMaxLines(self, maxLines)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            child.SetTextScale = function(self, textScale)
+                local originalTextScale = self:GetTextScale()
+                if originalTextScale ~= textScale then
+                    self.__Original_SetTextScale(self, textScale)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            child.SetTextHeight = function(self, textHeight)
+                -- @todo check old to filter multi call
+                self.__Original_SetTextHeight(self, textHeight)
+                OnChildSizeChanged(self)
+            end
+
+            child.SetWordWrap = function(self, wordWrap)
+                local originalWordWrap = self:CanWordWrap()
+                if originalWordWrap ~= wordWrap then
+                    self.__Original_SetWordWrap(self, wordWrap)
+                    OnChildSizeChanged(self)
+                end
+            end
+        end
+
         local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
             child:ClearAllPoints()
@@ -156,6 +222,7 @@ PLoop(function()
 
             if Class.ValidateValue(FontString, child, true) then
                 AddScriptToTextureAndFontString(child)
+                AddScriptToFontString(child)
             end
         end
 
@@ -171,6 +238,14 @@ PLoop(function()
                 child.GetLayoutParams = nil
                 child.SetVisibility = nil
                 child.GetVisibility = nil
+            end
+
+            if Class.ValidateValue(Texture, child, true) then
+                RemoveScriptToTextureAddFontString(child)
+            end
+
+            if Class.ValidateValue(FontString, child, true) then
+                RemoveScriptToTextureAddFontString(child)
             end
         end
 
