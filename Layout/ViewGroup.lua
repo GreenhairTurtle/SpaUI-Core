@@ -143,7 +143,6 @@ PLoop(function()
             child.SetShown = child.__Original_SetShown
         end
 
-        -- @todo
         local function AddScriptToFontString(child)
             child.__Original_SetText = child.SetText
             child.__Original_SetFormattedText = child.SetFormattedText
@@ -151,6 +150,9 @@ PLoop(function()
             child.__Original_SetTextScale = child.SetTextScale
             child.__Original_SetTextHeight = child.SetTextHeight
             child.__Original_SetWordWrap = child.SetWordWrap
+            child.__Original_SetSpacing = child.SetSpacing
+            child.__Original_SetFontObject = child.SetFontObject
+            child.__Original_SetFont = child.SetFont
 
             child.SetText = function(self, text)
                 local originalText = self:GetText()
@@ -182,7 +184,6 @@ PLoop(function()
             end
 
             child.SetTextHeight = function(self, textHeight)
-                -- @todo check old to filter multi call
                 self.__Original_SetTextHeight(self, textHeight)
                 OnChildSizeChanged(self)
             end
@@ -194,6 +195,36 @@ PLoop(function()
                     OnChildSizeChanged(self)
                 end
             end
+
+            child.SetSpacing = function(self, spacing)
+                local originalSpacing = self:GetSpacing()
+                if originalSpacing ~= spacing then
+                    self.__Original_SetSpacing(self, spacing)
+                    OnChildSizeChanged(self)
+                end
+            end
+
+            child.SetFontObject = function(self, ...)
+                child.__Original_SetFontObject(self, ...)
+                OnChildSizeChanged(self)
+            end
+
+            child.SetFont = function(self, ...)
+                child.__Original_SetFont(self, ...)
+                OnChildSizeChanged(self)
+            end
+        end
+
+        local function RemoveScriptToFontString(child)
+            child.__Original_SetText            = child.SetText
+            child.__Original_SetFormattedText   = child.SetFormattedText
+            child.__Original_SetMaxLines        = child.SetMaxLines
+            child.__Original_SetTextScale       = child.SetTextScale
+            child.__Original_SetTextHeight      = child.SetTextHeight
+            child.__Original_SetWordWrap        = child.SetWordWrap
+            child.__Original_SetSpacing         = child.SetSpacing
+            child.__Original_SetFontObject      = child.SetFontObject
+            child.__Original_SetFont            = child.SetFont
         end
 
         local function OnChildAdded(self, child)
@@ -279,6 +310,7 @@ PLoop(function()
             child:SetLayoutParams(layoutParams)
         end
 
+        -- Remove child by name
         __Final__()
         __Arguments__{ NEString }
         function RemoveChild(self, childName)
@@ -288,6 +320,7 @@ PLoop(function()
             self:RemoveChild(child)
         end
 
+        -- Remove child by obj
         __Final__()
         __Arguments__{ LayoutFrame }
         function RemoveChild(self, child)
@@ -297,6 +330,40 @@ PLoop(function()
                 child:SetParent(nil)
                 self:Refresh()
             end
+        end
+
+        -- Call this function to set width
+        -- @param width: see LayoutParams.width
+        __Arguments__{ NonNegativeNumber + SizeMode }
+        function SetLayoutWidth(self, width)
+            local layoutParams = self:GetLayoutParams()
+            layoutParams.width = width
+            self:Refresh()
+        end
+
+        -- Call this function to set height
+        -- @param height: see LayoutParams.height
+        __Arguments__{ NonNegativeNumber + SizeMode }
+        function SetLayoutHeight(self, height)
+            local layoutParams = self:GetLayoutParams()
+            layoutParams.height = height
+            self:Refresh()
+        end
+
+        -- Call this function to set size
+        -- @param width: see LayoutParams.width
+        -- @param height: see LayoutParams.height
+        __Arguments__{ NonNegativeNumber + SizeMode, NonNegativeNumber + SizeMode }
+        function SetLayoutSize(self, width, height)
+            local layoutParams = self:GetLayoutParams()
+            layoutParams.width = width
+            layoutParams.height = height
+            self:Refresh()
+        end
+
+        __Arguments__{ Size }
+        function SetLayoutSize(self, size)
+            self:SetLayoutSize(size.width, size.height)
         end
 
         -------------------------------------
@@ -320,9 +387,13 @@ PLoop(function()
 
         -- will copy to child
         function GetLayoutParams(self)
-            return self.__LayoutParams or wrapContentLayoutParams
+            if not self.__LayoutParams then
+                self.__LayoutParams = Toolset.clone(wrapContentLayoutParams, true)
+            end
+            return self.__LayoutParams
         end
 
+        -- will copy to child
         __Arguments__{ Visibility }
         function SetVisibility(self, visibility)
             self.__Visibility = visibility
@@ -333,6 +404,7 @@ PLoop(function()
             end
         end
 
+        -- will copy to child
         function GetVisibility(self)
             local shown = self:IsShown()
             if shown then
