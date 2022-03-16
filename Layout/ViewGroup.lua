@@ -281,19 +281,8 @@ PLoop(function()
         end
 
         __Final__()
-        __Arguments__{ LayoutFrame, NaturalNumber/nil }:Throwable()
-        function AddChild(self, child, index)
-            self:AddChild(child, index, wrapContentLayoutParams)
-        end
-
-        __Arguments__{ LayoutFrame, LayoutParams }:Throwable()
-        function AddChild(self, child, layoutParams)
-            self:AddChild(child, nil, layoutParams)
-        end
-
-        __Final__()
-        __Arguments__{ LayoutFrame, NaturalNumber/nil, LayoutParams/wrapContentLayoutParams }:Throwable()
-        function AddChild(self, child, index, layoutParams)
+        __Arguments__{ LayoutFrame, LayoutParams/nil, NaturalNumber/nil }:Throwable()
+        function AddChild(self, child, layoutParams, index)
             if tContains(self.__Children, child) then
                 throw("The child has already been added")
             end
@@ -302,12 +291,11 @@ PLoop(function()
                 index = #self.__Children + 1
             end
 
-            -- @todo FontString和Texture特殊处理
             OnChildAdded(self, child)
             tinsert(self.__Children, index, child)
 
-            -- SetLayoutParams has installed in OnChildAdded
-            child:SetLayoutParams(layoutParams)
+            -- SetLayoutParams function has installed in OnChildAdded
+            child:SetLayoutParams(layoutParams or child:GetLayoutParams())
         end
 
         -- Remove child by name
@@ -371,7 +359,7 @@ PLoop(function()
         -------------------------------------
 
         -- will copy to child
-        __Arguments__{ LayoutParams }
+        __Arguments__{ LayoutParams/nil }
         function SetLayoutParams(self, layoutParams)
             self.__LayoutParams = layoutParams
             -- if not viewgroup and parent is viewgroup, call parent's refresh
@@ -456,9 +444,13 @@ PLoop(function()
             local layoutParams = self:GetLayoutParams()
             local parent = self:GetParent()
             local inViewGroup = parent and ViewGroup.IsViewGroup(parent)
-            -- if ViewGroup's size mode is wrap content, so call parent's refresh function and stop further processing
-            if inViewGroup and (layoutParams.width == SizeMode.WRAP_CONTENT or layoutParams.height == SizeMode.WRAP_CONTENT) then
-                return parent:Refresh()
+            -- if self or parent size is unspecified, so call parent's refresh function and stop further processing
+            if inViewGroup then
+                local parentLp = parent:GetLayoutParams()
+                if  (layoutParams.width <= 0 or layoutParams.height <= 0
+                        or parentLp.width <= 0 or parentLp.height <= 0) then
+                    return parent:Refresh()
+                end
             end
 
             -- must be the topest viewgroup whose size needs to be changed now.
