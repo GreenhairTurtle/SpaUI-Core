@@ -216,15 +216,15 @@ PLoop(function()
         end
 
         local function RemoveScriptToFontString(child)
-            child.__Original_SetText            = child.SetText
-            child.__Original_SetFormattedText   = child.SetFormattedText
-            child.__Original_SetMaxLines        = child.SetMaxLines
-            child.__Original_SetTextScale       = child.SetTextScale
-            child.__Original_SetTextHeight      = child.SetTextHeight
-            child.__Original_SetWordWrap        = child.SetWordWrap
-            child.__Original_SetSpacing         = child.SetSpacing
-            child.__Original_SetFontObject      = child.SetFontObject
-            child.__Original_SetFont            = child.SetFont
+            child.SetText = child.__Original_SetText
+            child.SetFormattedText = child.__Original_SetFormattedText
+            child.SetMaxLines = child.__Original_SetMaxLines
+            child.SetTextScale = child.__Original_SetTextScale
+            child.SetTextHeight = child.__Original_SetTextHeight
+            child.SetWordWrap = child.__Original_SetWordWrap
+            child.SetSpacing = child.__Original_SetSpacing
+            child.SetFontObject = child.__Original_SetFontObject
+            child.SetFont = child.__Original_SetFont
         end
 
         local function OnChildAdded(self, child)
@@ -277,6 +277,7 @@ PLoop(function()
 
             if Class.ValidateValue(FontString, child, true) then
                 RemoveScriptToTextureAddFontString(child)
+                RemoveScriptToFontString(child)
             end
         end
 
