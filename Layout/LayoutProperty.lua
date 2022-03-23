@@ -160,32 +160,6 @@ PLoop(function()
             end
         end
 
-        __Static__()
-        __Arguments__{ LayoutFrame, LayoutParams }:Throwable()
-        function GetPrefWidth(view, layoutParams)
-            if not layoutParams.prefWidth then
-                return throw("the " .. view:GetName() .. "'s prefWidth can not be nil when width is wrap content or match parent")
-            end
-            if layoutParams.prefWidth == SizeMode.WRAP_CONTENT then
-                return view:GetWidth()
-            end
-
-            return layoutParams.prefWidth
-        end
-
-        __Static__()
-        __Arguments__{ LayoutFrame, LayoutParams }:Throwable()
-        function GetPrefHeight(view, layoutParams)
-            if not layoutParams.prefHeight then
-                return throw("the " .. view:GetName() .. "'s prefHeight can not be nil when height is wrap content or match parent")
-            end
-            if layoutParams.prefHeight == SizeMode.WRAP_CONTENT then
-                return view:GetHeight()
-            end
-
-            return layoutParams.prefHeight
-        end
-
     end)
     
 end)

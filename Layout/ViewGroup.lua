@@ -11,6 +11,23 @@ PLoop(function()
         math            = math
     }
 
+    -- Wraps FontString to make it size-change aware
+    class "FontStringWrapper"(function()
+        inherit "Frame"
+
+        property "FontString"   {
+            type                = FontString,
+            handler             = function(self, new, old)
+                self:OnFontStringChanged(new, old)
+            end
+        }
+
+        function OnFontStringChanged(self, new, old)
+            
+        end
+
+    end)
+
     -------------------------------
     --          ViewGroup        --
     -------------------------------
@@ -237,6 +254,8 @@ PLoop(function()
                 child.GetLayoutParams = ViewGroup.GetLayoutParams
                 child.SetVisibility = ViewGroup.SetVisibility
                 child.GetVisibility = ViewGroup.GetVisibility
+                child.GetPrefWidth = ViewGroup.GetPrefWidth
+                child.GetPrefHeight = ViewGroup.GetPrefHeight
             end
 
             if Class.ValidateValue(Frame, child, true) then
@@ -269,6 +288,8 @@ PLoop(function()
                 child.GetLayoutParams = nil
                 child.SetVisibility = nil
                 child.GetVisibility = nil
+                child.GetPrefWidth = nil
+                child.GetPrefHeight = nil
             end
 
             if Class.ValidateValue(Texture, child, true) then
@@ -355,13 +376,25 @@ PLoop(function()
             self:SetLayoutSize(size.width, size.height)
         end
 
+        -- Implement this function to check layoutParams valid
+        -- @return true or false
+        __Arguments__{ LayoutParams }
+        function CheckLayoutParams(self, layoutParams)
+            return true
+        end
+
         -------------------------------------
         --        Universal functions      --
         -------------------------------------
 
         -- will copy to child
-        __Arguments__{ LayoutParams/nil }
+        __Final__()
+        __Arguments__{ LayoutParams/nil }:Throwable()
         function SetLayoutParams(self, layoutParams)
+            if layoutParams and not self:CheckLayoutParams(layoutParams) then
+                throw("LayoutParams is invalid")
+            end
+
             self.__LayoutParams = layoutParams
             -- if not viewgroup and parent is viewgroup, call parent's refresh
             if not ViewGroup.IsViewGroup(self) then
@@ -375,6 +408,7 @@ PLoop(function()
         end
 
         -- will copy to child
+        __Final__()
         function GetLayoutParams(self)
             if not self.__LayoutParams then
                 self.__LayoutParams = Toolset.clone(wrapContentLayoutParams, true)
@@ -410,6 +444,36 @@ PLoop(function()
             end
 
             return self.__Visibility
+        end
+
+        -- will copy to child
+        function GetPrefWidth(self)
+            local layoutParams = self:GetLayoutParams()
+
+            if layoutParams.prefWidth == SizeMode.WRAP_CONTENT then
+                return view:GetWidth()
+            end
+
+            if not layoutParams.prefWidth then
+                return throw("the " .. view:GetName() .. "'s prefWidth can not be nil when width is wrap content or match parent")
+            end
+
+            return layoutParams.prefWidth
+        end
+
+        -- will copy to child
+        function GetPrefHeight(self)
+            local layoutParams = self:GetLayoutParams()
+
+            if layoutParams.prefHeight == SizeMode.WRAP_CONTENT then
+                return view:GetHeight()
+            end
+            
+            if not layoutParams.prefHeight then
+                return throw("the " .. view:GetName() .. "'s prefHeight can not be nil when height is wrap content or match parent")
+            end
+
+            return layoutParams.prefHeight
         end
 
         -------------------------------------
@@ -581,14 +645,14 @@ PLoop(function()
                     width = childLayoutParams.width
                 elseif childLayoutParams.width == SizeMode.MATCH_PARENT then
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        width = LayoutParams.GetPrefWidth(child, childLayoutParams)
+                        width = child:GetPrefWidth()
                     else
                         width = widthMeasureSpec.size
                     end
                 else
                     -- wrap content
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        width = LayoutParams.GetPrefWidth(child, childLayoutParams)
+                        width = child:GetPrefWidth()
                     else
                         width = math.min(childLayoutParams.prefWidth, widthMeasureSpec.size)
                     end
@@ -599,14 +663,14 @@ PLoop(function()
                     height = childLayoutParams.height
                 elseif childLayoutParams.height == SizeMode.MATCH_PARENT then
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        height = LayoutParams.GetPrefHeight(child, childLayoutParams)
+                        height = child:GetPrefHeight()
                     else
                         height = heightMeasureSpec.size
                     end
                 else
                     -- wrap content
                     if heightMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        height = LayoutParams.GetPrefHeight(child, childLayoutParams)
+                        height = child:GetPrefHeight()
                     else
                         height = math.min(childLayoutParams.prefHeight, heightMeasureSpec.size)
                     end
