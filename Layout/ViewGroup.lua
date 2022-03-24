@@ -1,7 +1,6 @@
 PLoop(function()
 
     namespace "SpaUI.Widget.Layout"
-    import "SpaUI.Widget"
 
     export {
         tinsert         = table.insert,
@@ -10,6 +9,140 @@ PLoop(function()
         tContains       = tContains,
         math            = math
     }
+
+    -- Wraps Texture to make it size-change aware
+    class "TextureWrapper"(function()
+        inherit "Frame"
+
+        property "Texture"      {
+            type                = Texture,
+            handler             = function(self, new, old)
+                self:OnTextureChanged(new, old)
+            end
+        }
+
+        local function addScriptToTexture(wrapper, texture)
+            texture.__Original_SetWidth = texture.SetWidth
+            texture.__Original_SetHeight = texture.SetHeight
+            texture.__Original_SetSize = texture.SetSize
+            texture.__Original_Show = texture.Show
+            texture.__Original_Hide = texture.Hide
+            texture.__Original_SetShown = texture.SetShown
+
+            -- replace size function
+            texture.SetWidth = function(self, width)
+                if width ~= self:GetWidth() then
+                    wrapper:SetWidth(width)
+                end
+            end
+
+            texture.SetHeight = function(self, height)
+                if height ~= self:GetHeight() then
+                    wrapper:SetHeight(height)
+                end
+            end
+
+            texture.SetSize = function(self, width, height)
+                if width ~= self:GetWidth() or height ~= self:GetHeight() then
+                    wrapper:SetSize(width, height)
+                end
+            end
+
+            -- replace visibility function
+            texture.Show = function(self)
+                if not self:IsShown() then
+                    wrapper:Show()
+                end
+            end
+
+            texture.Hide = function(self)
+                if self:IsShown() then
+                    wrapper:Hide()
+                end
+            end
+
+            texture.SetShown = function(self, shown)
+                local current = self:IsShown()
+                if shown ~= current then
+                    if current then
+                        wrapper:Hide()
+                    else
+                        wrapper:Show()
+                    end
+                end
+            end
+        end
+
+        local function removeScriptFromTexture(texture)
+            texture.SetWidth = texture.__Original_SetWidth
+            texture.SetHeight = texture.__Original_SetHeight
+            texture.SetSize = texture.__Original_SetSize
+            texture.Show = texture.__Original_Show
+            texture.Hide = texture.__Original_Hide
+            texture.SetShown = texture.__Original_SetShown
+        end
+
+        function OnTextureChanged(self, new, old)
+            if new then
+                addScriptToTexture(self, new)
+            end
+            if old then
+                removeScriptFromTexture(old)
+            end
+        end
+
+        -- @Override
+        __Final__()
+        function SetSize(self, width, height)
+            super.SetSize(self, width, height)
+            if self.Texture then
+                self.Texture:__Original_SetSize(width, height)
+            end
+        end
+
+        -- @Override
+        __Final__()
+        function SetWidth(self, width)
+            super.SetWidth(self, width)
+            if self.Texture then
+                self.Texture:__Original_SetWidth(width)
+            end
+        end
+
+        -- @Override
+        __Final__()
+        function SetHeight(self, height)
+            super.SetHeight(self, height)
+            if self.Texture then
+                self.Texture:__Original_SetHeight(height)
+            end
+        end
+
+        -- @Override
+        function Show(self)
+            super.Show(self)
+            if self.Texture then
+                self.Texture:__Original_Show()
+            end
+        end
+
+        -- @Override
+        function Hide(self)
+            super.Hide(self)
+            if self.Texture then
+                self.Texture:__Original_Hide()
+            end
+        end
+
+        -- @Override
+        function SetShown(self, shown)
+            super.SetShown(self, shown)
+            if self.Texture then
+                self.Texture:__Original_SetShown(shown)
+            end
+        end
+
+    end)
 
     -- Wraps FontString to make it size-change aware
     class "FontStringWrapper"(function()
@@ -22,8 +155,210 @@ PLoop(function()
             end
         }
 
+        local function addScriptToFontString(wrapper, fontString)
+            fontString.__Original_SetWidth = fontString.SetWidth
+            fontString.__Original_SetHeight = fontString.SetHeight
+            fontString.__Original_SetSize = fontString.SetSize
+            fontString.__Original_Show = fontString.Show
+            fontString.__Original_Hide = fontString.Hide
+            fontString.__Original_SetShown = fontString.SetShown
+            fontString.__Original_SetText = fontString.SetText
+            fontString.__Original_SetFormattedText = fontString.SetFormattedText
+            fontString.__Original_SetMaxLines = fontString.SetMaxLines
+            fontString.__Original_SetTextScale = fontString.SetTextScale
+            fontString.__Original_SetTextHeight = fontString.SetTextHeight
+            fontString.__Original_SetWordWrap = fontString.SetWordWrap
+            fontString.__Original_SetSpacing = fontString.SetSpacing
+            fontString.__Original_SetFontObject = fontString.SetFontObject
+            fontString.__Original_SetFont = fontString.SetFont
+
+            -- replace size function
+            fontString.SetWidth = function(self, width)
+                if width ~= self:GetWidth() then
+                    wrapper:SetWidth(width)
+                end
+            end
+
+            fontString.SetHeight = function(self, height)
+                if height ~= self:GetHeight() then
+                    wrapper:SetHeight(height)
+                end
+            end
+
+            fontString.SetSize = function(self, width, height)
+                if width ~= self:GetWidth() or height ~= self:GetHeight() then
+                    wrapper:SetSize(width, height)
+                end
+            end
+
+            -- replace visibility function
+            fontString.Show = function(self)
+                if not self:IsShown() then
+                    wrapper:Show()
+                end
+            end
+
+            fontString.Hide = function(self)
+                if self:IsShown() then
+                    wrapper:Hide()
+                end
+            end
+
+            fontString.SetShown = function(self, shown)
+                local current = self:IsShown()
+                if shown ~= current then
+                    if current then
+                        wrapper:Hide()
+                    else
+                        wrapper:Show()
+                    end
+                end
+            end
+    
+            fontString.SetText = function(self, text)
+                local originalText = self:GetText()
+                if originalText ~= text then
+                    self.__Original_SetText(self, text)
+                    wrapper:OnSizeChanged(self:GetSize())
+                end
+            end
+    
+            fontString.SetFormattedText = function(self, format, ...)
+                self.__Original_SetFormattedText(self, format, ...)
+                wrapper:OnSizeChanged(self:GetSize())
+            end
+    
+            fontString.SetMaxLines = function(self, maxLines)
+                local originalMaxLines = self:GetMaxLines()
+                if originalMaxLines ~= maxLines then
+                    self.__Original_SetMaxLines(self, maxLines)
+                    wrapper:OnSizeChanged(self:GetSize())
+                end
+            end
+    
+            fontString.SetTextScale = function(self, textScale)
+                local originalTextScale = self:GetTextScale()
+                if originalTextScale ~= textScale then
+                    self.__Original_SetTextScale(self, textScale)
+                    wrapper:OnSizeChanged(self:GetSize())
+                end
+            end
+    
+            fontString.SetTextHeight = function(self, textHeight)
+                self.__Original_SetTextHeight(self, textHeight)
+                wrapper:OnSizeChanged(self:GetSize())
+            end
+    
+            fontString.SetWordWrap = function(self, wordWrap)
+                local originalWordWrap = self:CanWordWrap()
+                if originalWordWrap ~= wordWrap then
+                    self.__Original_SetWordWrap(self, wordWrap)
+                    wrapper:OnSizeChanged(self:GetSize())
+                end
+            end
+    
+            fontString.SetSpacing = function(self, spacing)
+                local originalSpacing = self:GetSpacing()
+                if originalSpacing ~= spacing then
+                    self.__Original_SetSpacing(self, spacing)
+                    wrapper:OnSizeChanged(self:GetSize())
+                end
+            end
+    
+            fontString.SetFontObject = function(self, ...)
+                fontString.__Original_SetFontObject(self, ...)
+                wrapper:OnSizeChanged(self:GetSize())
+            end
+    
+            fontString.SetFont = function(self, ...)
+                fontString.__Original_SetFont(self, ...)
+                wrapper:OnSizeChanged(self:GetSize())
+            end
+        end
+    
+        local function removeScriptFromFontString(fontString)
+            fontString.SetWidth = fontString.__Original_SetWidth
+            fontString.SetHeight = fontString.__Original_SetHeight
+            fontString.SetSize = fontString.__Original_SetSize
+            fontString.Show = fontString.__Original_Show
+            fontString.Hide = fontString.__Original_Hide
+            fontString.SetShown = fontString.__Original_SetShown
+            fontString.SetText = fontString.__Original_SetText
+            fontString.SetFormattedText = fontString.__Original_SetFormattedText
+            fontString.SetMaxLines = fontString.__Original_SetMaxLines
+            fontString.SetTextScale = fontString.__Original_SetTextScale
+            fontString.SetTextHeight = fontString.__Original_SetTextHeight
+            fontString.SetWordWrap = fontString.__Original_SetWordWrap
+            fontString.SetSpacing = fontString.__Original_SetSpacing
+            fontString.SetFontObject = fontString.__Original_SetFontObject
+            fontString.SetFont = fontString.__Original_SetFont
+        end
+
         function OnFontStringChanged(self, new, old)
-            
+            if new then
+                addScriptToFontString(self, new)
+            end
+            if old then
+                removeScriptFromFontString(old)
+            end
+        end
+
+        -- @Override
+        __Final__()
+        function SetSize(self, width, height)
+            super.SetSize(self, width, height)
+            if self.FontString then
+                self.FontString:__Original_SetSize(width, height)
+            end
+        end
+
+        -- @Override
+        __Final__()
+        function SetWidth(self, width)
+            super.SetWidth(self, width)
+            if self.FontString then
+                self.FontString:__Original_SetWidth(width)
+            end
+        end
+
+        -- @Override
+        __Final__()
+        function SetHeight(self, height)
+            super.SetHeight(self, height)
+            if self.FontString then
+                self.FontString:__Original_SetHeight(height)
+            end
+        end
+
+        -- @Override
+        function Show(self)
+            super.Show(self)
+            if self.FontString then
+                self.FontString:__Original_Show()
+            end
+        end
+
+        -- @Override
+        function Hide(self)
+            super.Hide(self)
+            if self.FontString then
+                self.FontString:__Original_Hide()
+            end
+        end
+
+        -- @Override
+        function SetShown(self, shown)
+            super.SetShown(self, shown)
+            if self.FontString then
+                self.FontString:__Original_SetShown(shown)
+            end
+        end
+
+        -- @todo
+        function GetPrefWidth(self)
+        end
+
+        function GetPrefHeight(self)
         end
 
     end)
@@ -92,158 +427,6 @@ PLoop(function()
             end
         end
 
-        -- add size changed and visible changed script to texture and fontstring
-        local function AddScriptToTextureAndFontString(child)
-            child.__Original_SetWidth = child.SetWidth
-            child.__Original_SetHeight = child.SetHeight
-            child.__Original_SetSize = child.SetSize
-            child.__Original_Show = child.Show
-            child.__Original_Hide = child.Hide
-            child.__Original_SetShown = child.SetShown
-
-            -- replace size function
-            child.SetWidth = function(self, width)
-                if width ~= self:GetWidth() then
-                    self.__Original_SetWidth(self, width)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetHeight = function(self, height)
-                if height ~= self:GetHeight() then
-                    self.__Original_SetHeight(self, height)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetSize = function(self, width, height)
-                if width ~= self:GetWidth() or height ~= self:GetHeight() then
-                    self.__Original_SetSize(self, width, height)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            -- replace visibility function
-            child.Show = function(self)
-                if not self:IsShown() then
-                    self.__Original_Show(self)
-                    OnChildShow(self)
-                end
-            end
-
-            child.Hide = function(self)
-                if self:IsShown() then
-                    self.__Original_Hide(self)
-                    OnChildHide(self)
-                end
-            end
-
-            child.SetShown = function(self, shown)
-                local current = self:IsShown()
-                if shown ~= current then
-                    self.__Original_SetShown(self, shown)
-                    if current then
-                        OnChildHide(self)
-                    else
-                        OnChildShow(self)
-                    end
-                end
-            end
-        end
-
-        local function RemoveScriptToTextureAddFontString(child)
-            child.SetWidth = child.__Original_SetWidth
-            child.SetHeight = child.__Original_SetHeight
-            child.SetSize = child.__Original_SetSize
-            child.Show = child.__Original_Show
-            child.Hide = child.__Original_Hide
-            child.SetShown = child.__Original_SetShown
-        end
-
-        local function AddScriptToFontString(child)
-            child.__Original_SetText = child.SetText
-            child.__Original_SetFormattedText = child.SetFormattedText
-            child.__Original_SetMaxLines = child.SetMaxLines
-            child.__Original_SetTextScale = child.SetTextScale
-            child.__Original_SetTextHeight = child.SetTextHeight
-            child.__Original_SetWordWrap = child.SetWordWrap
-            child.__Original_SetSpacing = child.SetSpacing
-            child.__Original_SetFontObject = child.SetFontObject
-            child.__Original_SetFont = child.SetFont
-
-            child.SetText = function(self, text)
-                local originalText = self:GetText()
-                if originalText ~= text then
-                    self.__Original_SetText(self, text)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetFormattedText = function(self, format, ...)
-                self.__Original_SetFormattedText(self, format, ...)
-                OnChildSizeChanged(self)
-            end
-
-            child.SetMaxLines = function(self, maxLines)
-                local originalMaxLines = self:GetMaxLines()
-                if originalMaxLines ~= maxLines then
-                    self.__Original_SetMaxLines(self, maxLines)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetTextScale = function(self, textScale)
-                local originalTextScale = self:GetTextScale()
-                if originalTextScale ~= textScale then
-                    self.__Original_SetTextScale(self, textScale)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetTextHeight = function(self, textHeight)
-                self.__Original_SetTextHeight(self, textHeight)
-                OnChildSizeChanged(self)
-            end
-
-            child.SetWordWrap = function(self, wordWrap)
-                local originalWordWrap = self:CanWordWrap()
-                if originalWordWrap ~= wordWrap then
-                    self.__Original_SetWordWrap(self, wordWrap)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetSpacing = function(self, spacing)
-                local originalSpacing = self:GetSpacing()
-                if originalSpacing ~= spacing then
-                    self.__Original_SetSpacing(self, spacing)
-                    OnChildSizeChanged(self)
-                end
-            end
-
-            child.SetFontObject = function(self, ...)
-                child.__Original_SetFontObject(self, ...)
-                OnChildSizeChanged(self)
-            end
-
-            child.SetFont = function(self, ...)
-                child.__Original_SetFont(self, ...)
-                OnChildSizeChanged(self)
-            end
-        end
-
-        local function RemoveScriptToFontString(child)
-            child.SetText = child.__Original_SetText
-            child.SetFormattedText = child.__Original_SetFormattedText
-            child.SetMaxLines = child.__Original_SetMaxLines
-            child.SetTextScale = child.__Original_SetTextScale
-            child.SetTextHeight = child.__Original_SetTextHeight
-            child.SetWordWrap = child.__Original_SetWordWrap
-            child.SetSpacing = child.__Original_SetSpacing
-            child.SetFontObject = child.__Original_SetFontObject
-            child.SetFont = child.__Original_SetFont
-        end
-
         local function OnChildAdded(self, child)
             child = UI.GetWrapperUI(child)
             child:ClearAllPoints()
@@ -265,15 +448,6 @@ PLoop(function()
                 child.OnHide = child.OnHide + OnChildHide
                 child.OnSizeChanged = child.OnSizeChanged + OnChildSizeChanged
             end
-
-            if Class.ValidateValue(Texture, child, true) then
-                AddScriptToTextureAndFontString(child)
-            end
-
-            if Class.ValidateValue(FontString, child, true) then
-                AddScriptToTextureAndFontString(child)
-                AddScriptToFontString(child)
-            end
         end
 
         local function OnChildRemoved(self, child)
@@ -290,15 +464,6 @@ PLoop(function()
                 child.GetVisibility = nil
                 child.GetPrefWidth = nil
                 child.GetPrefHeight = nil
-            end
-
-            if Class.ValidateValue(Texture, child, true) then
-                RemoveScriptToTextureAddFontString(child)
-            end
-
-            if Class.ValidateValue(FontString, child, true) then
-                RemoveScriptToTextureAddFontString(child)
-                RemoveScriptToFontString(child)
             end
         end
 

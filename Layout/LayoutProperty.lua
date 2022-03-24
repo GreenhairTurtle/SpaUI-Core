@@ -1,6 +1,6 @@
 PLoop(function()
     
-    namespace "SpaUI.Widget"
+    namespace "SpaUI.Widget.Layout"
 
     __Sealed__()
     struct "Padding"(function()

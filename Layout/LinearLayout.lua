@@ -1,7 +1,6 @@
 PLoop(function()
 
     namespace "SpaUI.Widget.Layout"
-    import "SpaUI.Widget"
 
     __Sealed__()
     class "LinearLayout"(function()
@@ -10,7 +9,7 @@ PLoop(function()
         __Sealed__()
         struct "LayoutParams"(function()
         
-            __base = SpaUI.Widget.LayoutParams
+            __base = SpaUI.Widget.Layout.LayoutParams
 
             member "gravity"    { Type = Gravity }
             -- This property indicates the weight of the length of the child
