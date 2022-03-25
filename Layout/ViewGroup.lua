@@ -119,6 +119,7 @@ PLoop(function()
         end
 
         -- @Override
+        __Final__()
         function Show(self)
             super.Show(self)
             if self.Texture then
@@ -127,6 +128,7 @@ PLoop(function()
         end
 
         -- @Override
+        __Final__()
         function Hide(self)
             super.Hide(self)
             if self.Texture then
@@ -135,6 +137,7 @@ PLoop(function()
         end
 
         -- @Override
+        __Final__()
         function SetShown(self, shown)
             super.SetShown(self, shown)
             if self.Texture then
@@ -331,6 +334,7 @@ PLoop(function()
         end
 
         -- @Override
+        __Final__()
         function Show(self)
             super.Show(self)
             if self.FontString then
@@ -339,6 +343,7 @@ PLoop(function()
         end
 
         -- @Override
+        __Final__()
         function Hide(self)
             super.Hide(self)
             if self.FontString then
@@ -347,6 +352,7 @@ PLoop(function()
         end
 
         -- @Override
+        __Final__()
         function SetShown(self, shown)
             super.SetShown(self, shown)
             if self.FontString then
@@ -356,6 +362,7 @@ PLoop(function()
 
         -- @todo
         function GetPrefWidth(self)
+
         end
 
         function GetPrefHeight(self)
@@ -437,8 +444,6 @@ PLoop(function()
                 child.GetLayoutParams = ViewGroup.GetLayoutParams
                 child.SetVisibility = ViewGroup.SetVisibility
                 child.GetVisibility = ViewGroup.GetVisibility
-                child.GetPrefWidth = ViewGroup.GetPrefWidth
-                child.GetPrefHeight = ViewGroup.GetPrefHeight
             end
 
             if Class.ValidateValue(Frame, child, true) then
@@ -462,8 +467,6 @@ PLoop(function()
                 child.GetLayoutParams = nil
                 child.SetVisibility = nil
                 child.GetVisibility = nil
-                child.GetPrefWidth = nil
-                child.GetPrefHeight = nil
             end
         end
 
@@ -609,36 +612,6 @@ PLoop(function()
             end
 
             return self.__Visibility
-        end
-
-        -- will copy to child
-        function GetPrefWidth(self)
-            local layoutParams = self:GetLayoutParams()
-
-            if layoutParams.prefWidth == SizeMode.WRAP_CONTENT then
-                return view:GetWidth()
-            end
-
-            if not layoutParams.prefWidth then
-                return throw("the " .. view:GetName() .. "'s prefWidth can not be nil when width is wrap content or match parent")
-            end
-
-            return layoutParams.prefWidth
-        end
-
-        -- will copy to child
-        function GetPrefHeight(self)
-            local layoutParams = self:GetLayoutParams()
-
-            if layoutParams.prefHeight == SizeMode.WRAP_CONTENT then
-                return view:GetHeight()
-            end
-            
-            if not layoutParams.prefHeight then
-                return throw("the " .. view:GetName() .. "'s prefHeight can not be nil when height is wrap content or match parent")
-            end
-
-            return layoutParams.prefHeight
         end
 
         -------------------------------------
@@ -810,7 +783,7 @@ PLoop(function()
                     width = childLayoutParams.width
                 elseif childLayoutParams.width == SizeMode.MATCH_PARENT then
                     if widthMeasureSpec.mode == MeasureSpecMode.UNSPECIFIED then
-                        width = child:GetPrefWidth()
+                        width = --@todo
                     else
                         width = widthMeasureSpec.size
                     end
