@@ -1,15 +1,15 @@
 ## Interface: 90200
-## Interface-BCC: 20502
+## Interface-BCC: 20504
 ## Interface-Classic: 11400
 ## Author: 绿毛龟12138
 ## Version: @project-version@
-## Title: SpaUI-Widget
-## Title-zhCN: SpaUI组件库
+## Title: SpaUI-Core
+## Title-zhCN: SpaUI核心
 ## Notes: SpaUI widget library
 ## Dependices: Scorpio
 ## DefaultState: enabled
 
-## X-WebSite: https://github.com/GreenhairTurtle/SpaUI-Widget
+## X-WebSite: https://github.com/GreenhairTurtle/SpaUI-Core
 ## X-Credit: Kurapica
 
 Extend.lua
