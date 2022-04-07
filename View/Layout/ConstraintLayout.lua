@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Widget.Layout"
+    namespace "SpaUI.Layout"
 
     class "ConstraintLayout"(function()
         

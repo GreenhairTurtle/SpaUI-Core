@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Widget.Layout"
+    namespace "SpaUI.Layout"
 
     __Sealed__()
     class "LinearLayout"(function()

@@ -1,6 +1,6 @@
 PLoop(function()
     
-    namespace "SpaUI.Widget.Layout"
+    namespace "SpaUI.Layout"
 
     __Sealed__()
     struct "Padding"(function()
@@ -166,7 +166,7 @@ PLoop(function()
     __Arguments__{ LayoutFrame, LayoutParams }
     function LayoutParams.GetPrefWidth(view, layoutParams)
         -- @todo
-        if layoutParams.width 
+        -- if layoutParams.width 
     end
 
     __Static__()

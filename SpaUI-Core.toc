@@ -13,5 +13,4 @@
 ## X-Credit: Kurapica
 
 Extend.lua
-Layout\Layout.xml
-RecyclerView\RecyclerView.xml
+View.xml
