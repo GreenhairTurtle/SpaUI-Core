@@ -2,6 +2,7 @@ PLoop(function()
 
     namespace "SpaUI.Layout"
 
+    -- Frame wrapper
     class "View"(function()
         inherit "Frame"
 
