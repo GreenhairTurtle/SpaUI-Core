@@ -3,7 +3,7 @@ PLoop(function()
     namespace "SpaUI.Layout"
 
     -- Frame wrapper
-    class "View"(function()
+    interface "View"(function()
         inherit "Frame"
 
         __Arguments__{ LayoutParams/nil }:Throwable()
@@ -35,6 +35,7 @@ PLoop(function()
             self.Visibility = Visibility.VISIBLE
         end
 
+        __Final__()
         function Hide(self)
             self.Visibility = Visibility.GONE
         end

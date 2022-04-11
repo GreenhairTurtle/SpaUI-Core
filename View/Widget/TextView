@@ -1,6 +1,7 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
+    namespace "SpaUI.Layout.Widget"
+    import "SpaUI.Layout.View"
 
     -- FontString wrapper
     class "TextView"(function()
@@ -9,6 +10,94 @@ PLoop(function()
         --------------------------------------------------
         --          FontString functions                --
         --------------------------------------------------
+
+        -- @todo
+        __Arguments__{ String/nil }
+        function SetText(self, text)
+            self.__FontString:SetText(text)
+        end
+
+        function GetText(self)
+            return self.__FontString:GetText()
+        end
+
+        -- @todo
+        function SetFormattedText(self, text, ...)
+            self.__FontString:SetFormattedText(text, ...)
+        end
+
+        __Arguments__{ Number, Number }
+        function SetAlphaGradient(self, start, length)
+            self.__FontString:SetAlphaGradient(start, length)
+        end
+
+        function SetFixedColor(self, state)
+            self.__FontString:SetFixedColor(state)
+        end
+
+        function CanWordWrap(self)
+            return self.__FontString:CanWordWrap()
+        end
+
+        __Arguments__{ Boolean }
+        function SetWordWrap(self, wrap)
+            self.__FontString:SetWordWrap(wrap)
+        end
+
+        function GetTextScale(self)
+            return self.__FontString:GetTextScale()
+        end
+
+        __Arguments__{ Number }
+        function SetTextScale(self, scale)
+            self.__FontString:SetTextScale(scale)
+        end
+
+        function IsTruncated(self)
+            return self.__FontString:IsTruncated()
+        end
+
+        function GetWrappedWidth(self)
+            return self.__FontString:GetWrappedWidth()
+        end
+
+        function GetUnboundedStringWidth(self)
+            return self.__FontString:GetUnboundedStringWidth()
+        end
+
+        function GetStringWidth(self)
+            return self.__FontString:GetStringWidth()
+        end
+
+        function GetStringHeight(self)
+            return self.__FontString:GetStringHeight()
+        end
+
+        function GetNumLines(self)
+            return self.__FontString:GetNumLines()
+        end
+
+        function GetMaxLines(self)
+            return self.__FontString:GetMaxLines()
+        end
+
+        __Arguments__{ Number }
+        function SetMaxLines(self, maxLines)
+            self.__FontString:SetMaxLines(maxLines)
+        end
+
+        function GetLineHeight(self)
+            return self.__FontString:GetLineHeight()
+        end
+
+        __Arguments__{ Number }
+        function SetTextHeight(self, height)
+            self.__FontString:SetTextHeight(height)
+        end
+
+        function GetFieldSize(self)
+            return self.__FontString:GetFieldSize()
+        end
 
         __Arguments__{ Number, Number }
         function FindCharacterIndexAtCoordinate(self, x, y)

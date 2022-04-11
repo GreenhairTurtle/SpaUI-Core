@@ -1,6 +1,7 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
+    namespace "SpaUI.Layout.Widget"
+    import "SpaUI.Layout.View"
 
     -- Texture wrapper
     class "ImageView"(function()
