@@ -2,9 +2,8 @@ PLoop(function()
 
     namespace "SpaUI.Layout"
 
-    -- Frame wrapper
-    interface "View"(function()
-        inherit "Frame"
+    -- Provide some features to all blz widgets
+    interface "IView"(function()
 
         __Arguments__{ LayoutParams/nil }:Throwable()
         function SetLayoutParams(self, layoutParams)
@@ -53,5 +52,8 @@ PLoop(function()
         }
     
     end)
+
+    -- Frame, implement IView
+    class "View"{ Frame, IView }
 
 end)
