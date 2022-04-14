@@ -239,7 +239,7 @@ PLoop(function()
 
         function __ctor(self)
             self.__FontString = FontString("__TextView_FontString", self)
-            self.__FontString:SetAllPoint(self)
+            self.__FontString:SetAllPoints(self)
         end
 
     end)

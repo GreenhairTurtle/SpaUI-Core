@@ -3,6 +3,8 @@
     <Script file="View.lua"/>
     
     <Include file="Layout\Layout.xml"/>
+    <Include file="Widget\Widget.xml"/>
+    <Script file="Demo.lua"/>
     <!-- <Include file="RecyclerView\RecyclerView.xml"/> -->
     <!-- <Include file="Widget\Widget.xml"/> -->
 </Ui>

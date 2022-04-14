@@ -161,18 +161,5 @@ PLoop(function()
         end
 
     end)
-
-    __Static__()
-    __Arguments__{ LayoutFrame, LayoutParams }
-    function LayoutParams.GetPrefWidth(view, layoutParams)
-        -- @todo
-        -- if layoutParams.width 
-    end
-
-    __Static__()
-    __Arguments__{ LayoutFrame, LayoutParams }
-    function LayoutParams.GetPrefHeight(view, layoutParams)
-        -- @todo
-    end
     
 end)

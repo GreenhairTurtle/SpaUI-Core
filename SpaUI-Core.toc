@@ -13,4 +13,4 @@
 ## X-Credit: Kurapica
 
 Extend.lua
-View.xml
+View\View.xml
