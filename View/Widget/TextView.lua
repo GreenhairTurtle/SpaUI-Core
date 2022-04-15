@@ -7,6 +7,22 @@ PLoop(function()
     class "TextView"(function()
         inherit "View"
 
+        -- Get minimum text width necessary when height is determined
+        function GetWrapContentWidth(self, height)
+            self.__FontString:ClearAllPoints()
+            self.__FontString:SetHeight(height)
+            self.__FontString:SetWidth(0)
+            return self.__FontString:GetUnboundedStringWidth()
+        end
+
+        -- Get minimum text height necessary when width is determined
+        function GetWrapContentHeight(self, width)
+            self.__FontString:ClearAllPoints()
+            self.__FontString:SetWidth(width)
+            self.__FontString:SetHeight(0)
+            return self.__FontString:GetStringHeight()
+        end
+
         --------------------------------------------------
         --          FontString functions                --
         --------------------------------------------------
