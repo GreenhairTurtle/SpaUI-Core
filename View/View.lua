@@ -4,9 +4,30 @@ PLoop(function()
 
     -- Provide some features to all blz widgets
     interface "IView"(function()
+        require "LayoutFrame"
 
-        function Refresh(self)
+        __Abstract__()
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+        end
+
+        __Abstract__()
+        function OnDraw(self)
+        end
+
+        function RequestLayout(self)
             -- @todo
+        end
+
+        __Final__()
+        function SetWidth(self, width)
+        end
+
+        __Final__()
+        function SetHeight(self, height)
+        end
+
+        function SetSize(self, width, height)
+            
         end
 
         __Arguments__{ LayoutParams/nil }:Throwable()
@@ -23,7 +44,7 @@ PLoop(function()
         end
 
         function OnLayoutParamsChanged(self)
-            self:Refresh()
+            self:RequestLayout()
         end
 
         __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
@@ -45,10 +66,9 @@ PLoop(function()
         end
 
         function OnMarginChanged(self, margin)
-            self:Refresh()
+            self:RequestLayout()
         end
 
-        -- @Override
         __Final__()
         function SetShown(self, shown)
             if shown then
@@ -58,7 +78,6 @@ PLoop(function()
             end
         end
 
-        -- @Override
         __Final__()
         function Show(self)
             self.Visibility = Visibility.VISIBLE
@@ -85,21 +104,17 @@ PLoop(function()
         property "Visibility"       {
             type                    = Visibility,
             default                 = Visibility.VISIBLE,
-            handler                 = function(self, new, old)
-                self:OnVisibilityChanged(new, old)
-            end
+            handler                 = OnVisibilityChanged
         }
 
         property "Padding"          {
             type                    = Padding,
-            handler                 = function(self, new, old)
-                self:OnPaddingChanged(new, old)
-            end
+            handler                 = OnPaddingChanged
         }
     
     end)
 
     -- Frame, implement IView
-    class "View"{ Frame, IView }
+    class "View" { Frame, IView }
 
 end)

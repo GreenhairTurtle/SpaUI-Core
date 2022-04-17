@@ -206,7 +206,7 @@ PLoop(function(ENV)
 
         __Final__()
         __Arguments__{ Number, Number, Number }
-        function Refresh(self, from, to, total)
+        function RequestLayout(self, from, to, total)
             self.__Range = total
             Show(self)
             RefreshThumbAndScrollButton(self, from, to, total)
@@ -1300,7 +1300,7 @@ PLoop(function(ENV)
 
         -- 刷新
         __Arguments__{ Adapter/nil }
-        function Refresh(self, adapter)
+        function RequestLayout(self, adapter)
             self:Refresh(false, adapter)
         end
 
@@ -1309,7 +1309,7 @@ PLoop(function(ENV)
         -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
         -- @param adapter 指定ViewHolder回收到哪个adapter，默认为nil，即当前adapter
         __Arguments__{ Boolean/false, Adapter/nil }
-        function Refresh(self, keepPosition, adapter)
+        function RequestLayout(self, keepPosition, adapter)
             self:Reset(adapter)
             if self.LayoutManager then
                 self.LayoutManager:RequestLayout(keepPosition)

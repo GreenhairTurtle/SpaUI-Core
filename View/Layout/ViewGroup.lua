@@ -636,7 +636,7 @@ PLoop(function()
         end
 
         __Final__()
-        function Refresh(self)
+        function RequestLayout(self)
             -- reduce multi call when layout
             -- because child OnSizeChanged maybe call multi times in OnMeasure
             if self:IsRefreshing() then
