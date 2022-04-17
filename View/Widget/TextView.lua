@@ -7,6 +7,13 @@ PLoop(function()
     class "TextView"(function()
         inherit "View"
 
+        function OnRefresh(self)
+            local padding = self.Padding
+            self.__FontString:ClearAllPoints()
+            self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
+            self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
+        end
+
         -- Get minimum text width necessary when height is determined
         function GetWrapContentWidth(self, height)
             self.__FontString:ClearAllPoints()
@@ -255,7 +262,6 @@ PLoop(function()
 
         function __ctor(self)
             self.__FontString = FontString("__TextView_FontString", self)
-            self.__FontString:SetAllPoints(self)
         end
 
     end)

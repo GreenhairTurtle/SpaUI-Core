@@ -7,14 +7,11 @@ PLoop(function()
     class "ImageView"(function()
         inherit "View"
 
-        function OnPaddingChanged(self, padding)
+        function OnRefresh(self)
+            local padding = self.Padding
             self.__Texture:ClearAllPoints()
-            if padding then
-                self.__Texture:SetPoint("TOPLEFT", padding.left, -padding.top)
-                self.__Texture:SetPoint("BOTTOMRIGHT", -padding.right, padding.bottom)
-            else
-                self.__Texture:SetAllPoints()
-            end
+            self.__Texture:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
+            self.__Texture:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
         end
 
         --------------------------------------------------
@@ -249,7 +246,6 @@ PLoop(function()
 
         function __ctor(self)
             self.__Texture = Texture("__ImageView_Texture", self)
-            self.__Texture:SetAllPoints(self)
         end
         
     end)

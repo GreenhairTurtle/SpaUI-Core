@@ -145,7 +145,7 @@ PLoop(function()
         -- if pref height is wrap content also, use view's height
         -- pref height can not be set to match parent
         member "prefHeight" { Type = NonNegativeNumber + SizeMode }
-        member "margin"     { Type = Margin }
+        member "margin"     { Type = Margin, Default = Margin(0) }
 
         __valid = function(value, onlyValid)
             if value.width < 0 then

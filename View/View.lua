@@ -6,33 +6,72 @@ PLoop(function()
     interface "IView"(function()
         require "LayoutFrame"
 
+        local function SetWidthInternal(self, width)
+            LayoutFrame.SetWidth(self, width)
+        end
+
+        local function SetHeightInternal(self, height)
+            LayoutFrame.SetHeight(self, height)
+        end
+
+        local function SetSizeInternal(self, width, height)
+            LayoutFrame.SetSize(self, width, height)
+        end
+
+        local function ShowInternal(self)
+            LayoutFrame.Show(self)
+        end
+
+        local function HideInternal(self)
+            LayoutFrame.Hide(self)
+        end
+
+        local function SetShownInternal(self, shown)
+            LayoutFrame.SetShown(self, shown)
+        end
+
         __Abstract__()
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
         end
 
         __Abstract__()
-        function OnDraw(self)
+        function OnRefresh(self)
         end
 
         function RequestLayout(self)
             -- @todo
         end
 
+        function Refresh(self)
+            self:OnRefresh()
+        end
+
         __Final__()
         function SetWidth(self, width)
+            local lp = self:GetLayoutParams()
+            lp.width = width
+            self:OnLayoutParamsChanged()
         end
 
         __Final__()
         function SetHeight(self, height)
+            local lp = self:GetLayoutParams()
+            lp.height = height
+            self:OnLayoutParamsChanged()
         end
 
+        __Final__()
         function SetSize(self, width, height)
-            
+            local lp = self:GetLayoutParams()
+            lp.width = width
+            lp.height = height
+            self:OnLayoutParamsChanged()
         end
 
         __Arguments__{ LayoutParams/nil }:Throwable()
         function SetLayoutParams(self, layoutParams)
             self.__LayoutParams = layoutParams
+            self:OnLayoutParamsChanged()
         end
 
         __Final__()
@@ -69,6 +108,15 @@ PLoop(function()
             self:RequestLayout()
         end
 
+        __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
+        function SetPadding(self, left, top, right, bottom)
+            self.Padding = Padding(left, top, right, bottom)
+        end
+
+        function OnPaddingChanged(self, new, old)
+            self:Refresh()
+        end
+
         __Final__()
         function SetShown(self, shown)
             if shown then
@@ -88,17 +136,8 @@ PLoop(function()
             self.Visibility = Visibility.GONE
         end
 
-        __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
-        function SetPadding(self, left, top, right, bottom)
-            self.Padding = Padding(left, top, right, bottom)
-        end
-
-        function OnVisibilityChanged(self, new, old)
-            -- @todo
-        end
-
-        function OnPaddingChanged(self, new, old)
-            -- @todo
+        function OnVisibilityChanged(self, visibility, old)
+            SetShownInternal(self, visibility == Visibility.VISIBLE)
         end
 
         property "Visibility"       {
@@ -109,7 +148,10 @@ PLoop(function()
 
         property "Padding"          {
             type                    = Padding,
-            handler                 = OnPaddingChanged
+            handler                 = OnPaddingChanged,
+            default                 = function(self)
+                return Padding(0)
+            end
         }
     
     end)
