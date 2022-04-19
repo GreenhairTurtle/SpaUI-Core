@@ -83,7 +83,7 @@ PLoop(function()
         ["WRAP_CONTENT"] = -2
     }
 
-    struct "ViewSize" { SizeMode + NonNegativeNumber }
+    struct "ViewSize" { __base = SizeMode + NonNegativeNumber }
 
     __Sealed__()
     __AutoIndex__()
@@ -129,7 +129,7 @@ PLoop(function()
         function __eq(self, another)
             if not another then return false end
 
-            return self.mode == another.mode and self.size == another.size
+            return self.Mode == another.Mode and self.Size == another.Size
         end
 
         __Arguments__{ MeasureSpecMode, NonNegativeNumber/0 }:Throwable()

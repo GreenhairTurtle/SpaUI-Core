@@ -20,28 +20,6 @@ PLoop(function()
             self.__Texture:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
         end
 
-        -- @Override
-        function GetPrefWidth(self)
-            if self.PrefWidth >= 0 then
-                return self.PrefWidth
-            elseif self.PrefWidth == SizeMode.WRAP_CONTENT then
-                return self.__Texture:GetWidth() + self.Padding.left + self.Padding.right
-            else
-                error(self:GetName() + "'s PrefWidth is invalid", 2)
-            end
-        end
-
-        -- @Override
-        function GetPrefHeight(self)
-            if self.PrefHeight >= 0 then
-                return self.PrefHeight
-            elseif self.PrefHeight == SizeMode.WRAP_CONTENT then
-                return self.__Texture:GetHeight() + self.Padding.top + self.Padding.bottom
-            else
-                error(self:GetName() + "'s PrefHeight is invalid", 2)
-            end
-        end
-
         --------------------------------------------------
         --             Texture functions                --
         --------------------------------------------------

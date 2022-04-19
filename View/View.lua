@@ -5,37 +5,39 @@ PLoop(function()
     -- Provide some features to all blz widgets
     -- The android style for wow
     interface "IView"(function()
-        require "LayoutFrame"
+        require "Frame"
+
+        local MIN_NUMBER = -2147483648
 
         local function SetWidthInternal(self, width)
-            LayoutFrame.SetWidth(self, width)
+            Frame.SetWidth(self, width)
         end
 
         local function SetHeightInternal(self, height)
-            LayoutFrame.SetHeight(self, height)
+            Frame.SetHeight(self, height)
         end
 
         local function SetSizeInternal(self, width, height)
-            LayoutFrame.SetSize(self, width, height)
+            Frame.SetSize(self, width, height)
         end
 
         local function ShowInternal(self)
-            LayoutFrame.Show(self)
+            Frame.Show(self)
         end
 
         local function HideInternal(self)
-            LayoutFrame.Hide(self)
+            Frame.Hide(self)
         end
 
         local function SetShownInternal(self, shown)
-            LayoutFrame.SetShown(self, shown)
+            Frame.SetShown(self, shown)
         end
         
         -- Measure size
         __Final__()
         __Arguments__{ MeasureSpec, MeasureSpec }
         function Measure(self, widthMeasureSpec, heightMeasureSpec)
-            local specChanged = widthMeasureSpec == self.__OldWidthMeasureSpec or heightMeasureSpec == self.__OldHeightMeasureSpec
+            local specChanged = widthMeasureSpec ~= self.__OldWidthMeasureSpec or heightMeasureSpec ~= self.__OldHeightMeasureSpec
             local isSpecExactly = widthMeasureSpec.Mode == MeasureSpecMode.EXACTLY and heightMeasureSpec.Mode == MeasureSpecMode.EXACTLY
             local matchesSpecSize = self:GetMeasuredWidth() == widthMeasureSpec.Size and self:GetMeasuredHeight() == heightMeasureSpec.Size
 
@@ -101,27 +103,27 @@ PLoop(function()
 
         function IsRootView(self)
             local parent = self:GetParent()
-            return not parent or not View.IsView(parent)
+            return not parent or not IView.IsView(parent)
         end
 
         -- Generate measure spec, usaully used by root view
-        local function GenerateMeasureSpec(viewSize, prefSize)
+        local function GenerateMeasureSpec(viewSize, maxSize)
             if viewSize == SizeMode.WRAP_CONTENT then
-                return MeasureSpec(MeaspecSpecMode.UNSPECIFIED, prefSize)
+                return MeasureSpec(MeasureSpecMode.UNSPECIFIED, maxSize)
             elseif viewSize == SizeMode.MATCH_PARENT then
-                return MeasureSpec(MeasureSpecMode.AT_MOST, prefSize)
+                return MeasureSpec(MeasureSpecMode.AT_MOST, maxSize)
             else
                 return MeasureSpec(MeasureSpecMode.AT_MOST, viewSize)
             end
         end
 
         local function DoLayout(self)
-            self:Measure(GenerateMeasureSpec(self.Width, self:GetPrefWidth()), GenerateMeasureSpec(self.Height, self:GetPrefHeight()))
+            self:Measure(GenerateMeasureSpec(self.Width, UIParent:GetWidth()), GenerateMeasureSpec(self.Height, UIParent:GetHeight()))
             self:Layout()
             self:Refresh()
         end
 
-        __Async__(true)
+        __Async__()
         function RequestLayout(self)
             self.__LayoutRequestTime = GetTime()
             if self.__LayoutRequested then
@@ -138,18 +140,18 @@ PLoop(function()
             if self:IsRootView() then
                 DoLayout(self)
             else
-                self:GetParent():RequestLayout()
+                return self:GetParent():RequestLayout()
             end
         end
 
         __Final__()
         function GetMeasuredWidth(self)
-            return self.__MeasuredWidth or 0
+            return self.__MeasuredWidth or MIN_NUMBER
         end
 
         __Final__()
         function GetMeasuredHeight(self)
-            return self.__MeasuredHeight or 0
+            return self.__MeasuredHeight or MIN_NUMBER
         end
 
         __Final__()
@@ -161,22 +163,6 @@ PLoop(function()
         function SetMeasuredSize(self, width, height)
             self.__MeasuredWidth = width
             self.__MeasuredHeight = height
-        end
-
-        function GetPrefWidth(self)
-            if self.PrefWidth >= 0 then
-                return self.PrefWidth
-            else
-                error(self:GetName() + "'s PrefWidth is invalid", 2)
-            end
-        end
-
-        function GetPrefHeight(self)
-            if self.PrefHeight >= 0 then
-                return self.PrefHeight
-            else
-                error(self:GetName() + "'s PrefHeight is invalid", 2)
-            end
         end
 
         __Final__()
@@ -205,10 +191,6 @@ PLoop(function()
         __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
         function SetMargin(self, left, top, right, bottom)
             self.Margin = Margin(left, top, right, bottom)
-        end
-
-        function OnMarginChanged(self, margin)
-            self:RequestLayout()
         end
 
         __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
@@ -241,6 +223,7 @@ PLoop(function()
 
         function OnVisibilityChanged(self, visibility, old)
             SetShownInternal(self, visibility == Visibility.VISIBLE)
+            self:RequestLayout()
         end
 
         property "LayoutDirection"  {
@@ -267,7 +250,7 @@ PLoop(function()
 
         property "Margin"           {
             type                    = Margin,
-            handler                 = OnMarginChanged,
+            handler                 = OnLayoutParamsChanged,
             default                 = function(self)
                 return Margin(0)
             end
@@ -276,13 +259,13 @@ PLoop(function()
         property "MinHeight"        {
             type                    = NonNegativeNumber,
             default                 = 0,
-            handler                 = RequestLayout
+            handler                 = OnLayoutParamsChanged
         }
 
         property "MinWidth"         {
             type                    = NonNegativeNumber,
             default                 = 0,
-            handler                 = RequestLayout
+            handler                 = OnLayoutParamsChanged
         }
 
         property "Width"            {
@@ -297,17 +280,9 @@ PLoop(function()
             handler                 = OnLayoutParamsChanged
         }
 
-        property "PrefWidth"        {
-            type                    = ViewSize,
-            default                 = 0,
-            handler                 = OnLayoutParamsChanged
-        }
-
-        property "PrefHeight"       {
-            type                    = ViewSize,
-            default                 = 0,
-            handler                 = OnLayoutParamsChanged
-        }
+        function __init(self)
+            self:RequestLayout()
+        end
 
     end)
 

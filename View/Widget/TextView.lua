@@ -2,6 +2,7 @@ PLoop(function()
 
     namespace "SpaUI.Layout.Widget"
     import "SpaUI.Layout.View"
+    import "SpaUI.Layout"
 
     -- FontString wrapper
     class "TextView"(function()
@@ -11,10 +12,11 @@ PLoop(function()
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
             self.__FontString:ClearAllPoints()
 
+            local padding = self.Padding
             local widthMode = widthMeasureSpec.Mode
-            local width = widthMeasureSpec.Size
+            local width = math.max(widthMeasureSpec.Size - padding.left - padding.right, 0)
             local heightMode = heightMeasureSpec.Mode
-            local height = heightMeasureSpec.Size
+            local height = math.max(heightMeasureSpec.Size - padding.top - padding.bottom, 0)
             local measuredWidth
             local measuredHeight
 
@@ -31,7 +33,7 @@ PLoop(function()
                     self.__FontString:SetHeight(0)
                     measuredHeight = self.__FontString:GetStringHeight()
                 end
-            elseif withMode == MeasueSpecMode.AT_MOST then
+            elseif widthMode == MeasureSpecMode.AT_MOST then
                 -- Width can use its own size, but has a limit width
                 self.__FontString:SetWidth(0)
                 measuredWidth = math.min(self.__FontString:GetUnboundedStringWidth(), width)
@@ -45,7 +47,7 @@ PLoop(function()
                     self.__FontString:SetHeight(0)
                     measuredHeight = math.min(self.__FontString:GetStringHeight(), height)
                 else
-                    self.__FontString:SetWidth(measuredHeight)
+                    self.__FontString:SetWidth(measuredWidth)
                     self.__FontString:SetHeight(0)
                     measuredHeight = self.__FontString:GetStringHeight()
                 end
@@ -67,7 +69,7 @@ PLoop(function()
                 end
             end
 
-            self:SetMeasuredSize(measuredWidth, measuredHeight)
+            self:SetMeasuredSize(measuredWidth + padding.left + padding.right, measuredHeight + padding.top + padding.bottom)
         end
 
         function OnLayout(self)
@@ -80,28 +82,6 @@ PLoop(function()
             local padding = self.Padding
             self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
             self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
-        end
-
-        -- @Override
-        function GetPrefWidth(self)
-            if self.PrefWidth >= 0 then
-                return self.PrefWidth
-            elseif self.PrefWidth == SizeMode.WRAP_CONTENT then
-                return self.__FontString:GetWidth() + self.Padding.left + self.Padding.right
-            else
-                error(self:GetName() + "'s PrefWidth is invalid", 2)
-            end
-        end
-
-        -- @Override
-        function GetPrefHeight(self)
-            if self.PrefHeight >= 0 then
-                return self.PrefHeight
-            elseif self.PrefHeight == SizeMode.WRAP_CONTENT then
-                return self.__FontString:GetHeight() + self.Padding.top + self.Padding.bottom
-            else
-                error(self:GetName() + "'s PrefHeight is invalid", 2)
-            end
         end
 
         -- Get minimum text width necessary when height is determined
