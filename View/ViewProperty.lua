@@ -83,6 +83,8 @@ PLoop(function()
         ["WRAP_CONTENT"] = -2
     }
 
+    struct "ViewSize" { SizeMode + NonNegativeNumber }
+
     __Sealed__()
     __AutoIndex__()
     enum "Visibility"{
@@ -111,25 +113,31 @@ PLoop(function()
         "AT_MOST"
     }
 
-    -- MeasureSpecMode and width/height struct
     __Sealed__()
-    struct "MeasureSpec"(function()
+    class "MeasureSpec"(function()
 
-        member "mode"   { Type = MeasureSpecMode, Require = true }
-        member "size"   { Type = Number }
+        property "Mode" {
+            type        = MeasureSpecMode,
+            require     = true
+        }
 
-        __valid = function(value)
-            if value.mode ~= MeasureSpecMode.UNSPECIFIED and not value.size then
-                return "%s.size can not be nil"
-            end
+        property "Size" {
+            type        = Number
+        }
+
+        __Arguments__{ MeasureSpec/nil }
+        function __eq(self, another)
+            if not another then return false end
+
+            return self.mode == another.mode and self.size == another.size
         end
 
-        __init = function(value)
-            if not value.size or value.size < 0 then
-                value.size = 0
-            end
+        __Arguments__{ MeasureSpecMode, NonNegativeNumber/0 }:Throwable()
+        function __ctor(self, mode, size)
+            self.Mode = mode
+            self.Size = size
         end
-        
+
     end)
 
     __Sealed__()

@@ -7,11 +7,39 @@ PLoop(function()
     class "ImageView"(function()
         inherit "View"
 
+        function OnLayout(self)
+            self.__Texture:SetWidth(0)
+            self.__Texture:SetHeight(0)
+        end
+
+        -- @Override
         function OnRefresh(self)
             local padding = self.Padding
             self.__Texture:ClearAllPoints()
             self.__Texture:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
             self.__Texture:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
+        end
+
+        -- @Override
+        function GetPrefWidth(self)
+            if self.PrefWidth >= 0 then
+                return self.PrefWidth
+            elseif self.PrefWidth == SizeMode.WRAP_CONTENT then
+                return self.__Texture:GetWidth() + self.Padding.left + self.Padding.right
+            else
+                error(self:GetName() + "'s PrefWidth is invalid", 2)
+            end
+        end
+
+        -- @Override
+        function GetPrefHeight(self)
+            if self.PrefHeight >= 0 then
+                return self.PrefHeight
+            elseif self.PrefHeight == SizeMode.WRAP_CONTENT then
+                return self.__Texture:GetHeight() + self.Padding.top + self.Padding.bottom
+            else
+                error(self:GetName() + "'s PrefHeight is invalid", 2)
+            end
         end
 
         --------------------------------------------------

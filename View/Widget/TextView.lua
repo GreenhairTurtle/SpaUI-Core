@@ -7,11 +7,101 @@ PLoop(function()
     class "TextView"(function()
         inherit "View"
 
+        -- @Override
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+            self.__FontString:ClearAllPoints()
+
+            local widthMode = widthMeasureSpec.Mode
+            local width = widthMeasureSpec.Size
+            local heightMode = heightMeasureSpec.Mode
+            local height = heightMeasureSpec.Size
+            local measuredWidth
+            local measuredHeight
+
+            if widthMode == MeasureSpecMode.EXACTLY then
+                self.__FontString:SetWidth(width)
+                measuredWidth = width
+                
+                if heightMode == MeasureSpecMode.EXACTLY then
+                    measuredHeight = height
+                elseif heightMode == MeasureSpecMode.AT_MOST then
+                    self.__FontString:SetHeight(0)
+                    measuredHeight = math.min(self.__FontString:GetStringHeight(), height)
+                else
+                    self.__FontString:SetHeight(0)
+                    measuredHeight = self.__FontString:GetStringHeight()
+                end
+            elseif withMode == MeasueSpecMode.AT_MOST then
+                -- Width can use its own size, but has a limit width
+                self.__FontString:SetWidth(0)
+                measuredWidth = math.min(self.__FontString:GetUnboundedStringWidth(), width)
+
+                if heightMode == MeasureSpecMode.EXACTLY then
+                    -- Height is determined
+                    measuredHeight = height
+                elseif heightMode == MeasureSpecMode.AT_MOST then
+                    -- Height can use its own size, also has a limit height
+                    self.__FontString:SetWidth(measuredWidth)
+                    self.__FontString:SetHeight(0)
+                    measuredHeight = math.min(self.__FontString:GetStringHeight(), height)
+                else
+                    self.__FontString:SetWidth(measuredHeight)
+                    self.__FontString:SetHeight(0)
+                    measuredHeight = self.__FontString:GetStringHeight()
+                end
+            else
+                -- Width can be whatever size it wants
+                self.__FontString:SetWidth(0)
+                measuredWidth = self.__FontString:GetUnboundedStringWidth()
+
+                if heightMode == MeasureSpecMode.EXACTLY then
+                    -- Height is determined
+                    measuredHeight = height
+                elseif heightMode == MeasureSpecMode.AT_MOST then
+                    -- Height can use its own size, also has a limit height
+                    self.__FontString:SetHeight(0)
+                    measuredHeight = math.min(self.__FontString:GetStringHeight(), height)
+                else
+                    self.__FontString:SetHeight(0)
+                    measuredHeight = self.__FontString:GetStringHeight()
+                end
+            end
+
+            self:SetMeasuredSize(measuredWidth, measuredHeight)
+        end
+
+        function OnLayout(self)
+            self.__FontString:SetWidth(0)
+            self.__FontString:SetHeight(0)
+        end
+
+        -- @Override
         function OnRefresh(self)
             local padding = self.Padding
-            self.__FontString:ClearAllPoints()
             self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
             self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
+        end
+
+        -- @Override
+        function GetPrefWidth(self)
+            if self.PrefWidth >= 0 then
+                return self.PrefWidth
+            elseif self.PrefWidth == SizeMode.WRAP_CONTENT then
+                return self.__FontString:GetWidth() + self.Padding.left + self.Padding.right
+            else
+                error(self:GetName() + "'s PrefWidth is invalid", 2)
+            end
+        end
+
+        -- @Override
+        function GetPrefHeight(self)
+            if self.PrefHeight >= 0 then
+                return self.PrefHeight
+            elseif self.PrefHeight == SizeMode.WRAP_CONTENT then
+                return self.__FontString:GetHeight() + self.Padding.top + self.Padding.bottom
+            else
+                error(self:GetName() + "'s PrefHeight is invalid", 2)
+            end
         end
 
         -- Get minimum text width necessary when height is determined
