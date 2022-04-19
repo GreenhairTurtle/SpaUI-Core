@@ -3,6 +3,7 @@ PLoop(function()
     namespace "SpaUI.Layout"
 
     -- Provide some features to all blz widgets
+    -- The android style for wow
     interface "IView"(function()
         require "LayoutFrame"
 
@@ -29,8 +30,17 @@ PLoop(function()
         local function SetShownInternal(self, shown)
             LayoutFrame.SetShown(self, shown)
         end
+        
+        -- PH for future expansion
+        __Final__()
+        __Arguments__{ MeasureSpec, MeasureSpec }
+        function Measure(self, widthMeasureSpec, heightMeasureSpec)
+            self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
+        end
 
+        -- This function should call SetMeasuredDimension to store measured width and measured height
         __Abstract__()
+        __Arguments__{ MeasureSpec, MeasureSpec }
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
         end
 
@@ -47,6 +57,7 @@ PLoop(function()
         end
 
         __Final__()
+        __Arguments__{ NonNegativeNumber + SizeMode }
         function SetWidth(self, width)
             local lp = self:GetLayoutParams()
             lp.width = width
@@ -54,6 +65,7 @@ PLoop(function()
         end
 
         __Final__()
+        __Arguments__{ NonNegativeNumber + SizeMode }
         function SetHeight(self, height)
             local lp = self:GetLayoutParams()
             lp.height = height
@@ -61,6 +73,7 @@ PLoop(function()
         end
 
         __Final__()
+        __Arguments__{ NonNegativeNumber + SizeMode, NonNegativeNumber + SizeMode }
         function SetSize(self, width, height)
             local lp = self:GetLayoutParams()
             lp.width = width
