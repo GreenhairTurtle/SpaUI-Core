@@ -72,7 +72,7 @@ PLoop(function()
                 if childSize >= 0 then
                     -- Child wants a specific size... so be it
                     resultSize = childSize
-                    resultMode = measureSpec.EXACTLY
+                    resultMode = MeasureSpec.EXACTLY
                 elseif childSize == MeasureSpec.MATCH_PARENT then
                     -- Child wants to be parent's size, but parent's size is not fixed.
                     -- Constrain child to not be bigger than parent.
@@ -89,7 +89,7 @@ PLoop(function()
                 if childSize >= 0 then
                     -- Child wants a specific size... let him have it
                     resultSize = childSize
-                    resultMode = measureSpec.EXACTLY
+                    resultMode = MeasureSpec.EXACTLY
                 elseif childSize == MeasureSpec.MATCH_PARENT then
                     -- Child wants to be parent's size... find out how big it should be
                     resultSize = math.min(size, maxSize)
@@ -102,7 +102,7 @@ PLoop(function()
                 end
             end
 
-            return MeasureSpec.MakeMeasureSpec(resultSize, resultMode)
+            return MeasureSpec.MakeMeasureSpec(resultMode, resultSize)
         end
         
         -- Measure size
@@ -143,25 +143,28 @@ PLoop(function()
 
         -- Change size and goto it's location
         __Final__()
-        __Arguments__{ LayoutDirection, Number/0, Number/0 }
+        __Arguments__{ LayoutDirection/nil, Number/0, Number/0 }
         function Layout(self, direction, xOffset, yOffset)
             SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
 
-            local point
-            if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
-                point = "TOP"
-                yOffset = -yOffset
-            else
-                point = "BOTTOM"
+            -- If direction is nil, means no parent, see [DoLayout]
+            if direction then
+                local point
+                if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
+                    point = "TOP"
+                    yOffset = -yOffset
+                else
+                    point = "BOTTOM"
+                end
+                if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
+                    point = point .. "LEFT"
+                else
+                    point = point .. "RIGHT"
+                    xOffset = -xOffset
+                end
+                child:ClearAllPoints()
+                child:SetPoint(point, xOffset, yOffset)
             end
-            if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
-                point = point .. "LEFT"
-            else
-                point = point .. "RIGHT"
-                xOffset = -xOffset
-            end
-            child:ClearAllPoints()
-            child:SetPoint(point, xOffset, yOffset)
 
             -- A great opportunity to do something
             self:OnLayout()

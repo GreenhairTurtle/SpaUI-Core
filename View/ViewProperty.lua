@@ -127,15 +127,15 @@ PLoop(function()
         }
 
         local function checkModeValid(mode)
-            if mode ~= MeasureSpec.UNSPECIFIED or mode ~= MeasureSpec.EXACTLY or mode ~= MeasureSpec.AT_MOST then
-                error("MeasureSpec's mode must be one of UNSPECIFIED, EXACTLY or AT_MOST", 2)
-            end
+            return mode == MeasureSpec.UNSPECIFIED or mode == MeasureSpec.EXACTLY or mode == MeasureSpec.AT_MOST
         end
 
         __Static__()
-        __Arguments__{ Number, NonNegativeNumber }
+        __Arguments__{ Number, NonNegativeNumber }:Throwable()
         function MakeMeasureSpec(mode, size)
-            checkModeValid(mode)
+            if not checkModeValid(mode) then
+                throw("MeasureSpec's mode must be one of UNSPECIFIED, EXACTLY or AT_MOST")
+            end
             return size + mode
         end
 
