@@ -2,7 +2,7 @@
     <Script file="ViewProperty.lua"/>
     <Script file="View.lua"/>
     
-    <Include file="Layout\Layout.xml"/>
+    <Include file="ViewGroup\ViewGroup.xml"/>
     <Include file="Widget\Widget.xml"/>
     <Script file="Demo.lua"/>
     <!-- <Include file="RecyclerView\RecyclerView.xml"/> -->

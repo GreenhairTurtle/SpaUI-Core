@@ -96,78 +96,65 @@ PLoop(function()
         "GONE"
     }
 
-    -- A MeasureSpec encapsulates the layout requirements passed from parent to child.
-    -- Each MeasureSpec represents a requirement for either the width or the height.
-    -- A MeasureSpec is comprised of a size and a mode. There are three possible modes:
     __Sealed__()
-    __AutoIndex__()
-    enum "MeasureSpecMode"{
+    interface "MeasureSpec"(function()
+
+        local MODE_SHIFT = 30
+        local MODE_MASK = bit.lshift(0x3, MODE_SHIFT)
+
         -- The parent has not imposed any constraint on the child.
         -- It can be whatever size it wants.
-        "UNSPECIFIED",
+        __Static__()
+        property "UNSPECIFIED" {
+            default             = bit.lshift(0, MODE_SHIFT),
+            set                 = false
+        }
+
         -- The parent has determined an exact size for the child.
         -- The child is going to be given those bounds regardless of how big it wants to be.
         -- This situation is usually not considered.
-        "EXACTLY",
+        __Static__()
+        property "EXACTLY"      {
+            default             = bit.lshift(1, MODE_SHIFT),
+            set                 = false
+        }
+
         -- The child can be as large as it wants up to the specified size.
-        "AT_MOST"
-    }
-
-    __Sealed__()
-    class "MeasureSpec"(function()
-
-        property "Mode" {
-            type        = MeasureSpecMode,
-            require     = true
+        __Static__()
+        property "AT_MOST"      {
+            default             = bit.lshift(2, MODE_SHIFT),
+            set                 = false
         }
 
-        property "Size" {
-            type        = Number
-        }
-
-        __Arguments__{ MeasureSpec/nil }
-        function __eq(self, another)
-            if not another then return false end
-
-            return self.Mode == another.Mode and self.Size == another.Size
+        local function checkModeValid(mode)
+            if mode ~= MeasureSpec.UNSPECIFIED or mode ~= MeasureSpec.EXACTLY or mode ~= MeasureSpec.AT_MOST then
+                error("MeasureSpec's mode must be one of UNSPECIFIED, EXACTLY or AT_MOST", 2)
+            end
         end
 
-        __Arguments__{ MeasureSpecMode, NonNegativeNumber/0 }:Throwable()
-        function __ctor(self, mode, size)
-            self.Mode = mode
-            self.Size = size
+        __Static__()
+        __Arguments__{ Number, NonNegativeNumber }
+        function MakeMeasureSpec(mode, size)
+            checkModeValid(mode)
+            return size + mode
+        end
+
+        -- only return UNSPECIFIED, AT_MOST or EXACTLY
+        __Static__()
+        __Arguments__{ Number }
+        function GetSize(measureSpec)
+            return bit.band(measureSpec, bit.bnot(MODE_MASK))
+        end
+
+        __Static__()
+        __Arguments__{ Number }
+        function GetMode(measureSpec)
+            return bit.band(measureSpec, MODE_MASK)
         end
 
     end)
 
     __Sealed__()
-    struct "LayoutParams"(function()
-
-        member "width"      { Type = NonNegativeNumber + SizeMode, Require = true }
-        member "height"     { Type = NonNegativeNumber + SizeMode, Require = true }
-        -- Works when width is wrap content or match parent
-        -- if pref width is wrap content also, use view's width
-        -- pref width can not be set to match parent
-        member "prefWidth"  { Type = NonNegativeNumber + SizeMode }
-        -- Works when height is wrap content or match parent
-        -- if pref height is wrap content also, use view's height
-        -- pref height can not be set to match parent
-        member "prefHeight" { Type = NonNegativeNumber + SizeMode }
-        member "margin"     { Type = Margin, Default = Margin(0) }
-
-        __valid = function(value, onlyValid)
-            if value.width < 0 then
-                if value.prefWidth == SizeMode.MATCH_PARENT then
-                    return onlyValid or "the %s's prefWidth can not be set to match parent"
-                end
-            end
-            if value.height < 0 then
-                if value.prefHeight == SizeMode.MATCH_PARENT then
-                    return onlyValid or "the %s's prefHeight can not be set to match parent"
-                end
-            end
-        end
-
-    end)
+    struct "LayoutParams" {}
     
 end)

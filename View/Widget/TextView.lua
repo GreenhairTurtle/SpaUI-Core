@@ -13,35 +13,35 @@ PLoop(function()
             self.__FontString:ClearAllPoints()
 
             local padding = self.Padding
-            local widthMode = widthMeasureSpec.Mode
-            local width = math.max(widthMeasureSpec.Size - padding.left - padding.right, 0)
-            local heightMode = heightMeasureSpec.Mode
-            local height = math.max(heightMeasureSpec.Size - padding.top - padding.bottom, 0)
+            local widthMode = MeasureSpec.GetMode(widthMeasureSpec)
+            local width = math.max(MeasureSpec.GetSize(widthMeasureSpec) - padding.left - padding.right, 0)
+            local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
+            local height = math.max(MeasureSpec.GetSize(heightMeasureSpec) - padding.top - padding.bottom, 0)
             local measuredWidth
             local measuredHeight
 
-            if widthMode == MeasureSpecMode.EXACTLY then
+            if widthMode == MeasureSpec.EXACTLY then
                 self.__FontString:SetWidth(width)
                 measuredWidth = width
                 
-                if heightMode == MeasureSpecMode.EXACTLY then
+                if heightMode == MeasureSpec.EXACTLY then
                     measuredHeight = height
-                elseif heightMode == MeasureSpecMode.AT_MOST then
+                elseif heightMode == MeasureSpec.AT_MOST then
                     self.__FontString:SetHeight(0)
                     measuredHeight = math.min(self.__FontString:GetStringHeight(), height)
                 else
                     self.__FontString:SetHeight(0)
                     measuredHeight = self.__FontString:GetStringHeight()
                 end
-            elseif widthMode == MeasureSpecMode.AT_MOST then
+            elseif widthMode == MeasureSpec.AT_MOST then
                 -- Width can use its own size, but has a limit width
                 self.__FontString:SetWidth(0)
                 measuredWidth = math.min(self.__FontString:GetUnboundedStringWidth(), width)
 
-                if heightMode == MeasureSpecMode.EXACTLY then
+                if heightMode == MeasureSpec.EXACTLY then
                     -- Height is determined
                     measuredHeight = height
-                elseif heightMode == MeasureSpecMode.AT_MOST then
+                elseif heightMode == MeasureSpec.AT_MOST then
                     -- Height can use its own size, also has a limit height
                     self.__FontString:SetWidth(measuredWidth)
                     self.__FontString:SetHeight(0)
@@ -56,10 +56,10 @@ PLoop(function()
                 self.__FontString:SetWidth(0)
                 measuredWidth = self.__FontString:GetUnboundedStringWidth()
 
-                if heightMode == MeasureSpecMode.EXACTLY then
+                if heightMode == MeasureSpec.EXACTLY then
                     -- Height is determined
                     measuredHeight = height
-                elseif heightMode == MeasureSpecMode.AT_MOST then
+                elseif heightMode == MeasureSpec.AT_MOST then
                     -- Height can use its own size, also has a limit height
                     self.__FontString:SetHeight(0)
                     measuredHeight = math.min(self.__FontString:GetStringHeight(), height)
@@ -69,7 +69,10 @@ PLoop(function()
                 end
             end
 
-            self:SetMeasuredSize(measuredWidth + padding.left + padding.right, measuredHeight + padding.top + padding.bottom)
+            measuredWidth = math.max(measuredWidth + padding.left + padding.right, self.MinWidth)
+            measuredHeight = math.max(measuredHeight + padding.top + padding.bottom, self.MinHeight)
+
+            self:SetMeasuredSize(measuredWidth, measuredHeight)
         end
 
         function OnLayout(self)

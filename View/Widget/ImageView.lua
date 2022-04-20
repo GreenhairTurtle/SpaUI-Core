@@ -7,11 +7,6 @@ PLoop(function()
     class "ImageView"(function()
         inherit "View"
 
-        function OnLayout(self)
-            self.__Texture:SetWidth(0)
-            self.__Texture:SetHeight(0)
-        end
-
         -- @Override
         function OnRefresh(self)
             local padding = self.Padding

@@ -8,6 +8,7 @@ PLoop(function()
         require "Frame"
 
         local MIN_NUMBER = -2147483648
+        local MAX_NUMBER = 2147483647
 
         local function SetWidthInternal(self, width)
             Frame.SetWidth(self, width)
@@ -32,14 +33,84 @@ PLoop(function()
         local function SetShownInternal(self, shown)
             Frame.SetShown(self, shown)
         end
+
+        -- Get child measure spec, copy from Android-ViewGroup
+        -- @param measureSpec: The requirements for parent
+        -- @param usedSize:Used size for the current dimension for parent
+        -- @param childSize:How big the child wants to be in the current dimension
+        -- @param maxSize: The max size for the current dimension for child
+        __Static__()
+        __Arguments__{ Number, NonNegativeNumber, ViewSize, NonNegativeNumber/nil }
+        function GetChildMeasureSpec(measureSpec, usedSize, childSize, maxSize)
+            local specMode = MeasureSpec.GetMode(measureSpec)
+            local specSize = MeasureSpec.GetSize(measureSpec)
+            maxSize = (not maxSize or maxSize == 0) or MAX_NUMBER
+
+            local size = math.max(specSize - usedSize, 0)
+
+            local resultSize = 0
+            local resultMode = 0
+
+            if specMode == MeasureSpec.EXACTLY then
+                -- Parent has imposed an exact size on us
+                if childSize >= 0 then
+                    -- Child wants a specific size... so be it
+                    resultSize = childSize
+                    resultMode = MeasureSpec.EXACTLY
+                elseif childSize == MeasureSpec.MATCH_PARENT then
+                    -- Child wants to be parent's size. So be it.
+                    resultSize = math.min(size, maxSize)
+                    resultMode = MeasureSpec.EXACTLY
+                elseif childSize == MeasureSpec.WRAP_CONTENT then
+                    -- Child wants to determine its own size
+                    -- It can't be bigger than us
+                    resultSize = math.min(size, maxSize)
+                    resultMode = MeasureSpec.AT_MOST
+                end
+            elseif sepcMode == MeasureSpec.AT_MOST then
+                -- Parent has imposed a maximum size on us
+                if childSize >= 0 then
+                    -- Child wants a specific size... so be it
+                    resultSize = childSize
+                    resultMode = measureSpec.EXACTLY
+                elseif childSize == MeasureSpec.MATCH_PARENT then
+                    -- Child wants to be parent's size, but parent's size is not fixed.
+                    -- Constrain child to not be bigger than parent.
+                    resultSize = math.min(size, maxSize)
+                    resultMode = MeasureSpec.AT_MOST
+                elseif childSize == MeasureSpec.WRAP_CONTENT then
+                    -- Child wants to determine its own size
+                    -- It can't be bigger than us
+                    resultSize = math.min(size, maxSize)
+                    resultMode = MeasureSpec.AT_MOST
+                end
+            elseif specMode == MeasureSpec.UNSPECIFIED then
+                -- Parent asked to see how big child want to be
+                if childSize >= 0 then
+                    -- Child wants a specific size... let him have it
+                    resultSize = childSize
+                    resultMode = measureSpec.EXACTLY
+                elseif childSize == MeasureSpec.MATCH_PARENT then
+                    -- Child wants to be parent's size... find out how big it should be
+                    resultSize = math.min(size, maxSize)
+                    resultMode = MeasureSpec.UNSPECIFIED
+                elseif childSize == MeasureSpec.WRAP_CONTENT then
+                    -- Child wants to determine its own size.... 
+                    -- find out how big it should be
+                    resultSize = math.min(size, maxSize)
+                    resultMode = MeasureSpec.UNSPECIFIED
+                end
+            end
+
+            return MeasureSpec.MakeMeasureSpec(resultSize, resultMode)
+        end
         
         -- Measure size
         __Final__()
-        __Arguments__{ MeasureSpec, MeasureSpec }
         function Measure(self, widthMeasureSpec, heightMeasureSpec)
             local specChanged = widthMeasureSpec ~= self.__OldWidthMeasureSpec or heightMeasureSpec ~= self.__OldHeightMeasureSpec
-            local isSpecExactly = widthMeasureSpec.Mode == MeasureSpecMode.EXACTLY and heightMeasureSpec.Mode == MeasureSpecMode.EXACTLY
-            local matchesSpecSize = self:GetMeasuredWidth() == widthMeasureSpec.Size and self:GetMeasuredHeight() == heightMeasureSpec.Size
+            local isSpecExactly = MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpec.EXACTLY and MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpec.EXACTLY
+            local matchesSpecSize = self:GetMeasuredWidth() == MeasureSpec.GetSize(widthMeasureSpec) and self:GetMeasuredHeight() == MeasureSpec.GetSize(heightMeasureSpec)
 
             if specChanged and (not isSpecExactly or not matchesSpecSize) then
                 self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
@@ -51,35 +122,53 @@ PLoop(function()
 
         -- This function should call SetMeasuredSize to store measured width and measured height
         __Abstract__()
-        __Arguments__{ MeasureSpec, MeasureSpec }
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
             self:SetMeasuredSize(self:GetDefaultMeasureSize(self.MinWidth, widthMeasureSpec),
                 self:GetDefaultMeasureSize(self.MinHeight, heightMeasureSpec))
         end
 
-        -- Utility to return a default size. Uses the supplied size if the MeasureSpec imposed no constraints.
-        -- Will get larger if allowed by the MeasureSpec.
-        __Static__()
-        function GetDefaultMeasureSize(size, measureSpec)
+        -- Utility to return a default size
+        function GetDefaultMeasureSize(self, size, measureSpec)
             local result = size
-            local mode = measureSpec.Mode
+            local mode = MeasureSpec.GetMode(measureSpec)
             
-            if mode == MeasureSpecMode.AT_MOST or mode == MeasureSpecMode.EXACTLY then
-                result = measureSpec.Size
+            if mode == MeasureSpec.AT_MOST then
+                result = math.max(size, MeasureSpec.GetSize(measureSpec))
+            elseif mode == MeasureSpec.EXACTLY then
+                result = MeasureSpec.GetSize(measureSpec)
             end
 
             return result
         end
 
-        -- Change size
+        -- Change size and goto it's location
         __Final__()
-        function Layout(self)
+        __Arguments__{ LayoutDirection, Number/0, Number/0 }
+        function Layout(self, direction, xOffset, yOffset)
             SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
+
+            local point
+            if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
+                point = "TOP"
+                yOffset = -yOffset
+            else
+                point = "BOTTOM"
+            end
+            if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
+                point = point .. "LEFT"
+            else
+                point = point .. "RIGHT"
+                xOffset = -xOffset
+            end
+            child:ClearAllPoints()
+            child:SetPoint(point, xOffset, yOffset)
+
+            -- A great opportunity to do something
             self:OnLayout()
             self.__LayoutRequested = false
         end
 
-        -- Viewgroup should override this function to call Layout on each of it's children
+        -- Viewgroup should override this function to call Layout on each of it's children and place child to it's position
         __Abstract__()
         function OnLayout(self)
         end
@@ -106,19 +195,18 @@ PLoop(function()
             return not parent or not IView.IsView(parent)
         end
 
-        -- Generate measure spec, usaully used by root view
-        local function GenerateMeasureSpec(viewSize, maxSize)
-            if viewSize == SizeMode.WRAP_CONTENT then
-                return MeasureSpec(MeasureSpecMode.UNSPECIFIED, maxSize)
-            elseif viewSize == SizeMode.MATCH_PARENT then
-                return MeasureSpec(MeasureSpecMode.AT_MOST, maxSize)
-            else
-                return MeasureSpec(MeasureSpecMode.AT_MOST, viewSize)
-            end
+        -- Pass UIParent's measurespec to root view
+        local function DoMeasure(self)
+            local rootWidthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetWidth())
+            local rootHeightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetHeight())
+            local margin = self.Margin
+            
+            self:Measure(IView.GetChildMeasureSpec(rootWidthMeasureSpec, margin.left + margin.right, self.Width, self.MaxWidth),
+                IView.GetChildMeasureSpec(rootHeightMeasureSpec, margin.top + margin.bottom, self.Height, self.MaxHeight))
         end
 
         local function DoLayout(self)
-            self:Measure(GenerateMeasureSpec(self.Width, UIParent:GetWidth()), GenerateMeasureSpec(self.Height, UIParent:GetHeight()))
+            DoMeasure(self)
             self:Layout()
             self:Refresh()
         end
@@ -160,6 +248,7 @@ PLoop(function()
         end
 
         __Final__()
+        __Arguments__{ NonNegativeNumber, NonNegativeNumber }
         function SetMeasuredSize(self, width, height)
             self.__MeasuredWidth = width
             self.__MeasuredHeight = height
@@ -259,13 +348,48 @@ PLoop(function()
         property "MinHeight"        {
             type                    = NonNegativeNumber,
             default                 = 0,
-            handler                 = OnLayoutParamsChanged
+            throwable               = true,
+            handler                 = function(self, minHeight)
+                if minHeight > self.MaxHeight then
+                    throw(self:GetName() + "'s MinHeight can not be larger than MaxHeight")
+                end
+                self:OnLayoutParamsChanged()
+            end
         }
 
         property "MinWidth"         {
             type                    = NonNegativeNumber,
             default                 = 0,
-            handler                 = OnLayoutParamsChanged
+            throwable               = true,
+            handler                 = function(self, minWidth)
+                if minWidth > self.MaxWidth then
+                    throw(self:GetName() + "'s MinWidth can not be larger than MaxWidth")
+                end
+                self:OnLayoutParamsChanged()
+            end
+        }
+
+        property "MaxWidth"         {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            throwable               = true,
+            handler                 = function(self, maxWidth)
+                if maxWidth < self.MinWidth then
+                    throw(self:GetName() + "'s MaxWidth can not be lower than MinWidth")
+                end
+                self:OnLayoutParamsChanged()
+            end
+        }
+
+        property "MaxHeight"        {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = function(self, maxHeight)
+                if maxHeight < self.MinHeight then
+                    throw(self:GetName() + "'s MaxHeight can not be lower than MinHeight")
+                end
+                self:OnLayoutParamsChanged()
+            end
         }
 
         property "Width"            {
@@ -277,6 +401,11 @@ PLoop(function()
         property "Height"           {
             type                    = ViewSize,
             default                 = SizeMode.WRAP_CONTENT,
+            handler                 = OnLayoutParamsChanged
+        }
+
+        property "LayoutParams"     {
+            type                    = LayoutParams,
             handler                 = OnLayoutParamsChanged
         }
 
