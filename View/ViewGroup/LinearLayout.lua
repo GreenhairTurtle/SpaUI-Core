@@ -36,19 +36,20 @@ PLoop(function()
             end
         }
 
-        local function layoutVertical(self)
-            local function getHorizontalGravity(gravity)
-                if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
-                    return Gravity.CENTER_HORIZONTAL
-                elseif Enum.ValidateFlags(Gravity.END, gravity) then
-                    return Gravity.END
-                else
-                    return Gravity.START
-                end
+        local function getHorizontalGravity(gravity)
+            if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
+                return Gravity.CENTER_HORIZONTAL
+            elseif Enum.ValidateFlags(Gravity.END, gravity) then
+                return Gravity.END
+            else
+                return Gravity.START
             end
+        end
 
+        local function layoutVertical(self)
             local gravity = self.Gravity
             local padding = self.Padding
+            local direction = self.LayoutDirection
             local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
             local width, height = self:GetSize()
 
@@ -66,11 +67,11 @@ PLoop(function()
                 yOffset = paddingTop
             end
 
-            for _, child in ipairs(self.__Children) do
-                local childLp = child:GetLayoutParams()
-                local margin = childLp.margin
+            for _, child in ipairs(self.GetChildViews()) do
+                local lp = child.LayoutParams
+                local margin = child.Margin
                 local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
-                local childHGravity = childLp.gravity and getHorizontalGravity(childLp.gravity) or defaultHGravity
+                local childHGravity = lp.gravity and getHorizontalGravity(lp.gravity) or defaultHGravity
                 local childWidth, childHeight = child:GetSize()
                 local xOffset
                 if childHGravity == Gravity.CENTER_HORIZONTAL then
@@ -81,7 +82,7 @@ PLoop(function()
                     xOffset = paddingStart
                 end
                 yOffset = yOffset + marginTop
-                child:Layout(self.LayoutDirection, xOffset, yOffset)
+                self:LayoutChild(child, xOffset, yOffset)
                 yOffset = yOffset + childHeight + marginBottom
             end
         end
@@ -100,6 +101,7 @@ PLoop(function()
         local function layoutHorizontal(self)
             local gravity = self.Gravity
             local padding = self.Padding
+            local direction = self.LayoutDirection
             local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
 
             local width, height = self:GetSize()
@@ -108,7 +110,6 @@ PLoop(function()
             local widthAvaliable = width - paddingStart - paddingEnd
             local defaultVGravity = getVerticalGravity(gravity)
 
-            -- @todo
             local xOffset
             if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
                 local centerXOffset = paddingStart + widthAvaliable/2
@@ -134,7 +135,7 @@ PLoop(function()
                     yOffset = paddingTop
                 end
                 xOffset = xOffset + marginStart
-                child:Layout(xOffset, yOffset)
+                self:LayoutChild(child, xOffset, yOffset)
                 xOffset = xOffset + childWidth + marginEnd
             end
         end
@@ -190,6 +191,9 @@ PLoop(function()
                     end
                 end
             end
+
+            self.__ContentWidth = measuredWidth - padding.left - padding.right
+            self.__ContentHeight = measuredHeight - padding.top - padding.bottom
 
             if widthMode == MeasureSpec.EXACTLY then
                 measuredWidth = expectWidth
@@ -252,6 +256,9 @@ PLoop(function()
                     end
                 end
             end
+
+            self.__ContentWidth = measuredWidth - padding.left - padding.right
+            self.__ContentHeight = measuredHeight - padding.top - padding.bottom
 
             if widthMode == MeasureSpec.EXACTLY then
                 measuredWidth = expectWidth

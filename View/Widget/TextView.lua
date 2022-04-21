@@ -79,47 +79,38 @@ PLoop(function()
             self.__FontString:SetWidth(0)
             self.__FontString:SetHeight(0)
         end
+        
+        local function reverseText(text)
+            return XList(UTF8Encoding.Decodes(text)):Map(UTF8Encoding.Encode):Reverse()
+        end
 
         -- @Override
         function OnRefresh(self)
             local padding = self.Padding
             self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
             self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
+            self.__FontString:SetText(self.__OriginText)
         end
 
-        -- Get minimum text width necessary when height is determined
-        function GetWrapContentWidth(self, height)
-            self.__FontString:ClearAllPoints()
-            self.__FontString:SetHeight(height)
-            self.__FontString:SetWidth(0)
-            return self.__FontString:GetUnboundedStringWidth()
-        end
-
-        -- Get minimum text height necessary when width is determined
-        function GetWrapContentHeight(self, width)
-            self.__FontString:ClearAllPoints()
-            self.__FontString:SetWidth(width)
-            self.__FontString:SetHeight(0)
-            return self.__FontString:GetStringHeight()
-        end
 
         --------------------------------------------------
         --          FontString functions                --
         --------------------------------------------------
 
-        -- @todo
         __Arguments__{ String/nil }
         function SetText(self, text)
-            self.__FontString:SetText(text)
+            self.__OriginText = text
+            self:RequestLayout()
         end
 
         function GetText(self)
-            return self.__FontString:GetText()
+            return self.__OriginText or ""
         end
 
         -- @todo
         function SetFormattedText(self, text, ...)
-            self.__FontString:SetFormattedText(text, ...)
+            self.__OriginText = string.format(text, ...)
+            self:RequestLayout()
         end
 
         __Arguments__{ Number, Number }
@@ -147,6 +138,7 @@ PLoop(function()
         __Arguments__{ Number }
         function SetTextScale(self, scale)
             self.__FontString:SetTextScale(scale)
+            self:RequestLayout()
         end
 
         function IsTruncated(self)
@@ -180,6 +172,7 @@ PLoop(function()
         __Arguments__{ Number }
         function SetMaxLines(self, maxLines)
             self.__FontString:SetMaxLines(maxLines)
+            self:RequestLayout()
         end
 
         function GetLineHeight(self)
@@ -189,6 +182,7 @@ PLoop(function()
         __Arguments__{ Number }
         function SetTextHeight(self, height)
             self.__FontString:SetTextHeight(height)
+            self:RequestLayout()
         end
 
         function GetFieldSize(self)
@@ -207,6 +201,7 @@ PLoop(function()
         __Arguments__{ Boolean }
         function SetNonSpaceWrap(self, wrap)
             self.__FontString:SetNonSpaceWrap(wrap)
+            self:RequestLayout()
         end
 
         __Arguments__{ NaturalNumber, NaturalNumber }
@@ -235,11 +230,13 @@ PLoop(function()
         __Arguments__{ Dimension }
         function SetShadowOffset(self, offset)
             self.__FontString:SetShadowOffset(offset.x, offset.y)
+            self:RequestLayout()
         end
 
         __Arguments__{ Number, Number }
         function SetShadowOffset(self, offsetX, offsetY)
             self.__FontString:SetShadowOffset(offsetX, offsetY)
+            self:RequestLayout()
         end
 
         function GetShadowColor(self)
@@ -263,6 +260,7 @@ PLoop(function()
         __Arguments__{ Number }
         function SetSpacing(self, spacing)
             self.__FontString:SetSpacing(spacing)
+            self:RequestLayout()
         end
 
         function GetJustifyV(self)
@@ -290,6 +288,7 @@ PLoop(function()
         __Arguments__{ Boolean }
         function SetIndentedWordWrap(self, indented)
             self.__FontString:SetIndentedWordWrap(indented)
+            self:RequestLayout()
         end
 
         function GetFont(self)
@@ -299,6 +298,7 @@ PLoop(function()
         __Arguments__{ NEString, Number, NEString/nil }
         function SetFont(self, path, size, flags)
             self.__FontString:SetFont(path, size, flags)
+            self:RequestLayout()
         end
 
         function GetFontObject(self)
@@ -308,6 +308,7 @@ PLoop(function()
         __Arguments__{ FontObject }
         function SetFontObject(self, fontObject)
             self.__FontString:SetFontObject(fontObject)
+            self:RequestLayout()
         end
 
         function GetDrawLayer(self)
@@ -328,6 +329,22 @@ PLoop(function()
         function SetVertexColor(self, r, g, b, a)
             self.__FontString:SetVertexColor(r, g, b, a)
         end
+
+        ------------------------------------------
+        --              Propertys               --
+        ------------------------------------------
+        
+        property "TextReverse"      {
+            type                    = Boolean,
+            default                 = false,
+            handler                 = OnTextReverseChanged
+        }
+
+        property "TextOrientation"  {
+            type                    = Orientation,
+            default                 = Orientation.HORIZONTAL,
+            handler                 = OnTextOrientationChanged
+        }
 
         ------------------------------------------
         --               Constructor            --

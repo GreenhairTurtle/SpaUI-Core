@@ -143,29 +143,8 @@ PLoop(function()
 
         -- Change size and goto it's location
         __Final__()
-        __Arguments__{ LayoutDirection/nil, Number/0, Number/0 }
-        function Layout(self, direction, xOffset, yOffset)
+        function Layout(self)
             SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
-
-            -- If direction is nil, means no parent, see [DoLayout]
-            if direction then
-                local point
-                if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
-                    point = "TOP"
-                    yOffset = -yOffset
-                else
-                    point = "BOTTOM"
-                end
-                if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
-                    point = point .. "LEFT"
-                else
-                    point = point .. "RIGHT"
-                    xOffset = -xOffset
-                end
-                child:ClearAllPoints()
-                child:SetPoint(point, xOffset, yOffset)
-            end
-
             -- A great opportunity to do something
             self:OnLayout()
             self.__LayoutRequested = false
@@ -318,13 +297,9 @@ PLoop(function()
             self:RequestLayout()
         end
 
-        property "LayoutDirection"  {
-            type                    = LayoutDirection,
-            default                 = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
-            handler                 = function(self)
-                self:Layout()
-            end
-        }
+        -----------------------------------------
+        --              Propertys              --
+        -----------------------------------------
 
         property "Visibility"       {
             type                    = Visibility,
