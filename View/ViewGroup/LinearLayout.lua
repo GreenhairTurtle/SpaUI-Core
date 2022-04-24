@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout.ViewGroup"
+    namespace "SpaUI.Layout"
     import "SpaUI.Layout"
 
     __Sealed__()
@@ -21,7 +21,7 @@ PLoop(function()
 
         property "Orientation"      {
             type                    = Orientation,
-            default                 = Orientation.VERTICAL,
+            default                 = Orientation.HORIZONTAL,
             handler                 = function(self)
                 self:RequestLayout()
             end
@@ -49,7 +49,6 @@ PLoop(function()
         local function layoutVertical(self)
             local gravity = self.Gravity
             local padding = self.Padding
-            local direction = self.LayoutDirection
             local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
             local width, height = self:GetSize()
 
@@ -67,11 +66,12 @@ PLoop(function()
                 yOffset = paddingTop
             end
 
-            for _, child in ipairs(self.GetChildViews()) do
+            for _, child in self:GetNonGoneChilds() do
+                child:Layout()
                 local lp = child.LayoutParams
                 local margin = child.Margin
                 local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
-                local childHGravity = lp.gravity and getHorizontalGravity(lp.gravity) or defaultHGravity
+                local childHGravity = lp and lp.gravity and getHorizontalGravity(lp.gravity) or defaultHGravity
                 local childWidth, childHeight = child:GetSize()
                 local xOffset
                 if childHGravity == Gravity.CENTER_HORIZONTAL then
@@ -101,7 +101,6 @@ PLoop(function()
         local function layoutHorizontal(self)
             local gravity = self.Gravity
             local padding = self.Padding
-            local direction = self.LayoutDirection
             local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
 
             local width, height = self:GetSize()
@@ -120,11 +119,12 @@ PLoop(function()
                 xOffset = paddingStart
             end
 
-            for _, child in ipairs(self:GetChildViews()) do
+            for _, child in self:GetNonGoneChilds() do
+                child:Layout()
                 local lp = child.LayoutParams
                 local margin = child.Margin
                 local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
-                local childVGravity = lp.gravity and getVerticalGravity(lp.gravity) or defaultVGravity
+                local childVGravity = lp and lp.gravity and getVerticalGravity(lp.gravity) or defaultVGravity
                 local childWidth, childHeight = child:GetSize()
                 local yOffset
                 if childVGravity == Gravity.CENTER_VERTICAL then
@@ -157,33 +157,30 @@ PLoop(function()
             local padding = self.Padding
 
             local measuredWidth = padding.left + padding.right
-            local measuredHeight = padding.top + padding.bottom
+            local measuredHeight = 0
             local totalWeight = 0
 
-            for index, child in ipairs(self:GetChildViews()) do
-                if child.Visibility ~= Visibility.GONE then
-                    local lp = child.LayoutParams
-                    totalWeight = totalWeight + (lp and lp.weight or 0)
+            for index, child in self:GetNonGoneChilds() do
+                local lp = child.LayoutParams
+                totalWeight = totalWeight + (lp and lp.weight or 0)
 
-                    local margin = child.Margin
-                    local usedHeight = padding.top + padding.bottom + margin.top + margin.bottom
-                    measuredWidth = measuredWidth + margin.left + margin.right
+                local margin = child.Margin
+                local usedHeight = padding.top + padding.bottom + margin.top + margin.bottom
+                measuredWidth = measuredWidth + margin.left + margin.right
 
-                    child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, measuredWidth, child.Width, child.MaxWidth),
-                        IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight))
-
-                    measuredWidth = measuredWidth + child:GetMeasuredWidth()
-                    measuredHeight = math.max(measuredHeight, measuredHeight + child:GetMeasuredHeight())
-                end
+                child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, measuredWidth, child.Width, child.MaxWidth),
+                    IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight))
+                measuredWidth = measuredWidth + child:GetMeasuredWidth()
+                measuredHeight = math.max(measuredHeight, usedHeight + child:GetMeasuredHeight())
             end
 
             -- Obviously, weight only work when parent has imposed an exact size on us
             if widthMode == MeasureSpec.EXACTLY and totalWeight > 0 then
                 local widthRemain = expectWidth - measuredWidth
                 if widthRemain ~= 0 then
-                    for index, child in ipairs(self:GetChildViews()) do
+                    for index, child in self:GetNonGoneChilds() do
                         local lp = child.LayoutParams
-                        if child.Visibility ~= Visibility.GONE and lp and lp.weight then
+                        if lp and lp.weight then
                             local newWidth = math.max(0, child:GetMeasuredWidth() + widthRemain * lp.weight/totalWeight)
                             child:Measure(MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newWidth),
                                 MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredHeight()))
@@ -221,34 +218,31 @@ PLoop(function()
             local expectHeight = MeasureSpec.GetSize(heightMeasureSpec)
             local padding = self.Padding
 
-            local measuredWidth = padding.left + padding.right
+            local measuredWidth = 0
             local measuredHeight = padding.top + padding.bottom
             local totalWeight = 0
 
-            for index, child in ipairs(self:GetChildViews()) do
-                if child.Visibility ~= Visibility.GONE then
-                    local lp = child.LayoutParams
-                    totalWeight = totalWeight + (lp and lp.weight or 0)
+            for index, child in self:GetNonGoneChilds() do
+                local lp = child.LayoutParams
+                totalWeight = totalWeight + (lp and lp.weight or 0)
 
-                    local margin = child.Margin
-                    local usedWidth = padding.left + padding.right + margin.left + margin.bottom
-                    measuredHeight = measuredHeight + margin.top + margin.bottom
+                local margin = child.Margin
+                local usedWidth = padding.left + padding.right + margin.left + margin.bottom
+                measuredHeight = measuredHeight + margin.top + margin.bottom
 
-                    child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, usedWidth, child.Width, child.MaxWidth),
-                        IView.GetChildMeasureSpec(heightMeasureSpec, measuredHeight, child.Height, child.MaxHeight))
-
-                    measuredWidth = math.max(measuredWidth, measuredWidth + child:GetMeasuredWidth())
-                    measuredHeight = measuredHeight + child:GetMeasuredHeight()
-                end
+                child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, usedWidth, child.Width, child.MaxWidth),
+                    IView.GetChildMeasureSpec(heightMeasureSpec, measuredHeight, child.Height, child.MaxHeight))
+                measuredWidth = math.max(measuredWidth, usedWidth + child:GetMeasuredWidth())
+                measuredHeight = measuredHeight + child:GetMeasuredHeight()
             end
 
             -- Obviously, weight only work when parent has imposed an exact size on us
             if heightMode == MeasureSpec.EXACTLY and totalWeight > 0 then
                 local heightRemain = expectHeight - measuredHeight
                 if heightRemain ~= 0 then
-                    for index, child in ipairs(self:GetChildViews()) do
+                    for index, child in self:GetNonGoneChilds() do
                         local lp = child.LayoutParams
-                        if child.Visibility ~= Visibility.GONE and lp and lp.weight then
+                        if lp and lp.weight then
                             local newHeight = math.max(0, child:GetMeasuredHeight() + heightRemain * lp.weight/totalWeight)
                             child:Measure(MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredWidth()),
                                 MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newHeight))
@@ -287,6 +281,13 @@ PLoop(function()
                 MeasureVertical(self, widthMeasureSpec, heightMeasureSpec)
             end
         end
+
+        function CheckLayoutParams(self, layoutParams)
+            if not layoutParams then return true end
+
+            return Struct.ValidateValue(LinearLayout.LayoutParams, layoutParams, true) and true or false
+        end
+
     end)
 
 end)

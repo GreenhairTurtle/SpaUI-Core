@@ -71,7 +71,6 @@ PLoop(function()
 
             measuredWidth = math.max(measuredWidth + padding.left + padding.right, self.MinWidth)
             measuredHeight = math.max(measuredHeight + padding.top + padding.bottom, self.MinHeight)
-
             self:SetMeasuredSize(measuredWidth, measuredHeight)
         end
 
@@ -89,7 +88,6 @@ PLoop(function()
             local padding = self.Padding
             self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
             self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
-            self.__FontString:SetText(self.__OriginText)
         end
 
 
@@ -100,6 +98,7 @@ PLoop(function()
         __Arguments__{ String/nil }
         function SetText(self, text)
             self.__OriginText = text
+            self.__FontString:SetText(text)
             self:RequestLayout()
         end
 

@@ -1,7 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout.ViewGroup"
-    import "SpaUI.Layout"
+    namespace "SpaUI.Layout"
 
     class "ViewGroup"(function()
         inherit "View"
@@ -10,7 +9,7 @@ PLoop(function()
         __Final__()
         __Arguments__{ IView, Number, Number }
         function LayoutChild(self, child, xOffset, yOffset)
-            local direction = self.direction
+            local direction = self.LayoutDirection
             local point
             if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
                 point = "TOP"
@@ -26,16 +25,40 @@ PLoop(function()
             end
             child:ClearAllPoints()
             child:SetPoint(point, xOffset, yOffset)
+        end
 
-            child:Layout()
+        function OnLayoutComplete(self)
+            self.__LayoutRequested = false
+            for _, child in pairs(self.__ChildViews) do
+                child:OnLayoutComplete()
+            end
+        end
+
+        -- @Override
+        function OnRefresh(self)
+            for _, child in self:GetNonGoneChilds() do
+                child:Refresh()
+            end
+        end
+
+        __Arguments__{ IView }
+        function RemoveView(self, view)
+            if tContains(self.__ChildViews, view) then
+                view:SetParent(nil)
+                view:ClearAllPoints()
+                tDeleteItem(self.__ChildViews, view)
+                self:RequestLayout()
+            end
         end
 
         __Arguments__{ IView, NonNegativeNumber/0 }
         function AddView(self, view, index)
             if index <= 0 then
-                index = self:GetChildViews() + 1
+                index = #self.__ChildViews + 1
             end
-            tinset(self.__ChildViews, view, index)
+            view:ClearAllPoints()
+            view:SetParent(self)
+            tinsert(self.__ChildViews, index, view)
             self:RequestLayout()
         end
 
@@ -50,6 +73,19 @@ PLoop(function()
 
         function GetChildViews(self)
             return self.__ChildViews
+        end
+
+        -- Internal use, iterator
+        function GetNonGoneChilds(self)
+            return function(views, index)
+                index = (index or 0) + 1
+                for i = index, #views do
+                    local view = views[i]
+                    if view.Visibility ~= Visibility.GONE then
+                        return i, view
+                    end
+                end
+            end, self.__ChildViews, 0
         end
 
         -----------------------------------------

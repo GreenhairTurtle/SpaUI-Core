@@ -10,6 +10,17 @@ PLoop(function()
         local MIN_NUMBER = -2147483648
         local MAX_NUMBER = 2147483647
 
+        local function OnLayoutParamsChanged(self, layoutParams)
+            local parent = self:GetParent()
+            if parent and IView.IsView(parent) and not parent:CheckLayoutParams(layoutParams) then
+                error(self:GetName() .. "'s LayoutParams is not valid for its parent", 2)
+            end
+        end
+
+        local function OnParentChanged(self)
+            OnLayoutParamsChanged(self, self.LayoutParams)
+        end
+
         local function SetWidthInternal(self, width)
             Frame.SetWidth(self, width)
         end
@@ -44,7 +55,7 @@ PLoop(function()
         function GetChildMeasureSpec(measureSpec, usedSize, childSize, maxSize)
             local specMode = MeasureSpec.GetMode(measureSpec)
             local specSize = MeasureSpec.GetSize(measureSpec)
-            maxSize = (not maxSize or maxSize == 0) or MAX_NUMBER
+            maxSize = (not maxSize or maxSize == 0) and MAX_NUMBER or maxSize
 
             local size = math.max(specSize - usedSize, 0)
 
@@ -57,28 +68,28 @@ PLoop(function()
                     -- Child wants a specific size... so be it
                     resultSize = childSize
                     resultMode = MeasureSpec.EXACTLY
-                elseif childSize == MeasureSpec.MATCH_PARENT then
+                elseif childSize == SizeMode.MATCH_PARENT then
                     -- Child wants to be parent's size. So be it.
                     resultSize = math.min(size, maxSize)
                     resultMode = MeasureSpec.EXACTLY
-                elseif childSize == MeasureSpec.WRAP_CONTENT then
+                elseif childSize == SizeMode.WRAP_CONTENT then
                     -- Child wants to determine its own size
                     -- It can't be bigger than us
                     resultSize = math.min(size, maxSize)
                     resultMode = MeasureSpec.AT_MOST
                 end
-            elseif sepcMode == MeasureSpec.AT_MOST then
+            elseif specMode == MeasureSpec.AT_MOST then
                 -- Parent has imposed a maximum size on us
                 if childSize >= 0 then
                     -- Child wants a specific size... so be it
                     resultSize = childSize
                     resultMode = MeasureSpec.EXACTLY
-                elseif childSize == MeasureSpec.MATCH_PARENT then
+                elseif childSize == SizeMode.MATCH_PARENT then
                     -- Child wants to be parent's size, but parent's size is not fixed.
                     -- Constrain child to not be bigger than parent.
                     resultSize = math.min(size, maxSize)
                     resultMode = MeasureSpec.AT_MOST
-                elseif childSize == MeasureSpec.WRAP_CONTENT then
+                elseif childSize == SizeMode.WRAP_CONTENT then
                     -- Child wants to determine its own size
                     -- It can't be bigger than us
                     resultSize = math.min(size, maxSize)
@@ -90,11 +101,11 @@ PLoop(function()
                     -- Child wants a specific size... let him have it
                     resultSize = childSize
                     resultMode = MeasureSpec.EXACTLY
-                elseif childSize == MeasureSpec.MATCH_PARENT then
+                elseif childSize == SizeMode.MATCH_PARENT then
                     -- Child wants to be parent's size... find out how big it should be
                     resultSize = math.min(size, maxSize)
                     resultMode = MeasureSpec.UNSPECIFIED
-                elseif childSize == MeasureSpec.WRAP_CONTENT then
+                elseif childSize == SizeMode.WRAP_CONTENT then
                     -- Child wants to determine its own size.... 
                     -- find out how big it should be
                     resultSize = math.min(size, maxSize)
@@ -107,12 +118,12 @@ PLoop(function()
         
         -- Measure size
         __Final__()
-        function Measure(self, widthMeasureSpec, heightMeasureSpec)
+        function Measure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             local specChanged = widthMeasureSpec ~= self.__OldWidthMeasureSpec or heightMeasureSpec ~= self.__OldHeightMeasureSpec
             local isSpecExactly = MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpec.EXACTLY and MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpec.EXACTLY
             local matchesSpecSize = self:GetMeasuredWidth() == MeasureSpec.GetSize(widthMeasureSpec) and self:GetMeasuredHeight() == MeasureSpec.GetSize(heightMeasureSpec)
 
-            if specChanged and (not isSpecExactly or not matchesSpecSize) then
+            if forceLayout or (specChanged and (not isSpecExactly or not matchesSpecSize)) then
                 self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
             end
             
@@ -143,11 +154,15 @@ PLoop(function()
 
         -- Change size and goto it's location
         __Final__()
-        function Layout(self)
-            SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
-            -- A great opportunity to do something
-            self:OnLayout()
-            self.__LayoutRequested = false
+        function Layout(self, forceLayout)
+            local width, height = self:GetSize()
+            local changed =  math.abs(width - self:GetMeasuredWidth()) >= 0.01 or math.abs(height - self:GetMeasuredHeight()) >= 0.01
+
+            if changed or forceLayout then
+                SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
+                -- A great opportunity to do something
+                self:OnLayout()
+            end
         end
 
         -- Viewgroup should override this function to call Layout on each of it's children and place child to it's position
@@ -155,10 +170,19 @@ PLoop(function()
         function OnLayout(self)
         end
 
+        -- Called when layout complete, child should not override this function
+        function OnLayoutComplete(self)
+            self.__LayoutRequested = false
+        end
+
         function Refresh(self)
+            if self.__LayoutRequested then
+                return
+            end
             self:OnRefresh()
         end
         
+        -- Viewgroup should override this function to call Refresh on each of it's children
         __Abstract__()
         function OnRefresh(self)
         end
@@ -169,7 +193,7 @@ PLoop(function()
 
         __Static__()
         function IsView(view)
-            return Class.ValidateValue(View, view, true) and true or false
+            return Class.ValidateValue(IView, view, true) and true or false
         end
 
         function IsRootView(self)
@@ -182,14 +206,14 @@ PLoop(function()
             local rootWidthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetWidth())
             local rootHeightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetHeight())
             local margin = self.Margin
-            
             self:Measure(IView.GetChildMeasureSpec(rootWidthMeasureSpec, margin.left + margin.right, self.Width, self.MaxWidth),
-                IView.GetChildMeasureSpec(rootHeightMeasureSpec, margin.top + margin.bottom, self.Height, self.MaxHeight))
+                IView.GetChildMeasureSpec(rootHeightMeasureSpec, margin.top + margin.bottom, self.Height, self.MaxHeight), true)
         end
 
         local function DoLayout(self)
             DoMeasure(self)
-            self:Layout()
+            self:Layout(true)
+            self:OnLayoutComplete()
             self:Refresh()
         end
 
@@ -203,15 +227,21 @@ PLoop(function()
             self.__LayoutRequested = true
 
             -- Delay some times to reduce layout pass
-            while self:IsRootView() and GetTime() - self.__LayoutRequestTime < 0.05 do
+            while self:IsRootView() and GetTime() - self.__LayoutRequestTime < 0.02 do
                 Next()
             end
 
             if self:IsRootView() then
                 DoLayout(self)
             else
-                return self:GetParent():RequestLayout()
+                self:GetParent():RequestLayout()
             end
+        end
+
+        -- ViewGroup can override this function to check child layoutParams
+        -- @return true is valid layout params and false otherwise
+        __Abstract__()
+        function CheckLayoutParams(self, layoutParams)
         end
 
         __Final__()
@@ -255,7 +285,7 @@ PLoop(function()
             self.Height = height
         end
 
-        function OnLayoutParamsChanged(self)
+        function OnViewPropertyChanged(self)
             self:RequestLayout()
         end
 
@@ -317,7 +347,7 @@ PLoop(function()
 
         property "Margin"           {
             type                    = Margin,
-            handler                 = OnLayoutParamsChanged,
+            handler                 = OnViewPropertyChanged,
             default                 = function(self)
                 return Margin(0)
             end
@@ -331,7 +361,7 @@ PLoop(function()
                 if minHeight > self.MaxHeight then
                     throw(self:GetName() + "'s MinHeight can not be larger than MaxHeight")
                 end
-                self:OnLayoutParamsChanged()
+                self:OnViewPropertyChanged()
             end
         }
 
@@ -343,7 +373,7 @@ PLoop(function()
                 if minWidth > self.MaxWidth then
                     throw(self:GetName() + "'s MinWidth can not be larger than MaxWidth")
                 end
-                self:OnLayoutParamsChanged()
+                self:OnViewPropertyChanged()
             end
         }
 
@@ -355,7 +385,7 @@ PLoop(function()
                 if maxWidth < self.MinWidth then
                     throw(self:GetName() + "'s MaxWidth can not be lower than MinWidth")
                 end
-                self:OnLayoutParamsChanged()
+                self:OnViewPropertyChanged()
             end
         }
 
@@ -366,28 +396,33 @@ PLoop(function()
                 if maxHeight < self.MinHeight then
                     throw(self:GetName() + "'s MaxHeight can not be lower than MinHeight")
                 end
-                self:OnLayoutParamsChanged()
+                self:OnViewPropertyChanged()
             end
         }
 
         property "Width"            {
             type                    = ViewSize,
             default                 = SizeMode.WRAP_CONTENT,
-            handler                 = OnLayoutParamsChanged
+            handler                 = OnViewPropertyChanged
         }
 
         property "Height"           {
             type                    = ViewSize,
             default                 = SizeMode.WRAP_CONTENT,
-            handler                 = OnLayoutParamsChanged
+            handler                 = OnViewPropertyChanged
         }
 
         property "LayoutParams"     {
             type                    = LayoutParams,
-            handler                 = OnLayoutParamsChanged
+            throwable               = true,
+            handler                 = function(self, layoutParams)
+                OnLayoutParamsChanged(self, layoutParams)
+                self:OnViewPropertyChanged()
+            end
         }
 
         function __init(self)
+            self.OnParentChanged = self.OnParentChanged + OnParentChanged
             self:RequestLayout()
         end
 

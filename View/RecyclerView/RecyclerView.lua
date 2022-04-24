@@ -206,7 +206,7 @@ PLoop(function(ENV)
 
         __Final__()
         __Arguments__{ Number, Number, Number }
-        function RequestLayout(self, from, to, total)
+        function RequestLayoutInternal(self, from, to, total)
             self.__Range = total
             Show(self)
             RefreshThumbAndScrollButton(self, from, to, total)
@@ -1107,7 +1107,7 @@ PLoop(function(ENV)
         -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
         __Final__()
         __Arguments__{ Boolean/false }
-        function RequestLayout(self, keepPosition)
+        function RequestLayoutInternal(self, keepPosition)
             wipe(self.__RowLength)
             self.__RowCount = 0
             self.__MinRowLength = 2147483648
@@ -1300,7 +1300,7 @@ PLoop(function(ENV)
 
         -- 刷新
         __Arguments__{ Adapter/nil }
-        function RequestLayout(self, adapter)
+        function RequestLayoutInternal(self, adapter)
             self:Refresh(false, adapter)
         end
 
@@ -1309,10 +1309,10 @@ PLoop(function(ENV)
         -- @param keepPosition: 保留当前位置，即刷新后仍停留在当前item
         -- @param adapter 指定ViewHolder回收到哪个adapter，默认为nil，即当前adapter
         __Arguments__{ Boolean/false, Adapter/nil }
-        function RequestLayout(self, keepPosition, adapter)
+        function RequestLayoutInternal(self, keepPosition, adapter)
             self:Reset(adapter)
             if self.LayoutManager then
-                self.LayoutManager:RequestLayout(keepPosition)
+                self.LayoutManager:RequestLayoutInternal(keepPosition)
             else
                 self:OnLayoutChanged()
             end
