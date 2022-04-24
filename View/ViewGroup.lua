@@ -10,25 +10,28 @@ PLoop(function()
         __Arguments__{ IView, Number, Number }
         function LayoutChild(self, child, xOffset, yOffset)
             local direction = self.LayoutDirection
+            local width, height = child:GetSize()
             local point
             if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
                 point = "TOP"
-                yOffset = -yOffset
+                yOffset = -yOffset - height/2
             else
                 point = "BOTTOM"
+                yOffset = yOffset + height/2
             end
             if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
                 point = point .. "LEFT"
+                xOffset = xOffset + width/2
             else
                 point = point .. "RIGHT"
-                xOffset = -xOffset
+                xOffset = -xOffset - width/2
             end
             child:ClearAllPoints()
-            child:SetPoint(point, xOffset, yOffset)
+            child:SetPointInternal("CENTER", self, point, xOffset, yOffset)
         end
 
         function OnLayoutComplete(self)
-            self.__LayoutRequested = false
+            super.OnLayoutComplete(self)
             for _, child in pairs(self.__ChildViews) do
                 child:OnLayoutComplete()
             end

@@ -12,7 +12,7 @@ PLoop(function()
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
             self.__FontString:ClearAllPoints()
 
-            local paddingStart, paddingEnd, paddingTop, paddingBottom = self.paddingStart, self.PaddingEnd, self.PaddingTop, self.PaddingEnd
+            local paddingStart, paddingEnd, paddingTop, paddingBottom = self.PaddingStart, self.PaddingEnd, self.PaddingTop, self.PaddingEnd
             local widthMode = MeasureSpec.GetMode(widthMeasureSpec)
             local width = math.max(MeasureSpec.GetSize(widthMeasureSpec) - paddingStart - paddingEnd, 0)
             local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
@@ -368,6 +368,128 @@ PLoop(function()
             depends         = { "DrawLayer" },
             get             = function(self) return select(2, self:GetDrawLayer()) end,
             set             = function(self, sublevel) self:SetDrawLayer(self:GetDrawLayer(), sublevel) end,
+        }
+
+        --- the font settings
+        UI.Property         {
+            name            = "Font",
+            type            = FontType,
+            require         = TextView,
+            get             = function(self)
+                local filename, fontHeight, flags   = self:GetFont()
+                local outline, monochrome           = "NONE", false
+                if flags then
+                    if flags:find("THICKOUTLINE") then
+                        outline         = "THICK"
+                    elseif flags:find("OUTLINE") then
+                        outline         = "NORMAL"
+                    end
+                    if flags:find("MONOCHROME") then
+                        monochrome      = true
+                    end
+                end
+                return FontType(filename, fontHeight, outline, monochrome)
+            end,
+            set             = function(self, font)
+                local flags
+
+                if font.outline then
+                    if font.outline == "NORMAL" then
+                        flags           = "OUTLINE"
+                    elseif font.outline == "THICK" then
+                        flags           = "THICKOUTLINE"
+                    end
+                end
+                if font.monochrome then
+                    if flags then
+                        flags           = flags..",MONOCHROME"
+                    else
+                        flags           = "MONOCHROME"
+                    end
+                end
+                return self:SetFont(font.font, font.height, flags)
+            end,
+            override        = { "FontObject" },
+        }
+
+        --- the Font object
+        UI.Property         {
+            name            = "FontObject",
+            type            = FontObject,
+            require         = TextView,
+            get             = function(self) return self:GetFontObject() end,
+            set             = function(self, fontObject) self:SetFontObject(fontObject) end,
+            override        = { "Font" },
+        }
+
+        --- the fontstring's horizontal text alignment style
+        UI.Property         {
+            name            = "JustifyH",
+            type            = JustifyHType,
+            require         = TextView,
+            default         = "CENTER",
+            get             = function(self) return self:GetJustifyH() end,
+            set             = function(self, justifyH) self:SetJustifyH(justifyH) end,
+        }
+
+        --- the fontstring's vertical text alignment style
+        UI.Property         {
+            name            = "JustifyV",
+            type            = JustifyVType,
+            require         = TextView,
+            default         = "MIDDLE",
+            get             = function(self) return self:GetJustifyV() end,
+            set             = function(self, justifyV) self:SetJustifyV(justifyV) end,
+        }
+
+        --- the color of the font's text shadow
+        UI.Property         {
+            name            = "ShadowColor",
+            type            = Color,
+            require         = TextView,
+            default         = Color(0, 0, 0, 0),
+            get             = function(self) return Color(self:GetShadowColor()) end,
+            set             = function(self, color) self:SetShadowColor(color.r, color.g, color.b, color.a) end,
+        }
+
+        --- the offset of the fontstring's text shadow from its text
+        UI.Property         {
+            name            = "ShadowOffset",
+            type            = Dimension,
+            require         = TextView,
+            default         = Dimension(0, 0),
+            get             = function(self) return Dimension(self:GetShadowOffset()) end,
+            set             = function(self, offset) self:SetShadowOffset(offset.x, offset.y) end,
+        }
+
+        --- the fontstring's amount of spacing between lines
+        UI.Property         {
+            name            = "Spacing",
+            type            = Number,
+            require         = TextView,
+            default         = 0,
+            get             = function(self) return self:GetSpacing() end,
+            set             = function(self, spacing) self:SetSpacing(spacing) end,
+        }
+
+        --- the fontstring's default text color
+        UI.Property         {
+            name            = "TextColor",
+            type            = Color,
+            require         = TextView,
+            default         = Color(1, 1, 1),
+            get             = function(self) return Color(self:GetTextColor()) end,
+            set             = function(self, color) self:SetTextColor(color.r, color.g, color.b, color.a) end,
+        }
+
+        --- whether the text wrap will be indented
+        UI.Property         {
+            name            = "Indented",
+            type            = Boolean,
+            require         = TextView,
+            default         = false,
+            get             = function(self) return self:GetIndentedWordWrap() end,
+            set             = function(self, flag) self:SetIndentedWordWrap(flag) end,
         }
     end
 end)

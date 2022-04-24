@@ -173,6 +173,7 @@ PLoop(function()
         -- Called when layout complete, child should not override this function
         function OnLayoutComplete(self)
             self.__LayoutRequested = false
+            self.__Initialized = true
         end
 
         function Refresh(self)
@@ -282,6 +283,18 @@ PLoop(function()
         function SetSize(self, width, height)
             self.Width = width
             self.Height = height
+        end
+
+        __Final__()
+        function SetPoint(self, ...)
+            -- only root view can set point
+            if self:IsRootView() then
+                self:SetPointInternal(...)
+            end
+        end
+
+        function SetPointInternal(self, ...)
+            Frame.SetPoint(self, ...)
         end
 
         function OnViewPropertyChanged(self)

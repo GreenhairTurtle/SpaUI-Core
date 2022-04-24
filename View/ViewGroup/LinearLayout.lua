@@ -32,7 +32,7 @@ PLoop(function()
             type                    = Gravity,
             default                 = Gravity.TOP + Gravity.START,
             handler                 = function(self)
-                self:Layout()
+                self:RequestLayout()
             end
         }
 
@@ -60,10 +60,11 @@ PLoop(function()
                 local centerYOffset = paddingTop + heightAvaliable/2
                 yOffset = centerYOffset - self.__ContentHeight/2
             elseif Enum.ValidateFlags(Gravity.BOTTOM, gravity) then
-                yOffset = paddingTop + (heightAvaliable - self.__ContentHeight)
+                yOffset = paddingTop + heightAvaliable - self.__ContentHeight
             else
                 yOffset = paddingTop
             end
+            print("layoutVertical", heightAvaliable, self.__ContentHeight, yOffset)
 
             for _, child in self:GetNonGoneChilds() do
                 child:Layout()
@@ -176,6 +177,7 @@ PLoop(function()
             if widthMode == MeasureSpec.EXACTLY and totalWeight > 0 then
                 local widthRemain = expectWidth - measuredWidth
                 if widthRemain ~= 0 then
+                    measuredWidth = paddingStart + paddingEnd
                     for index, child in self:GetNonGoneChilds() do
                         local lp = child.LayoutParams
                         if lp and lp.weight then
@@ -183,6 +185,7 @@ PLoop(function()
                             child:Measure(MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newWidth),
                                 MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredHeight()))
                         end
+                        measuredWidth = measuredWidth + child.MarginStart + child.MarginEnd + child:GetMeasuredWidth()
                     end
                 end
             end
@@ -238,6 +241,7 @@ PLoop(function()
             if heightMode == MeasureSpec.EXACTLY and totalWeight > 0 then
                 local heightRemain = expectHeight - measuredHeight
                 if heightRemain ~= 0 then
+                    measuredHeight = paddingTop + paddingBottom
                     for index, child in self:GetNonGoneChilds() do
                         local lp = child.LayoutParams
                         if lp and lp.weight then
@@ -245,6 +249,7 @@ PLoop(function()
                             child:Measure(MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredWidth()),
                                 MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newHeight))
                         end
+                        measuredHeight = measuredHeight + child.MarginTop + child.MarginBottom + child:GetMeasuredHeight()
                     end
                 end
             end
