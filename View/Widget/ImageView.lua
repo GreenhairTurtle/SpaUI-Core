@@ -9,10 +9,9 @@ PLoop(function()
 
         -- @Override
         function OnRefresh(self)
-            local padding = self.Padding
             self.__Texture:ClearAllPoints()
-            self.__Texture:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
-            self.__Texture:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
+            self.__Texture:SetPoint("TOPLEFT", self, "TOPLEFT", self.PaddingStart, -self.PaddingTop)
+            self.__Texture:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -self.PaddingEnd, self.PaddingBottom)
         end
 
         --------------------------------------------------

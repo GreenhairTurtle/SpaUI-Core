@@ -12,11 +12,11 @@ PLoop(function()
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
             self.__FontString:ClearAllPoints()
 
-            local padding = self.Padding
+            local paddingStart, paddingEnd, paddingTop, paddingBottom = self.paddingStart, self.PaddingEnd, self.PaddingTop, self.PaddingEnd
             local widthMode = MeasureSpec.GetMode(widthMeasureSpec)
-            local width = math.max(MeasureSpec.GetSize(widthMeasureSpec) - padding.left - padding.right, 0)
+            local width = math.max(MeasureSpec.GetSize(widthMeasureSpec) - paddingStart - paddingEnd, 0)
             local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
-            local height = math.max(MeasureSpec.GetSize(heightMeasureSpec) - padding.top - padding.bottom, 0)
+            local height = math.max(MeasureSpec.GetSize(heightMeasureSpec) - paddingTop - paddingBottom, 0)
             local measuredWidth
             local measuredHeight
 
@@ -69,8 +69,8 @@ PLoop(function()
                 end
             end
 
-            measuredWidth = math.max(measuredWidth + padding.left + padding.right, self.MinWidth)
-            measuredHeight = math.max(measuredHeight + padding.top + padding.bottom, self.MinHeight)
+            measuredWidth = math.max(measuredWidth + paddingStart + paddingEnd, self.MinWidth)
+            measuredHeight = math.max(measuredHeight + paddingTop + paddingBottom, self.MinHeight)
             self:SetMeasuredSize(measuredWidth, measuredHeight)
         end
 
@@ -79,17 +79,11 @@ PLoop(function()
             self.__FontString:SetHeight(0)
         end
         
-        local function reverseText(text)
-            return XList(UTF8Encoding.Decodes(text)):Map(UTF8Encoding.Encode):Reverse()
-        end
-
         -- @Override
         function OnRefresh(self)
-            local padding = self.Padding
-            self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", padding.left, -padding.top)
-            self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding.right, padding.bottom)
+            self.__FontString:SetPoint("TOPLEFT", self, "TOPLEFT", self.PaddingStart, -self.PaddingTop)
+            self.__FontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -self.PaddingEnd, self.PaddingBottom)
         end
-
 
         --------------------------------------------------
         --          FontString functions                --
@@ -106,9 +100,9 @@ PLoop(function()
             return self.__OriginText or ""
         end
 
-        -- @todo
         function SetFormattedText(self, text, ...)
             self.__OriginText = string.format(text, ...)
+            self.__FontString:SetText(text)
             self:RequestLayout()
         end
 
@@ -330,22 +324,6 @@ PLoop(function()
         end
 
         ------------------------------------------
-        --              Propertys               --
-        ------------------------------------------
-        
-        property "TextReverse"      {
-            type                    = Boolean,
-            default                 = false,
-            handler                 = OnTextReverseChanged
-        }
-
-        property "TextOrientation"  {
-            type                    = Orientation,
-            default                 = Orientation.HORIZONTAL,
-            handler                 = OnTextOrientationChanged
-        }
-
-        ------------------------------------------
         --               Constructor            --
         ------------------------------------------
 
@@ -355,5 +333,41 @@ PLoop(function()
 
     end)
 
+    --------------------------------------------------------------------
+    --                Properties, copy from Scorpio.UI                --
+    --------------------------------------------------------------------
 
+    do
+        UI = Scorpio.UI
+
+        --- the layer at which the LayeredFrame's graphics are drawn relative to others in its frame
+        UI.Property         {
+            name            = "DrawLayer",
+            type            = DrawLayer,
+            require         = TextView,
+            default         = "ARTWORK",
+            get             = function(self) return self:GetDrawLayer() end,
+            set             = function(self, layer) return self:SetDrawLayer(layer) end,
+        }
+    
+        --- the color shading for the LayeredFrame's graphics
+        UI.Property         {
+            name            = "VertexColor",
+            type            = ColorType,
+            require         = TextView,
+            default         = Color.WHITE,
+            get             = function(self) if self.GetVertexColor then return Color(self:GetVertexColor()) end end,
+            set             = function(self, color) self:SetVertexColor(color.r, color.g, color.b, color.a) end,
+        }
+    
+        UI.Property         {
+            name            = "SubLevel",
+            type            = Integer,
+            require         = TextView,
+            default         = 0,
+            depends         = { "DrawLayer" },
+            get             = function(self) return select(2, self:GetDrawLayer()) end,
+            set             = function(self, sublevel) self:SetDrawLayer(self:GetDrawLayer(), sublevel) end,
+        }
+    end
 end)

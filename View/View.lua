@@ -205,9 +205,8 @@ PLoop(function()
         local function DoMeasure(self)
             local rootWidthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetWidth())
             local rootHeightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetHeight())
-            local margin = self.Margin
-            self:Measure(IView.GetChildMeasureSpec(rootWidthMeasureSpec, margin.left + margin.right, self.Width, self.MaxWidth),
-                IView.GetChildMeasureSpec(rootHeightMeasureSpec, margin.top + margin.bottom, self.Height, self.MaxHeight), true)
+            self:Measure(IView.GetChildMeasureSpec(rootWidthMeasureSpec, self.MarginStart + self.MarginEnd, self.Width, self.MaxWidth),
+                IView.GetChildMeasureSpec(rootHeightMeasureSpec, self.MarginTop + self.MarginBottom, self.Height, self.MaxHeight), true)
         end
 
         local function DoLayout(self)
@@ -291,16 +290,18 @@ PLoop(function()
 
         __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
         function SetMargin(self, left, top, right, bottom)
-            self.Margin = Margin(left, top, right, bottom)
+            self.MarginStart = left
+            self.MarginEnd = right
+            self.MarginTop = top
+            self.MarginBottom = bottom
         end
 
         __Arguments__{ NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0, NonNegativeNumber/0 }
         function SetPadding(self, left, top, right, bottom)
-            self.Padding = Padding(left, top, right, bottom)
-        end
-
-        function OnPaddingChanged(self, new, old)
-            self:Refresh()
+            self.PaddingStart = left
+            self.PaddingEnd = right
+            self.PaddingTop = top
+            self.PaddingBottom = bottom
         end
 
         __Final__()
@@ -338,19 +339,107 @@ PLoop(function()
         }
 
         property "Padding"          {
-            type                    = Padding,
-            handler                 = OnPaddingChanged,
-            default                 = function(self)
-                return Padding(0)
+            type                    = NonNegativeNumber,
+            get                     = false,
+            set                     = function(self, padding)
+                self.PaddingStart = padding
+                self.PaddingEnd = padding
+                self.PaddingTop = padding
+                self.PaddingBottom = padding
             end
         }
 
-        property "Margin"           {
-            type                    = Margin,
-            handler                 = OnViewPropertyChanged,
-            default                 = function(self)
-                return Margin(0)
+        property "PaddingHorizontal"{
+            type                    = NonNegativeNumber,
+            get                     = false,
+            set                     = function(self, paddingHorizontal)
+                self.paddingStart = paddingHorizontal
+                self.paddingEnd = paddingHorizontal
             end
+        }
+
+        property "PaddingVertical"  {
+            type                    = NonNegativeNumber,
+            get                     = false,
+            set                     = function(self, paddingVertical)
+                self.paddingStart = paddingVertical
+                self.paddingEnd = paddingVertical
+            end
+        }
+
+        property "PaddingEnd"       {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "PaddingStart"     {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "PaddingTop"       {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "PaddingBottom"    {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "Margin"           {
+            type                    = NonNegativeNumber,
+            get                     = false,
+            set                     = function(self, margin)
+                self.MarginStart = margin
+                self.MarginEnd = margin
+            end
+        }
+
+        property "MarginHorizontal" {
+            type                    = NonNegativeNumber,
+            get                     = false,
+            set                     = function(self, marginHorizontal)
+                self.MarginStart = marginHorizontal
+                self.MarginEnd = marginHorizontal
+            end
+        }
+        
+        property "MarginVertical"   {
+            type                    = NonNegativeNumber,
+            get                     = false,
+            set                     = function(self, marginVertical)
+                self.MarginTop      = marginVertical
+                self.MarginBottom   = marginVertical
+            end
+        }
+
+        property "MarginEnd"        {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "MarginStart"      {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "MarginTop"        {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
+        }
+
+        property "MarginBottom"     {
+            type                    = NonNegativeNumber,
+            default                 = 0,
+            handler                 = OnViewPropertyChanged
         }
 
         property "MinHeight"        {
@@ -400,12 +489,14 @@ PLoop(function()
             end
         }
 
+        __Final__()
         property "Width"            {
             type                    = ViewSize,
             default                 = SizeMode.WRAP_CONTENT,
             handler                 = OnViewPropertyChanged
         }
 
+        __Final__()
         property "Height"           {
             type                    = ViewSize,
             default                 = SizeMode.WRAP_CONTENT,

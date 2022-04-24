@@ -48,8 +48,7 @@ PLoop(function()
 
         local function layoutVertical(self)
             local gravity = self.Gravity
-            local padding = self.Padding
-            local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
             local width, height = self:GetSize()
 
             local heightAvaliable = height - paddingTop - paddingBottom
@@ -69,8 +68,8 @@ PLoop(function()
             for _, child in self:GetNonGoneChilds() do
                 child:Layout()
                 local lp = child.LayoutParams
-                local margin = child.Margin
-                local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
+
+                local marginStart, marginTop, marginEnd, marginBottom = child.MarginStart, child.MarginTop, child.MarginEnd, child.MarginBottom
                 local childHGravity = lp and lp.gravity and getHorizontalGravity(lp.gravity) or defaultHGravity
                 local childWidth, childHeight = child:GetSize()
                 local xOffset
@@ -100,8 +99,7 @@ PLoop(function()
 
         local function layoutHorizontal(self)
             local gravity = self.Gravity
-            local padding = self.Padding
-            local paddingStart, paddingTop, paddingEnd, paddingBottom = padding.left, padding.top, padding.right, padding.bottom
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
 
             local width, height = self:GetSize()
 
@@ -122,8 +120,8 @@ PLoop(function()
             for _, child in self:GetNonGoneChilds() do
                 child:Layout()
                 local lp = child.LayoutParams
-                local margin = child.Margin
-                local marginStart, marginTop, marginEnd, marginBottom = margin.left, margin.top, margin.right, margin.bottom
+
+                local marginStart, marginTop, marginEnd, marginBottom = child.MarginStart, child.MarginTop, child.MarginEnd, child.MarginBottom
                 local childVGravity = lp and lp.gravity and getVerticalGravity(lp.gravity) or defaultVGravity
                 local childWidth, childHeight = child:GetSize()
                 local yOffset
@@ -154,9 +152,9 @@ PLoop(function()
             local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
             local expectWidth = MeasureSpec.GetSize(widthMeasureSpec)
             local expectHeight = MeasureSpec.GetSize(heightMeasureSpec)
-            local padding = self.Padding
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
 
-            local measuredWidth = padding.left + padding.right
+            local measuredWidth = paddingStart + paddingEnd
             local measuredHeight = 0
             local totalWeight = 0
 
@@ -164,9 +162,9 @@ PLoop(function()
                 local lp = child.LayoutParams
                 totalWeight = totalWeight + (lp and lp.weight or 0)
 
-                local margin = child.Margin
-                local usedHeight = padding.top + padding.bottom + margin.top + margin.bottom
-                measuredWidth = measuredWidth + margin.left + margin.right
+                local marginStart, marginEnd, marginTop, marginBottom = child.MarginStart, child.MarginEnd, child.MarginTop, child.MarginBottom
+                local usedHeight = paddingTop + paddingBottom + marginTop + marginBottom
+                measuredWidth = measuredWidth + marginStart + marginEnd
 
                 child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, measuredWidth, child.Width, child.MaxWidth),
                     IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight))
@@ -189,8 +187,8 @@ PLoop(function()
                 end
             end
 
-            self.__ContentWidth = measuredWidth - padding.left - padding.right
-            self.__ContentHeight = measuredHeight - padding.top - padding.bottom
+            self.__ContentWidth = measuredWidth - paddingStart - paddingEnd
+            self.__ContentHeight = measuredHeight - paddingTop - paddingBottom
 
             if widthMode == MeasureSpec.EXACTLY then
                 measuredWidth = expectWidth
@@ -216,19 +214,19 @@ PLoop(function()
             local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
             local expectWidth = MeasureSpec.GetSize(widthMeasureSpec)
             local expectHeight = MeasureSpec.GetSize(heightMeasureSpec)
-            local padding = self.Padding
+            local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
 
             local measuredWidth = 0
-            local measuredHeight = padding.top + padding.bottom
+            local measuredHeight = paddingTop + paddingBottom
             local totalWeight = 0
 
             for index, child in self:GetNonGoneChilds() do
                 local lp = child.LayoutParams
                 totalWeight = totalWeight + (lp and lp.weight or 0)
 
-                local margin = child.Margin
-                local usedWidth = padding.left + padding.right + margin.left + margin.bottom
-                measuredHeight = measuredHeight + margin.top + margin.bottom
+                local marginStart, marginEnd, marginTop, marginBottom = child.MarginStart, child.MarginEnd, child.MarginTop, child.MarginBottom
+                local usedWidth = paddingStart + paddingEnd + marginStart + marginEnd
+                measuredHeight = measuredHeight + marginTop + marginBottom
 
                 child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, usedWidth, child.Width, child.MaxWidth),
                     IView.GetChildMeasureSpec(heightMeasureSpec, measuredHeight, child.Height, child.MaxHeight))
@@ -251,8 +249,8 @@ PLoop(function()
                 end
             end
 
-            self.__ContentWidth = measuredWidth - padding.left - padding.right
-            self.__ContentHeight = measuredHeight - padding.top - padding.bottom
+            self.__ContentWidth = measuredWidth - paddingStart - paddingEnd
+            self.__ContentHeight = measuredHeight - paddingTop - paddingBottom
 
             if widthMode == MeasureSpec.EXACTLY then
                 measuredWidth = expectWidth

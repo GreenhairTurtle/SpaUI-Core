@@ -1,3 +1,5 @@
+-- Extend some features that we need to PLoop
+
 PLoop(function()
 
     __Sealed__()
