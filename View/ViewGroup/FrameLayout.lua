@@ -1,5 +1,8 @@
 PLoop(function()
 
+    namespace "SpaUI.Layout"
+    import "SpaUI.Layout"
+
     class "FrameLayout"(function()
         inherit "ViewGroup"
 

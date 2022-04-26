@@ -32,21 +32,27 @@ PLoop(function()
             type                    = Gravity,
             default                 = Gravity.TOP + Gravity.START,
             handler                 = function(self)
-                if self:IsInitialized() then
-                    self:Layout()
-                else
-                    self:OnViewPropertyChanged()
-                end
+                self:OnViewPropertyChanged()
             end
         }
 
-        local function getHorizontalGravity(gravity)
+        local function getHorizontalGravity(gravity, defaultHGravity)
             if Enum.ValidateFlags(Gravity.CENTER_HORIZONTAL, gravity) then
                 return Gravity.CENTER_HORIZONTAL
             elseif Enum.ValidateFlags(Gravity.END, gravity) then
                 return Gravity.END
             else
-                return Gravity.START
+                return defaultHGravity or Gravity.START
+            end
+        end
+
+        local function getVerticalGravity(gravity, defaultVGravity)
+            if Enum.ValidateFlags(Gravity.CENTER_VERTICAL, gravity) then
+                return Gravity.CENTER_VERTICAL
+            elseif Enum.ValidateFlags(Gravity.BOTTOM, gravity) then
+                return Gravity.BOTTOM
+            else
+                return defaultVGravity or Gravity.TOP
             end
         end
 
@@ -74,7 +80,7 @@ PLoop(function()
                 local lp = child.LayoutParams
 
                 local marginStart, marginTop, marginEnd, marginBottom = child.MarginStart, child.MarginTop, child.MarginEnd, child.MarginBottom
-                local childHGravity = lp and lp.gravity and getHorizontalGravity(lp.gravity) or defaultHGravity
+                local childHGravity = lp and getHorizontalGravity(lp.gravity, defaultHGravity)
                 local childWidth, childHeight = child:GetSize()
                 local xOffset
                 if childHGravity == Gravity.CENTER_HORIZONTAL then
@@ -87,17 +93,6 @@ PLoop(function()
                 yOffset = yOffset + marginTop
                 self:LayoutChild(child, xOffset, yOffset)
                 yOffset = yOffset + childHeight + marginBottom
-            end
-        end
-
-        
-        local function getVerticalGravity(gravity)
-            if Enum.ValidateFlags(Gravity.CENTER_VERTICAL, gravity) then
-                return Gravity.CENTER_VERTICAL
-            elseif Enum.ValidateFlags(Gravity.BOTTOM, gravity) then
-                return Gravity.BOTTOM
-            else
-                return Gravity.TOP
             end
         end
 
@@ -126,7 +121,7 @@ PLoop(function()
                 local lp = child.LayoutParams
 
                 local marginStart, marginTop, marginEnd, marginBottom = child.MarginStart, child.MarginTop, child.MarginEnd, child.MarginBottom
-                local childVGravity = lp and lp.gravity and getVerticalGravity(lp.gravity) or defaultVGravity
+                local childVGravity = lp and getVerticalGravity(lp.gravity, defaultVGravity)
                 local childWidth, childHeight = child:GetSize()
                 local yOffset
                 if childVGravity == Gravity.CENTER_VERTICAL then

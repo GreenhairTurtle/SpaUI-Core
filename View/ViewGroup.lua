@@ -12,19 +12,22 @@ PLoop(function()
             local direction = self.LayoutDirection
             local width, height = child:GetSize()
             local point
-            if Enum.ValidateFlags(LayoutDirection.TOP_TO_BOTTOM, direction) then
-                point = "TOP"
-                yOffset = -yOffset - height/2
-            else
-                point = "BOTTOM"
-                yOffset = yOffset + height/2
-            end
-            if Enum.ValidateFlags(LayoutDirection.LEFT_TO_RIGHT, direction) then
-                point = point .. "LEFT"
+            if direction == LayoutDirection.TOPLEFT then
+                point = "TOPLEFT"
                 xOffset = xOffset + width/2
-            else
-                point = point .. "RIGHT"
+                yOffset = -yOffset - height/2
+            elseif direction == LayoutDirection.TOPRIGHT then
+                point = "TOPRIGHT"
                 xOffset = -xOffset - width/2
+                yOffset = -yOffset - height/2
+            elseif direction == LayoutDirection.BOTTOMLEFT then
+                point = "BOTTOMLEFT"
+                xOffset = xOffset + width/2
+                yOffset = yOffset + height/2
+            else
+                point = "BOTTOMRIGHT"
+                xOffset = -xOffset - width/2
+                yOffset = yOffset + height/2
             end
             child:ClearAllPoints()
             child:SetPointInternal("CENTER", self, point, xOffset, yOffset)
@@ -70,7 +73,7 @@ PLoop(function()
             end
         end
 
-        function OnChildRemoved(self, child)
+        function OnChildRemove(self, child)
             child:ClearAllPoints()
             child:SetParent(nil)
         end
@@ -86,7 +89,7 @@ PLoop(function()
                     index = #self.__ChildViews + 1
                 end
                 self:OnChildAdd(view)
-                tinsert(self.__ChildViews, index, child)
+                tinsert(self.__ChildViews, index, view)
                 self:OnChildAdded()
                 self:RequestLayout()
             end
@@ -94,9 +97,9 @@ PLoop(function()
 
         function OnChildAdd(self, child)
             child:ClearAllPoints()
-            child:SetFrameStrataInternal(self:GetFrameStrata())
-            child:SetFrameLevelInternal(self:GetFrameLevel())
             child:SetParent(self)
+            child:SetFrameStrataInternal(self:GetFrameStrata())
+            child:SetFrameLevelInternal(self:GetFrameLevel() + 1)
         end
 
         __Abstract__()
@@ -135,9 +138,9 @@ PLoop(function()
         
         property "LayoutDirection"  {
             type                    = LayoutDirection,
-            default                 = LayoutDirection.LEFT_TO_RIGHT + LayoutDirection.TOP_TO_BOTTOM,
+            default                 = LayoutDirection.TOPLEFT,
             handler                 = function(self)
-                self:Layout()
+                self:OnViewPropertyChanged()
             end
         }
 

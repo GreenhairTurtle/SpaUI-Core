@@ -66,14 +66,13 @@ PLoop(function()
     }
 
     -- Layout direction
-    -- Can be combined arbitrarily, like LEFT_TO_RIGHT + BOTTOM_TO_TOP
-    __Flags__()
     __Sealed__()
     enum "LayoutDirection"{
-        "LEFT_TO_RIGHT",
-        "RIGHT_TO_LEFT",
-        "TOP_TO_BOTTOM",
-        "BOTTOM_TO_TOP"
+        -- Top to bottom, left to right
+        "TOPLEFT",
+        "TOPRIGHT",
+        "BOTTOMLEFT",
+        "BOTTOMRIGHT"
     }
 
     -- Size mode

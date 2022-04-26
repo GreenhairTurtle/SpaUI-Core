@@ -15,6 +15,7 @@ textView2.Padding = 20
 textView2:SetNonSpaceWrap(true)
 textView2.MarginStart = 10
 textView2.Width = 100
+textView2.LayoutParams = { gravity = Gravity.CENTER_HORIZONTAL + Gravity.CENTER_VERTICAL }
 
 textView3 = TextView("TextView3")
 textView3:SetText("3333333333333333333333333333333333333")
@@ -22,7 +23,7 @@ textView3:SetNonSpaceWrap(true)
 textView3.MarginStart = 10
 textView3.Width = 100
 
-linearLayout = LinearLayout("TextLinearLayout", UIParent, "BackdropTemplate")
+linearLayout = FrameLayout("TextLinearLayout", UIParent, "BackdropTemplate")
 linearLayout:SetBackdrop(BACKDROP_CHARACTER_CREATE_TOOLTIP_32_32)
 linearLayout:AddView(textView)
 linearLayout:AddView(textView2)
@@ -31,7 +32,6 @@ linearLayout:SetPoint("CENTER")
 linearLayout.Padding = 20
 linearLayout.Width = 800
 linearLayout.Height = 800
-linearLayout.Gravity = Gravity.CENTER_VERTICAL
 linearLayout.Orientation = Orientation.VERTICAL
 
 imageView = ImageView("ImageView")
@@ -41,6 +41,6 @@ imageView.Height = 30
 
 linearLayout:AddView(imageView)
 
-Delay(10, function ()
-    linearLayout.Width = 700
+Delay(7, function ()
+    textView3.MarginStart = 100
 end)
