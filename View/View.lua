@@ -134,17 +134,18 @@ PLoop(function()
         -- This function should call SetMeasuredSize to store measured width and measured height
         __Abstract__()
         function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
-            self:SetMeasuredSize(self:GetDefaultMeasureSize(self.MinWidth, widthMeasureSpec),
-                self:GetDefaultMeasureSize(self.MinHeight, heightMeasureSpec))
+            self:SetMeasuredSize(IView.GetDefaultMeasureSize(self.MinWidth, widthMeasureSpec),
+                IView.GetDefaultMeasureSize(self.MinHeight, heightMeasureSpec))
         end
 
         -- Utility to return a default size
-        function GetDefaultMeasureSize(self, size, measureSpec)
+        __Static__()
+        function GetDefaultMeasureSize(size, measureSpec)
             local result = size
             local mode = MeasureSpec.GetMode(measureSpec)
             
             if mode == MeasureSpec.AT_MOST then
-                result = math.max(size, MeasureSpec.GetSize(measureSpec))
+                result = math.min(size, MeasureSpec.GetSize(measureSpec))
             elseif mode == MeasureSpec.EXACTLY then
                 result = MeasureSpec.GetSize(measureSpec)
             end
@@ -174,6 +175,11 @@ PLoop(function()
         function OnLayoutComplete(self)
             self.__LayoutRequested = false
             self.__Initialized = true
+        end
+
+        __Final__()
+        function IsInitialized(self)
+            return self.__Initialized
         end
 
         function Refresh(self)
@@ -285,9 +291,9 @@ PLoop(function()
             self.Height = height
         end
 
+        -- Only root view can set point
         __Final__()
         function SetPoint(self, ...)
-            -- only root view can set point
             if self:IsRootView() then
                 self:SetPointInternal(...)
             end
@@ -295,6 +301,30 @@ PLoop(function()
 
         function SetPointInternal(self, ...)
             Frame.SetPoint(self, ...)
+        end
+
+        -- Only root view can set frame strata
+        __Final__()
+        function SetFrameStrata(self, frameStrata)
+            if self:IsRootView() then
+                self:SetFrameStrataInternal(frameStrata)
+            end
+        end
+
+        function SetFrameStrataInternal(self, frameStrata)
+            Frame.SetFrameStrata(self, frameStrata)
+        end
+
+        -- Only root view can set frame level
+        __Final__()
+        function SetFrameLevel(self, level)
+            if self:IsRootView() then
+                self:SetFrameLevelInternal(level)
+            end
+        end
+
+        function SetFrameLevelInternal(self, level)
+            Frame.SetFrameLevel(self, level)
         end
 
         function OnViewPropertyChanged(self)

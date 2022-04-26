@@ -23,7 +23,7 @@ PLoop(function()
             type                    = Orientation,
             default                 = Orientation.HORIZONTAL,
             handler                 = function(self)
-                self:RequestLayout()
+                self:OnViewPropertyChanged()
             end
         }
 
@@ -32,7 +32,11 @@ PLoop(function()
             type                    = Gravity,
             default                 = Gravity.TOP + Gravity.START,
             handler                 = function(self)
-                self:RequestLayout()
+                if self:IsInitialized() then
+                    self:Layout()
+                else
+                    self:OnViewPropertyChanged()
+                end
             end
         }
 
@@ -64,7 +68,6 @@ PLoop(function()
             else
                 yOffset = paddingTop
             end
-            print("layoutVertical", heightAvaliable, self.__ContentHeight, yOffset)
 
             for _, child in self:GetNonGoneChilds() do
                 child:Layout()

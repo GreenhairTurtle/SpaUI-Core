@@ -44,25 +44,63 @@ PLoop(function()
             end
         end
 
+        -- @Override
+        function SetFrameStrataInternal(self, frameStrata)
+            super.SetFrameStrataInternal(self, frameStrata)
+            for _, child in self.__ChildViews do
+                child:SetFrameStrataInternal(frameStrata)
+            end
+        end
+
+        -- @Override
+        function SetFrameLevelInternal(self, level)
+            super.SetFrameLevelInternal(self, level)
+            for _, child in self.__ChildViews do
+                child:SetFrameLevelInternal(level)
+            end
+        end
+
         __Arguments__{ IView }
         function RemoveView(self, view)
             if tContains(self.__ChildViews, view) then
-                view:SetParent(nil)
-                view:ClearAllPoints()
+                self:OnChildRemove(view)
                 tDeleteItem(self.__ChildViews, view)
+                self:OnChildRemoved()
                 self:RequestLayout()
             end
         end
 
+        function OnChildRemoved(self, child)
+            child:ClearAllPoints()
+            child:SetParent(nil)
+        end
+
+        __Abstract__()
+        function OnChildRemoved(self)
+        end
+
         __Arguments__{ IView, NonNegativeNumber/0 }
         function AddView(self, view, index)
-            if index <= 0 then
-                index = #self.__ChildViews + 1
+            if not tContains(self.__ChildViews, view) then
+                if index <= 0 then
+                    index = #self.__ChildViews + 1
+                end
+                self:OnChildAdd(view)
+                tinsert(self.__ChildViews, index, child)
+                self:OnChildAdded()
+                self:RequestLayout()
             end
-            view:ClearAllPoints()
-            view:SetParent(self)
-            tinsert(self.__ChildViews, index, view)
-            self:RequestLayout()
+        end
+
+        function OnChildAdd(self, child)
+            child:ClearAllPoints()
+            child:SetFrameStrataInternal(self:GetFrameStrata())
+            child:SetFrameLevelInternal(self:GetFrameLevel())
+            child:SetParent(self)
+        end
+
+        __Abstract__()
+        function OnChildAdded(self)
         end
 
         __Arguments__{ NaturalNumber }
@@ -75,7 +113,7 @@ PLoop(function()
         end
 
         function GetChildViews(self)
-            return self.__ChildViews
+            return ipairs(self.__ChildViews)
         end
 
         -- Internal use, iterator
