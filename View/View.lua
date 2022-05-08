@@ -1,14 +1,37 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
+    namespace "KittyBox.Layout"
 
     -- Provide some features to all blz widgets
     -- The android style for wow
     interface "IView"(function()
+        extend "IViewAnimate"
         require "Frame"
 
-        local MIN_NUMBER = -2147483648
-        local MAX_NUMBER = 2147483647
+        MIN_NUMBER = -2147483648
+        MAX_NUMBER = 2147483647
+
+        ViewManager = {}
+        ViewManager.ViewLayoutRequested = {}
+
+        local function DoLayoutPass(self, view)
+            if view:IsRootView() then
+                view:DoLayout()
+                print(view:GetName())
+            end
+            self.ViewLayoutRequested[view] = false
+        end
+
+        function ViewManager:RequestLayout(view)
+            if not self.ViewLayoutRequested[view] then
+                self.ViewLayoutRequested[view] = true
+                Next(DoLayoutPass, self, view)
+            end
+        end
+
+        function ViewManager:CancelLayout(view)
+            self.ViewLayoutRequested[view] = nil
+        end
 
         local function OnLayoutParamsChanged(self, layoutParams)
             local parent = self:GetParent()
@@ -173,7 +196,6 @@ PLoop(function()
 
         -- Called when layout complete, child should not override this function
         function OnLayoutComplete(self)
-            self.__LayoutRequested = false
             self.__Initialized = true
         end
 
@@ -182,20 +204,14 @@ PLoop(function()
             return self.__Initialized
         end
 
+        __Final__()
         function Refresh(self)
-            if self.__LayoutRequested then
-                return
-            end
             self:OnRefresh()
         end
         
         -- Viewgroup should override this function to call Refresh on each of it's children
         __Abstract__()
         function OnRefresh(self)
-        end
-
-        function IsLayoutRequested(self)
-            return self.__LayoutRequested
         end
 
         __Static__()
@@ -216,7 +232,8 @@ PLoop(function()
                 IView.GetChildMeasureSpec(rootHeightMeasureSpec, self.MarginTop + self.MarginBottom, self.Height, self.MaxHeight), true)
         end
 
-        local function DoLayout(self)
+        -- Don't call this function if you do not know how it work
+        function DoLayout(self)
             DoMeasure(self)
             self:Layout(true)
             self:OnLayoutComplete()
@@ -225,22 +242,11 @@ PLoop(function()
 
         __Async__()
         function RequestLayout(self)
-            self.__LayoutRequestTime = GetTime()
-            if self.__LayoutRequested then
-                return
-            end
-
-            self.__LayoutRequested = true
-
-            -- Delay some times to reduce layout pass
-            while self:IsRootView() and GetTime() - self.__LayoutRequestTime < 0.02 do
-                Next()
-            end
-
             if self:IsRootView() then
-                DoLayout(self)
+                ViewManager:RequestLayout(self)
             else
-                self:GetParent():RequestLayout()
+                ViewManager:CancelLayout(self)
+                return self:GetParent():RequestLayout()
             end
         end
 
@@ -295,11 +301,11 @@ PLoop(function()
         __Final__()
         function SetPoint(self, ...)
             if self:IsRootView() then
-                self:SetPointInternal(...)
+                self:SetViewPoint(...)
             end
         end
 
-        function SetPointInternal(self, ...)
+        function SetViewPoint(self, ...)
             Frame.SetPoint(self, ...)
         end
 
@@ -307,24 +313,24 @@ PLoop(function()
         __Final__()
         function SetFrameStrata(self, frameStrata)
             if self:IsRootView() then
-                self:SetFrameStrataInternal(frameStrata)
+                self:SetViewFrameStrata(frameStrata)
             end
         end
 
-        function SetFrameStrataInternal(self, frameStrata)
+        function SetViewFrameStrata(self, frameStrata)
             Frame.SetFrameStrata(self, frameStrata)
         end
 
         -- Only root view can set frame level
         __Final__()
-        function SetFrameLevel(self, level)
+        function SetViewFrameLevel(self, level)
             if self:IsRootView() then
-                self:SetFrameLevelInternal(level)
+                self:SetViewFrameLevelInternal(level)
             end
         end
 
-        function SetFrameLevelInternal(self, level)
-            Frame.SetFrameLevel(self, level)
+        function SetViewFrameLevelInternal(self, level)
+            Frame.SetViewFrameLevel(self, level)
         end
 
         function OnViewPropertyChanged(self)
@@ -359,6 +365,7 @@ PLoop(function()
         __Final__()
         function Show(self)
             self.Visibility = Visibility.VISIBLE
+            self:AnimateShow()
         end
 
         __Final__()
@@ -554,6 +561,10 @@ PLoop(function()
                 self:OnViewPropertyChanged()
             end
         }
+
+        -----------------------------------------
+        --              Constructor            --
+        -----------------------------------------
 
         function __init(self)
             self.OnParentChanged = self.OnParentChanged + OnParentChanged

@@ -3,13 +3,13 @@
 ## Interface-Classic: 11400
 ## Author: 绿毛龟12138
 ## Version: @project-version@
-## Title: SpaUI-Core
-## Title-zhCN: SpaUI核心
-## Notes: SpaUI widget library
+## Title: KittyBox
+## Title-zhCN: KittyBox核心
+## Notes: KittyBox widget library
 ## Dependices: Scorpio
 ## DefaultState: enabled
 
-## X-WebSite: https://github.com/GreenhairTurtle/SpaUI-Core
+## X-WebSite: https://github.com/GreenhairTurtle/KittyBox-Core
 ## X-Credit: Kurapica
 
 Extend.lua

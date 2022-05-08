@@ -4,7 +4,7 @@
 
 PLoop(function(ENV)
 
-    namespace "SpaUI.Widget.Recycler"
+    namespace "KittyBox.Widget.Recycler"
 
     import "Scorpio.UI.Style"
 
@@ -1182,7 +1182,7 @@ PLoop(function(ENV)
             local scrollChild = self:GetChild("ScrollChild")
             itemView:SetParent(scrollChild)
             itemView:SetFrameStrata(scrollChild:GetFrameStrata())
-            itemView:SetFrameLevel(scrollChild:GetFrameLevel())
+            itemView:SetViewFrameLevel(scrollChild:GetFrameLevel())
             itemView.Orientation = self.Orientation
             return itemView
         end

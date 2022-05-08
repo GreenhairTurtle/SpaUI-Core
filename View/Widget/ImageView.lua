@@ -1,7 +1,7 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout.Widget"
-    import "SpaUI.Layout.View"
+    namespace "KittyBox.Layout.Widget"
+    import "KittyBox.Layout.View"
 
     -- Texture wrapper
     class "ImageView"(function()

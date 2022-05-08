@@ -1,7 +1,7 @@
-Scorpio "SpaUI.Widget.Layout.Demo" ""
+Scorpio "KittyBox.Widget.Layout.Demo" ""
 
-import "SpaUI.Layout"
-import "SpaUI"
+import "KittyBox.Layout"
+import "KittyBox"
 
 TestLinearLayoutParent = LinearLayout("TestLinearLayoutParent")
 TestLinearLayoutParent.Orientation = Orientation.HORIZONTAL

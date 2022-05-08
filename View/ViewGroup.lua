@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
+    namespace "KittyBox.Layout"
 
     class "ViewGroup"(function()
         inherit "View"
@@ -30,12 +30,12 @@ PLoop(function()
                 yOffset = yOffset + height/2
             end
             child:ClearAllPoints()
-            child:SetPointInternal("CENTER", self, point, xOffset, yOffset)
+            child:SetViewPoint("CENTER", self, point, xOffset, yOffset)
         end
 
         function OnLayoutComplete(self)
             super.OnLayoutComplete(self)
-            for _, child in pairs(self.__ChildViews) do
+            for _, child in ipairs(self.__ChildViews) do
                 child:OnLayoutComplete()
             end
         end
@@ -48,18 +48,18 @@ PLoop(function()
         end
 
         -- @Override
-        function SetFrameStrataInternal(self, frameStrata)
-            super.SetFrameStrataInternal(self, frameStrata)
-            for _, child in self.__ChildViews do
-                child:SetFrameStrataInternal(frameStrata)
+        function SetViewFrameStrata(self, frameStrata)
+            super.SetViewFrameStrata(self, frameStrata)
+            for _, child in ipars(self.__ChildViews) do
+                child:SetViewFrameStrata(frameStrata)
             end
         end
 
         -- @Override
-        function SetFrameLevelInternal(self, level)
-            super.SetFrameLevelInternal(self, level)
-            for _, child in self.__ChildViews do
-                child:SetFrameLevelInternal(level)
+        function SetViewFrameLevelInternal(self, level)
+            super.SetViewFrameLevelInternal(self, level)
+            for _, child in ipairs(self.__ChildViews) do
+                child:SetViewFrameLevelInternal(level + 1)
             end
         end
 
@@ -98,8 +98,8 @@ PLoop(function()
         function OnChildAdd(self, child)
             child:ClearAllPoints()
             child:SetParent(self)
-            child:SetFrameStrataInternal(self:GetFrameStrata())
-            child:SetFrameLevelInternal(self:GetFrameLevel() + 1)
+            child:SetViewFrameStrata(self:GetFrameStrata())
+            child:SetViewFrameLevelInternal(self:GetFrameLevel() + 1)
         end
 
         __Abstract__()

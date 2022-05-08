@@ -1,6 +1,6 @@
 PLoop(function()
     
-    namespace "SpaUI.Layout"
+    namespace "KittyBox.Layout"
 
     __Sealed__()
     struct "Padding"(function()
@@ -86,7 +86,7 @@ PLoop(function()
 
     __Sealed__()
     __AutoIndex__()
-    enum "Visibility"{
+    enum "Visibility" {
         -- This view is Shown
         "VISIBLE",
         -- This view is invisible, but it still takes up space for layout purposes

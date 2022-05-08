@@ -1,8 +1,8 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout.Widget"
-    import "SpaUI.Layout.View"
-    import "SpaUI.Layout"
+    namespace "KittyBox.Layout.Widget"
+    import "KittyBox.Layout.View"
+    import "KittyBox.Layout"
 
     -- FontString wrapper
     class "TextView"(function()

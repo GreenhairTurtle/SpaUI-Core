@@ -4,8 +4,8 @@ PLoop(function()
     --                Fork of Scorpio UI                 --
     -------------------------------------------------------
 
-    namespace "SpaUI.Layout.Widget"
-    import "SpaUI.Layout.IView"
+    namespace "KittyBox.Layout.Widget"
+    import "KittyBox.Layout.IView"
 
     class "Button" { Scorpio.UI.Widget.Button, IView }
 

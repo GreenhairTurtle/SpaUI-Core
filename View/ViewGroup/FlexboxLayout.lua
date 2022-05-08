@@ -1,7 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
-    import "SpaUI.Layout"
+    namespace "KittyBox.Layout"
 
     class "FlexboxLayout"(function()
         inherit "ViewGroup"

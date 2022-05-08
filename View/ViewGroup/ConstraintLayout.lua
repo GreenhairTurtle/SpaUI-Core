@@ -1,12 +1,12 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
+    namespace "KittyBox.Layout"
 
     class "ConstraintLayout"(function()
         
         struct "LayoutParams"(function()
 
-            __base = SpaUI.Widget.LayoutParams
+            __base = KittyBox.Widget.LayoutParams
 
             member "StartToStartOf"     { Type = NEString }
             member "StartToEndOf"       { Type = NEString }

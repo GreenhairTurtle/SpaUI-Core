@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "SpaUI.Widget"
+    namespace "KittyBox.Widget"
 
     class "ColorPicker"(function()
         

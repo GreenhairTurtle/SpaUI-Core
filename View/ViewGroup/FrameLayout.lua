@@ -1,7 +1,7 @@
 PLoop(function()
 
-    namespace "SpaUI.Layout"
-    import "SpaUI.Layout"
+    namespace "KittyBox.Layout"
+    import "KittyBox.Layout"
 
     class "FrameLayout"(function()
         inherit "ViewGroup"
@@ -9,7 +9,7 @@ PLoop(function()
         __Sealed__()
         struct "LayoutParams"(function()
         
-            __base = SpaUI.Layout.LayoutParams
+            __base = KittyBox.Layout.LayoutParams
 
             -- The gravity to apply with the View to which these layout parameters are associated.
             member "gravity"    { Type = Gravity }
@@ -76,7 +76,7 @@ PLoop(function()
 
         function OnChildAdded(self)
             for index, child in self:GetChildViews() do
-                child:SetFrameLevelInternal(self:GetFrameLevel() + index)
+                child:SetViewFrameLevelInternal(self:GetFrameLevel() + index)
             end
         end
 
