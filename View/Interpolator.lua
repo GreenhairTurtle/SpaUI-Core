@@ -1,6 +1,6 @@
 PLoop(function()
     
-    namespace "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
 
     -- A time interpolator defines the rate of change of an animation. This allows animations to have non-linear motion, such as acceleration and deceleration.
     interface "Interpolator"(function()

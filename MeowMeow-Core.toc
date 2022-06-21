@@ -3,13 +3,13 @@
 ## Interface-Classic: 11400
 ## Author: 绿毛龟12138
 ## Version: @project-version@
-## Title: KittyBox
-## Title-zhCN: KittyBox核心
-## Notes: KittyBox widget library
+## Title: MeowMeow
+## Title-zhCN: MeowMeow核心
+## Notes: MeowMeow widget library
 ## Dependices: Scorpio
 ## DefaultState: enabled
 
-## X-WebSite: https://github.com/GreenhairTurtle/KittyBox-Core
+## X-WebSite: https://github.com/GreenhairTurtle/MeowMeow-Core
 ## X-Credit: Kurapica
 
 Extend.lua

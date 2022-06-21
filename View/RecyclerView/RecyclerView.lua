@@ -4,7 +4,7 @@
 
 PLoop(function(ENV)
 
-    namespace "KittyBox.Widget.Recycler"
+    namespace "MeowMeow.Widget.Recycler"
 
     import "Scorpio.UI.Style"
 

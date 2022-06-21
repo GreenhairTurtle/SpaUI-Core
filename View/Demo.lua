@@ -1,7 +1,7 @@
-Scorpio "KittyBox.View.Demo" ""
+Scorpio "MeowMeow.View.Demo" ""
 
-import "KittyBox.Layout"
-import "KittyBox.Layout.Widget"
+import "MeowMeow.Layout"
+import "MeowMeow.Layout.Widget"
 
 textView = TextView("TextView")
 textView:SetText("测试测试测试测试")

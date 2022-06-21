@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
 
     class "ViewAnimation"(function()
 
@@ -90,16 +90,6 @@ PLoop(function()
             self.__ToAlpha = min(to, 1)
         end
 
-        function AnimToOpaque(self)
-            self:SetAlpha(0, 1)
-            self:Start()
-        end
-
-        function AnimToTransparent(self)
-            self:SetAlpha(self.__View:GetAlpha(), 0)
-            self:Start()
-        end
-
         function Apply(self, interpolatedTime)
             local alpha = self.__FromAlpha + (self.__ToAlpha - self.__FromAlpha) * interpolatedTime
             self.__View:SetAlpha(alpha)
@@ -107,70 +97,13 @@ PLoop(function()
 
     end)
 
-    interface "IViewAnimate"(function()
-
-        function CancelAnims(self)
-            if self.ShowAnimation then
-                self.ShowAnimation:Stop()
-            end
-            if self.HideAnimation then
-                self.HideAnimation:Stop()
-            end
-            if self.SizeAnimation then
-                self.SizeAnimation:Stop()
-            end
-            if self.AlphaAnimation then
-                self.AlphaAnimation:Stop()
-            end
-            if self.MoveAnimation then
-                self.MoveAnimation:Stop()
-            end
-        end
-
-        function AnimateShow(self)
-            if self.HideAnimation then
-                self.HideAnimation:Stop()
-            end
-
-            if self.ShowAnimation then
-                self.ShowAnimation:AnimToOpaque()
-            end
-        end
-
-        __Abstract__()
-        function AnimateHide(self)
-        end
-
-        __Abstract__()
-        function AnimateSize(self)
-        end
-
-        __Abstract__()
-        function AnimateAlpha(self)
-        end
-
-        __Abstract__()
-        function AnimateMove(self)
-        end
+    interface "ILayoutAnimation"(function()
 
         -----------------------------------------
         --              Propertys              --
         -----------------------------------------
 
-        property "ShowAnimation"    {
-            type                    = ViewAnimation,
-            default                 = function(self)
-                local anim = AlphaAnimation()
-                anim:Attach(self)
-                return anim
-            end
-        }
 
-        property "HideAnimation"    {
-            type                    = ViewAnimation,
-            default                 = AlphaAnimation()
-        }
-        
     end)
 
 end)

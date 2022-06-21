@@ -1,6 +1,6 @@
-Scorpio "KittyBox.Widget.RecyclerView.Demo" ""
+Scorpio "MeowMeow.Widget.RecyclerView.Demo" ""
 
-import "KittyBox.Widget.Recycler"
+import "MeowMeow.Widget.Recycler"
 
 -- if not TestRecyclerView then return end
 

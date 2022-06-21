@@ -1,8 +1,8 @@
-Scorpio "KittyBox.Widget.RecyclerView.LayoutManager" ""
+Scorpio "MeowMeow.Widget.RecyclerView.LayoutManager" ""
 
 PLoop(function(ENV)
 
-    namespace "KittyBox.Widget.Recycler"
+    namespace "MeowMeow.Widget.Recycler"
 
     -----------------------------------------------------------
     --               LinearLayoutManager                     --

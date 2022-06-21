@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
 
     class "ViewGroup"(function()
         inherit "View"

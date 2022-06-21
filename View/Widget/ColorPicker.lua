@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "KittyBox.Widget"
+    namespace "MeowMeow.Widget"
 
     class "ColorPicker"(function()
         

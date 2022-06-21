@@ -1,7 +1,7 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout.Widget"
-    import "KittyBox.Layout.View"
+    namespace "MeowMeow.Layout.Widget"
+    import "MeowMeow.Layout.View"
 
     -- Texture wrapper
     class "ImageView"(function()

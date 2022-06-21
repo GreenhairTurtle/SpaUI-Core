@@ -1,8 +1,8 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout.Widget"
-    import "KittyBox.Layout.View"
-    import "KittyBox.Layout"
+    namespace "MeowMeow.Layout.Widget"
+    import "MeowMeow.Layout.View"
+    import "MeowMeow.Layout"
 
     -- FontString wrapper
     class "TextView"(function()

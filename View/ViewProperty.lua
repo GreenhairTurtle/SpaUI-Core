@@ -1,6 +1,6 @@
 PLoop(function()
     
-    namespace "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
 
     __Sealed__()
     struct "Padding"(function()

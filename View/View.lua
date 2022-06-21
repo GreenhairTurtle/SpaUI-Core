@@ -1,37 +1,36 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
+
+    ViewManager = {}
+    ViewManager.ViewLayoutRequested = {}
+
+    local function DoLayoutPass(self, view)
+        if view:IsRootView() then
+            view:DoLayout()
+            print(view:GetName())
+        end
+        self.ViewLayoutRequested[view] = false
+    end
+
+    function ViewManager:RequestLayout(view)
+        if not self.ViewLayoutRequested[view] then
+            self.ViewLayoutRequested[view] = true
+            Next(DoLayoutPass, self, view)
+        end
+    end
+
+    function ViewManager:CancelLayout(view)
+        self.ViewLayoutRequested[view] = nil
+    end
 
     -- Provide some features to all blz widgets
     -- The android style for wow
     interface "IView"(function()
-        extend "IViewAnimate"
         require "Frame"
 
         MIN_NUMBER = -2147483648
         MAX_NUMBER = 2147483647
-
-        ViewManager = {}
-        ViewManager.ViewLayoutRequested = {}
-
-        local function DoLayoutPass(self, view)
-            if view:IsRootView() then
-                view:DoLayout()
-                print(view:GetName())
-            end
-            self.ViewLayoutRequested[view] = false
-        end
-
-        function ViewManager:RequestLayout(view)
-            if not self.ViewLayoutRequested[view] then
-                self.ViewLayoutRequested[view] = true
-                Next(DoLayoutPass, self, view)
-            end
-        end
-
-        function ViewManager:CancelLayout(view)
-            self.ViewLayoutRequested[view] = nil
-        end
 
         local function OnLayoutParamsChanged(self, layoutParams)
             local parent = self:GetParent()
@@ -189,7 +188,7 @@ PLoop(function()
             end
         end
 
-        -- Viewgroup should override this function to call Layout on each of it's children and place child to it's position
+        -- Viewgroup should override this function to call Layout function on each of it's children and place child to it's position
         __Abstract__()
         function OnLayout(self)
         end
@@ -201,7 +200,7 @@ PLoop(function()
 
         __Final__()
         function IsInitialized(self)
-            return self.__Initialized
+            return self.__Initialized and true or fal
         end
 
         __Final__()
@@ -365,7 +364,6 @@ PLoop(function()
         __Final__()
         function Show(self)
             self.Visibility = Visibility.VISIBLE
-            self:AnimateShow()
         end
 
         __Final__()
@@ -560,6 +558,11 @@ PLoop(function()
                 OnLayoutParamsChanged(self, layoutParams)
                 self:OnViewPropertyChanged()
             end
+        }
+
+        property "LayoutAnimationEnable"{
+            type                    = Boolean,
+            default                 = true
         }
 
         -----------------------------------------

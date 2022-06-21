@@ -3,7 +3,7 @@ package.path = package.path .. ";D:/Github/?/init.lua;D:/Github/?.lua"
 
 require "PLoop"
 
--- Provide some useful functions to KittyBox
+-- Provide some useful functions to MeowMeow
 PLoop(function()
 
     import "System.Collections"

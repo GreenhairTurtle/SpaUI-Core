@@ -1,7 +1,7 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout"
-    import "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
+    import "MeowMeow.Layout"
 
     class "FrameLayout"(function()
         inherit "ViewGroup"
@@ -9,7 +9,7 @@ PLoop(function()
         __Sealed__()
         struct "LayoutParams"(function()
         
-            __base = KittyBox.Layout.LayoutParams
+            __base = MeowMeow.Layout.LayoutParams
 
             -- The gravity to apply with the View to which these layout parameters are associated.
             member "gravity"    { Type = Gravity }

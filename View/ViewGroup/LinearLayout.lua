@@ -1,6 +1,6 @@
 PLoop(function()
 
-    namespace "KittyBox.Layout"
+    namespace "MeowMeow.Layout"
 
     __Sealed__()
     class "LinearLayout"(function()
@@ -9,7 +9,7 @@ PLoop(function()
         __Sealed__()
         struct "LayoutParams"(function()
         
-            __base = KittyBox.Layout.LayoutParams
+            __base = MeowMeow.Layout.LayoutParams
 
             member "gravity"    { Type = Gravity }
             -- This property indicates the weight of the length of the child
