@@ -6,8 +6,10 @@
     <Script file="ViewGroup.lua"/>
     
     <Include file="ViewGroup\ViewGroup.xml"/>
+
+    <Script file="ViewRoot.lua"/>
+
     <Include file="Widget\Widget.xml"/>
     <Script file="Demo.lua"/>
     <!-- <Include file="RecyclerView\RecyclerView.xml"/> -->
-    <!-- <Include file="Widget\Widget.xml"/> -->
 </Ui>

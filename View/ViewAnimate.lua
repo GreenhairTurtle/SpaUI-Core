@@ -80,30 +80,4 @@ PLoop(function()
 
     end)
 
-    -- Alpha animation
-    class "AlphaAnimation"(function()
-        inherit "ViewAnimation"
-    
-        __Arguments__{ NonNegativeNumber, NonNegativeNumber }
-        function SetAlpha(self, from, to)
-            self.__FromAlpha = min(from, 1)
-            self.__ToAlpha = min(to, 1)
-        end
-
-        function Apply(self, interpolatedTime)
-            local alpha = self.__FromAlpha + (self.__ToAlpha - self.__FromAlpha) * interpolatedTime
-            self.__View:SetAlpha(alpha)
-        end
-
-    end)
-
-    interface "ILayoutAnimation"(function()
-
-        -----------------------------------------
-        --              Propertys              --
-        -----------------------------------------
-
-
-    end)
-
 end)

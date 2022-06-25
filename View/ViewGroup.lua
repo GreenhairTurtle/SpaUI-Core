@@ -5,7 +5,7 @@ PLoop(function()
     class "ViewGroup"(function()
         inherit "View"
         
-        -- Call this function to layout child. This function will automatically calculate the positions corresponding to different layoutdirections
+        -- Call this function to layout child. This function will automatically calculate the positions corresponding to different layout directions
         __Final__()
         __Arguments__{ IView, Number, Number }
         function LayoutChild(self, child, xOffset, yOffset)
@@ -50,16 +50,16 @@ PLoop(function()
         -- @Override
         function SetViewFrameStrata(self, frameStrata)
             super.SetViewFrameStrata(self, frameStrata)
-            for _, child in ipars(self.__ChildViews) do
+            for _, child in ipairs(self.__ChildViews) do
                 child:SetViewFrameStrata(frameStrata)
             end
         end
 
         -- @Override
-        function SetViewFrameLevelInternal(self, level)
-            super.SetViewFrameLevelInternal(self, level)
+        function SetViewFrameLevel(self, level)
+            super.SetViewFrameLevel(self, level)
             for _, child in ipairs(self.__ChildViews) do
-                child:SetViewFrameLevelInternal(level + 1)
+                child:SetViewFrameLevel(level + 1)
             end
         end
 
@@ -75,7 +75,9 @@ PLoop(function()
 
         function OnChildRemove(self, child)
             child:ClearAllPoints()
-            child:SetParent(nil)
+            if child:GetParent() == self then
+                child:SetParent(nil)
+            end
         end
 
         __Abstract__()
@@ -99,7 +101,7 @@ PLoop(function()
             child:ClearAllPoints()
             child:SetParent(self)
             child:SetViewFrameStrata(self:GetFrameStrata())
-            child:SetViewFrameLevelInternal(self:GetFrameLevel() + 1)
+            child:SetViewFrameLevel(self:GetFrameLevel() + 1)
         end
 
         __Abstract__()
@@ -130,6 +132,11 @@ PLoop(function()
                     end
                 end
             end, self.__ChildViews, 0
+        end
+        
+        __Static__()
+        function IsViewGroup(viewGroup)
+            return Class.ValidateValue(ViewGroup, viewGroup, true) and true or false
         end
 
         -----------------------------------------

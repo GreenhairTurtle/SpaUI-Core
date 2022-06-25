@@ -1182,7 +1182,7 @@ PLoop(function(ENV)
             local scrollChild = self:GetChild("ScrollChild")
             itemView:SetParent(scrollChild)
             itemView:SetFrameStrata(scrollChild:GetFrameStrata())
-            itemView:SetViewFrameLevel(scrollChild:GetFrameLevel())
+            itemView:SetFrameLevel(scrollChild:GetFrameLevel())
             itemView.Orientation = self.Orientation
             return itemView
         end

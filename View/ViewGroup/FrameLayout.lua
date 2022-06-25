@@ -1,7 +1,6 @@
 PLoop(function()
 
     namespace "MeowMeow.Layout"
-    import "MeowMeow.Layout"
 
     class "FrameLayout"(function()
         inherit "ViewGroup"
@@ -76,7 +75,7 @@ PLoop(function()
 
         function OnChildAdded(self)
             for index, child in self:GetChildViews() do
-                child:SetViewFrameLevelInternal(self:GetFrameLevel() + index)
+                child:SetViewFrameLevel(self:GetFrameLevel() + index)
             end
         end
 

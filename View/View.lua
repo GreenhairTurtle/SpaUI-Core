@@ -2,45 +2,42 @@ PLoop(function()
 
     namespace "MeowMeow.Layout"
 
-    ViewManager = {}
-    ViewManager.ViewLayoutRequested = {}
-
-    local function DoLayoutPass(self, view)
-        if view:IsRootView() then
-            view:DoLayout()
-            print(view:GetName())
-        end
-        self.ViewLayoutRequested[view] = false
-    end
-
-    function ViewManager:RequestLayout(view)
-        if not self.ViewLayoutRequested[view] then
-            self.ViewLayoutRequested[view] = true
-            Next(DoLayoutPass, self, view)
-        end
-    end
-
-    function ViewManager:CancelLayout(view)
-        self.ViewLayoutRequested[view] = nil
-    end
-
     -- Provide some features to all blz widgets
     -- The android style for wow
+    __Sealed__()
     interface "IView"(function()
         require "Frame"
 
         MIN_NUMBER = -2147483648
         MAX_NUMBER = 2147483647
 
-        local function OnLayoutParamsChanged(self, layoutParams)
-            local parent = self:GetParent()
+        local function OnLayoutParamsChanged(self, layoutParams, parent)
+            parent = parent or self:GetParent()
             if parent and IView.IsView(parent) and not parent:CheckLayoutParams(layoutParams) then
                 error(self:GetName() .. "'s LayoutParams is not valid for its parent", 2)
             end
         end
 
-        local function OnParentChanged(self)
-            OnLayoutParamsChanged(self, self.LayoutParams)
+        local function OnParentChanged(self, parent, oldParent)
+            if parent and parent ~= UIParent and not IView.IsView(parent) then
+                error(self:GetName() .. "'s parent must also be a view")
+            end
+            
+            -- remove view from old parent
+            if oldParent and ViewGroup.IsViewGroup(oldParent) then
+                print("oldParent", oldParent:GetName(), "remove view", self:GetName())
+                oldParent:RemoveView(self)
+            end
+
+            if ViewRoot.Default then
+                if not parent or parent == UIParent then
+                    -- auto add to view root
+                    print("ViewRoot add view", self:GetName())
+                    ViewRoot.Default:AddView(self)
+                end
+            end
+
+            OnLayoutParamsChanged(self, self.LayoutParams, parent)
         end
 
         local function SetWidthInternal(self, width)
@@ -200,7 +197,7 @@ PLoop(function()
 
         __Final__()
         function IsInitialized(self)
-            return self.__Initialized and true or fal
+            return self.__Initialized and true or false
         end
 
         __Final__()
@@ -218,34 +215,21 @@ PLoop(function()
             return Class.ValidateValue(IView, view, true) and true or false
         end
 
+        -- internal use
+        __Final__()
+        function RefreshViewRoot(self)
+            
+        end
+
         function IsRootView(self)
-            local parent = self:GetParent()
-            return not parent or not IView.IsView(parent)
+            return self == ViewRoot.Default
         end
 
-        -- Pass UIParent's measurespec to root view
-        local function DoMeasure(self)
-            local rootWidthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetWidth())
-            local rootHeightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, UIParent:GetHeight())
-            self:Measure(IView.GetChildMeasureSpec(rootWidthMeasureSpec, self.MarginStart + self.MarginEnd, self.Width, self.MaxWidth),
-                IView.GetChildMeasureSpec(rootHeightMeasureSpec, self.MarginTop + self.MarginBottom, self.Height, self.MaxHeight), true)
-        end
-
-        -- Don't call this function if you do not know how it work
-        function DoLayout(self)
-            DoMeasure(self)
-            self:Layout(true)
-            self:OnLayoutComplete()
-            self:Refresh()
-        end
-
-        __Async__()
         function RequestLayout(self)
             if self:IsRootView() then
-                ViewManager:RequestLayout(self)
+                self:LayoutPass()
             else
-                ViewManager:CancelLayout(self)
-                return self:GetParent():RequestLayout()
+                ViewRoot.Default:LayoutPass()
             end
         end
 
@@ -265,11 +249,7 @@ PLoop(function()
             return self.__MeasuredHeight or MIN_NUMBER
         end
 
-        __Final__()
-        function GetMeasuredSize(self)
-            return self.__MeasuredWidth or 0, self.__MeasuredHeight or 0
-        end
-
+        -- This function only can be called in OnMeasure
         __Final__()
         __Arguments__{ NonNegativeNumber, NonNegativeNumber }
         function SetMeasuredSize(self, width, height)
@@ -322,14 +302,14 @@ PLoop(function()
 
         -- Only root view can set frame level
         __Final__()
-        function SetViewFrameLevel(self, level)
+        function SetFrameLevel(self, level)
             if self:IsRootView() then
-                self:SetViewFrameLevelInternal(level)
+                self:SetViewFrameLevel(level)
             end
         end
 
-        function SetViewFrameLevelInternal(self, level)
-            Frame.SetViewFrameLevel(self, level)
+        function SetViewFrameLevel(self, level)
+            Frame.SetFrameLevel(self, level)
         end
 
         function OnViewPropertyChanged(self)
@@ -560,18 +540,16 @@ PLoop(function()
             end
         }
 
-        property "LayoutAnimationEnable"{
-            type                    = Boolean,
-            default                 = true
-        }
-
         -----------------------------------------
         --              Constructor            --
         -----------------------------------------
 
         function __init(self)
             self.OnParentChanged = self.OnParentChanged + OnParentChanged
-            self:RequestLayout()
+            -- check parent valid
+            OnParentChanged(self, self:GetParent())
+
+            print("View __init", self:GetName())
         end
 
     end)
