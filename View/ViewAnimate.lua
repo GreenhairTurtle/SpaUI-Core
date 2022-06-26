@@ -36,21 +36,6 @@ PLoop(function()
             default             = AccelerateInterpolator()
         }
 
-        __Arguments__{ IView }
-        function Attach(self, view)
-            self.__View = view
-        end
-
-        function Dettach(self)
-            self:Reset()
-        end
-
-        function Reset(self)
-            self.__View = nil
-            self.__TargetTime = 0
-            self.__Stoped = false
-        end
-
         __Final__()
         __Async__()
         function Start(self)

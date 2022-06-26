@@ -55,7 +55,7 @@ PLoop(function()
             end
         end
 
-        local function layoutVertical(self)
+        local function layoutVertical(self, forceLayout)
             local gravity = self.Gravity
             local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
             local width, height = self:GetSize()
@@ -75,7 +75,7 @@ PLoop(function()
             end
 
             for _, child in self:GetNonGoneChilds() do
-                child:Layout()
+                child:Layout(forceLayout)
                 local lp = child.LayoutParams
 
                 local marginStart, marginTop, marginEnd, marginBottom = child.MarginStart, child.MarginTop, child.MarginEnd, child.MarginBottom
@@ -95,7 +95,7 @@ PLoop(function()
             end
         end
 
-        local function layoutHorizontal(self)
+        local function layoutHorizontal(self, forceLayout)
             local gravity = self.Gravity
             local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
 
@@ -116,7 +116,7 @@ PLoop(function()
             end
 
             for _, child in self:GetNonGoneChilds() do
-                child:Layout()
+                child:Layout(forceLayout)
                 local lp = child.LayoutParams
 
                 local marginStart, marginTop, marginEnd, marginBottom = child.MarginStart, child.MarginTop, child.MarginEnd, child.MarginBottom
@@ -137,11 +137,11 @@ PLoop(function()
         end
 
         -- Override
-        function OnLayout(self)
+        function OnLayout(self, forceLayout)
             if self.Orientation == Orientation.HORIZONTAL then
-                layoutHorizontal(self)
+                layoutHorizontal(self, forceLayout)
             else
-                layoutVertical(self)
+                layoutVertical(self, forceLayout)
             end
         end
 

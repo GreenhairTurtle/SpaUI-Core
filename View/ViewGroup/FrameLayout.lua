@@ -15,14 +15,15 @@ PLoop(function()
 
         end)
 
-        function OnLayout(self)
+        function OnLayout(self, forceLayout)
             local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
             local width, height = self:GetSize()
             local widthAvaliable = width - paddingStart - paddingEnd
             local heightAvaliable = height - paddingTop - paddingBottom
 
             for _, child in self:GetNonGoneChilds() do
-                child:Layout()
+                print(self:GetName(), "OnLayout", child:GetName())
+                child:Layout(forceLayout)
 
                 local childWidth, childHeight = child:GetSize()
                 local lp = child.LayoutParams

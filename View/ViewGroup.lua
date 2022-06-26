@@ -29,15 +29,9 @@ PLoop(function()
                 xOffset = -xOffset - width/2
                 yOffset = yOffset + height/2
             end
+
             child:ClearAllPoints()
             child:SetViewPoint("CENTER", self, point, xOffset, yOffset)
-        end
-
-        function OnLayoutComplete(self)
-            super.OnLayoutComplete(self)
-            for _, child in ipairs(self.__ChildViews) do
-                child:OnLayoutComplete()
-            end
         end
 
         -- @Override
@@ -74,8 +68,9 @@ PLoop(function()
         end
 
         function OnChildRemove(self, child)
-            child:ClearAllPoints()
             if child:GetParent() == self then
+                print("OnChildRemove", self:GetName(), child)
+                child:ClearAllPoints()
                 child:SetParent(nil)
             end
         end

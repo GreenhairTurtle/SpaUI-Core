@@ -19,6 +19,7 @@ PLoop(function()
         end
 
         local function OnParentChanged(self, parent, oldParent)
+            print("OnParentChanged", self:GetName())
             if parent and parent ~= UIParent and not IView.IsView(parent) then
                 error(self:GetName() .. "'s parent must also be a view")
             end
@@ -29,7 +30,7 @@ PLoop(function()
                 oldParent:RemoveView(self)
             end
 
-            if ViewRoot.Default then
+            if parent ~= ViewRoot.Default and ViewRoot.Default then
                 if not parent or parent == UIParent then
                     -- auto add to view root
                     print("ViewRoot add view", self:GetName())
@@ -181,23 +182,13 @@ PLoop(function()
             if changed or forceLayout then
                 SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
                 -- A great opportunity to do something
-                self:OnLayout()
+                self:OnLayout(forceLayout)
             end
         end
 
         -- Viewgroup should override this function to call Layout function on each of it's children and place child to it's position
         __Abstract__()
-        function OnLayout(self)
-        end
-
-        -- Called when layout complete, child should not override this function
-        function OnLayoutComplete(self)
-            self.__Initialized = true
-        end
-
-        __Final__()
-        function IsInitialized(self)
-            return self.__Initialized and true or false
+        function OnLayout(self, forceLayout)
         end
 
         __Final__()
@@ -221,12 +212,8 @@ PLoop(function()
             
         end
 
-        function IsRootView(self)
-            return self == ViewRoot.Default
-        end
-
         function RequestLayout(self)
-            if self:IsRootView() then
+            if ViewRoot.IsRootView(self) then
                 self:LayoutPass()
             else
                 ViewRoot.Default:LayoutPass()
@@ -237,6 +224,11 @@ PLoop(function()
         -- @return true is valid layout params and false otherwise
         __Abstract__()
         function CheckLayoutParams(self, layoutParams)
+        end
+
+        -- return this view whether animating
+        function IsAnimating(self)
+            return self.__Animating
         end
 
         __Final__()
@@ -276,38 +268,40 @@ PLoop(function()
             self.Height = height
         end
 
-        -- Only root view can set point
         __Final__()
         function SetPoint(self, ...)
-            if self:IsRootView() then
-                self:SetViewPoint(...)
-            end
+            -- do nothing
         end
 
+        -- internal use
         function SetViewPoint(self, ...)
             Frame.SetPoint(self, ...)
         end
 
-        -- Only root view can set frame strata
+        -- Only direct children of the root view can set frame strata
         __Final__()
         function SetFrameStrata(self, frameStrata)
-            if self:IsRootView() then
+            local parent = self:GetParent()
+            if ViewRoot.IsRootView(parent) then
                 self:SetViewFrameStrata(frameStrata)
             end
         end
 
+        -- internal use
         function SetViewFrameStrata(self, frameStrata)
             Frame.SetFrameStrata(self, frameStrata)
         end
 
-        -- Only root view can set frame level
+        -- Only direct children of the root view can set frame level
         __Final__()
         function SetFrameLevel(self, level)
-            if self:IsRootView() then
+            local parent = self:GetParent()
+            if ViewRoot.IsRootView(parent) then
                 self:SetViewFrameLevel(level)
             end
         end
 
+        -- internal use
         function SetViewFrameLevel(self, level)
             Frame.SetFrameLevel(self, level)
         end
@@ -531,6 +525,20 @@ PLoop(function()
             handler                 = OnViewPropertyChanged
         }
 
+        __Final__()
+        property "FrameStrata"      {
+            type                    = FrameStrata,
+            default                 = "MEDIUM",
+            handler                 = SetFrameStrata
+        }
+
+        __Final__()
+        property "FrameLevel"       {
+            type                    = Number,
+            default                 = 1,
+            handler                 = SetFrameLevel
+        }
+
         property "LayoutParams"     {
             type                    = LayoutParams,
             throwable               = true,
@@ -545,11 +553,10 @@ PLoop(function()
         -----------------------------------------
 
         function __init(self)
+            print("View __init", self:GetName())
             self.OnParentChanged = self.OnParentChanged + OnParentChanged
             -- check parent valid
             OnParentChanged(self, self:GetParent())
-
-            print("View __init", self:GetName())
         end
 
     end)
