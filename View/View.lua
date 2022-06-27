@@ -13,17 +13,13 @@ PLoop(function()
 
         local function OnLayoutParamsChanged(self, layoutParams, parent)
             parent = parent or self:GetParent()
-            if parent and IView.IsView(parent) and not parent:CheckLayoutParams(layoutParams) then
+            if parent and ViewGroup.IsViewGroup(parent) and not parent:CheckLayoutParams(layoutParams) then
                 error(self:GetName() .. "'s LayoutParams is not valid for its parent", 2)
             end
         end
 
         local function OnParentChanged(self, parent, oldParent)
             print("OnParentChanged", self:GetName())
-            if parent and parent ~= UIParent and not IView.IsView(parent) then
-                error(self:GetName() .. "'s parent must also be a view")
-            end
-            
             -- remove view from old parent
             if oldParent and ViewGroup.IsViewGroup(oldParent) then
                 print("oldParent", oldParent:GetName(), "remove view", self:GetName())
@@ -31,8 +27,8 @@ PLoop(function()
             end
 
             if parent ~= ViewRoot.Default and ViewRoot.Default then
-                if not parent or parent == UIParent then
-                    -- auto add to view root
+                if not parent or not IView.IsView(parent) then
+                    -- auto add to view root if no parent or parent is not view
                     print("ViewRoot add view", self:GetName())
                     ViewRoot.Default:AddView(self)
                 end
