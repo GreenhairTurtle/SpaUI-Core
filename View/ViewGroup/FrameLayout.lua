@@ -22,7 +22,6 @@ PLoop(function()
             local heightAvaliable = height - paddingTop - paddingBottom
 
             for _, child in self:GetNonGoneChilds() do
-                print(self:GetName(), "OnLayout", child:GetName())
                 child:Layout(forceLayout)
 
                 local childWidth, childHeight = child:GetSize()
@@ -56,16 +55,16 @@ PLoop(function()
             end
         end
 
-        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
-            
+            print(self:GetName(), "OnMeasure")
             local measuredWidth, measuredHeight = 0, 0
             for _, child in self:GetNonGoneChilds() do
                 local marginStart, marginEnd, marginTop, marginBottom = child.MarginStart, child.MarginEnd, child.MarginTop, child.MarginBottom
                 local usedWidth = paddingStart + paddingEnd + marginStart + marginEnd
                 local usedHeight = paddingTop + paddingBottom + marginTop + marginBottom
                 child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, usedWidth, child.Width, child.MaxWidth),
-                    IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight))
+                    IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight), forceLayout)
 
                 measuredWidth = math.max(measuredWidth, usedWidth + child:GetMeasuredWidth())
                 measuredHeight = math.max(measuredHeight, usedHeight + child:GetMeasuredHeight())

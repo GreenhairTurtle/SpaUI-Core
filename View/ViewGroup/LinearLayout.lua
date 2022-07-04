@@ -145,7 +145,7 @@ PLoop(function()
             end
         end
 
-        local function MeasureHorizontal(self, widthMeasureSpec, heightMeasureSpec)
+        local function MeasureHorizontal(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             local widthMode = MeasureSpec.GetMode(widthMeasureSpec)
             local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
             local expectWidth = MeasureSpec.GetSize(widthMeasureSpec)
@@ -165,7 +165,7 @@ PLoop(function()
                 measuredWidth = measuredWidth + marginStart + marginEnd
 
                 child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, measuredWidth, child.Width, child.MaxWidth),
-                    IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight))
+                    IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight), forceLayout)
                 measuredWidth = measuredWidth + child:GetMeasuredWidth()
                 measuredHeight = math.max(measuredHeight, usedHeight + child:GetMeasuredHeight())
             end
@@ -180,7 +180,7 @@ PLoop(function()
                         if lp and lp.weight then
                             local newWidth = math.max(0, child:GetMeasuredWidth() + widthRemain * lp.weight/totalWeight)
                             child:Measure(MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newWidth),
-                                MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredHeight()))
+                                MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredHeight()), forceLayout)
                         end
                         measuredWidth = measuredWidth + child.MarginStart + child.MarginEnd + child:GetMeasuredWidth()
                     end
@@ -209,7 +209,7 @@ PLoop(function()
             self:SetMeasuredSize(measuredWidth, measuredHeight)
         end
 
-        local function MeasureVertical(self, widthMeasureSpec, heightMeasureSpec)
+        local function MeasureVertical(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             local widthMode = MeasureSpec.GetMode(widthMeasureSpec)
             local heightMode = MeasureSpec.GetMode(heightMeasureSpec)
             local expectWidth = MeasureSpec.GetSize(widthMeasureSpec)
@@ -229,7 +229,7 @@ PLoop(function()
                 measuredHeight = measuredHeight + marginTop + marginBottom
 
                 child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, usedWidth, child.Width, child.MaxWidth),
-                    IView.GetChildMeasureSpec(heightMeasureSpec, measuredHeight, child.Height, child.MaxHeight))
+                    IView.GetChildMeasureSpec(heightMeasureSpec, measuredHeight, child.Height, child.MaxHeight), forceLayout)
                 measuredWidth = math.max(measuredWidth, usedWidth + child:GetMeasuredWidth())
                 measuredHeight = measuredHeight + child:GetMeasuredHeight()
             end
@@ -244,7 +244,7 @@ PLoop(function()
                         if lp and lp.weight then
                             local newHeight = math.max(0, child:GetMeasuredHeight() + heightRemain * lp.weight/totalWeight)
                             child:Measure(MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, child:GetMeasuredWidth()),
-                                MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newHeight))
+                                MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, newHeight), forceLayout)
                         end
                         measuredHeight = measuredHeight + child.MarginTop + child.MarginBottom + child:GetMeasuredHeight()
                     end
@@ -274,11 +274,11 @@ PLoop(function()
         end
 
         -- @Override
-        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             if self.Orientation == Orientation.HORIZONTAL then
-                MeasureHorizontal(self, widthMeasureSpec, heightMeasureSpec)
+                MeasureHorizontal(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             else
-                MeasureVertical(self, widthMeasureSpec, heightMeasureSpec)
+                MeasureVertical(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             end
         end
 

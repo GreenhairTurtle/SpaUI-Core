@@ -19,17 +19,14 @@ PLoop(function()
         end
 
         local function OnParentChanged(self, parent, oldParent)
-            print("OnParentChanged", self:GetName())
             -- remove view from old parent
             if oldParent and ViewGroup.IsViewGroup(oldParent) then
-                print("oldParent", oldParent:GetName(), "remove view", self:GetName())
                 oldParent:RemoveView(self)
             end
 
             if parent ~= ViewRoot.Default and ViewRoot.Default then
                 if not parent or not IView.IsView(parent) then
                     -- auto add to view root if no parent or parent is not view
-                    print("ViewRoot add view", self:GetName())
                     ViewRoot.Default:AddView(self)
                 end
             end
@@ -140,7 +137,7 @@ PLoop(function()
             local matchesSpecSize = self:GetMeasuredWidth() == MeasureSpec.GetSize(widthMeasureSpec) and self:GetMeasuredHeight() == MeasureSpec.GetSize(heightMeasureSpec)
 
             if forceLayout or (specChanged and (not isSpecExactly or not matchesSpecSize)) then
-                self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
+                self:OnMeasure(widthMeasureSpec, heightMeasureSpec, forceLayout)
             end
             
             self.__OldWidthMeasureSpec = widthMeasureSpec
@@ -149,7 +146,7 @@ PLoop(function()
 
         -- This function should call SetMeasuredSize to store measured width and measured height
         __Abstract__()
-        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
             self:SetMeasuredSize(IView.GetDefaultMeasureSize(self.MinWidth, widthMeasureSpec),
                 IView.GetDefaultMeasureSize(self.MinHeight, heightMeasureSpec))
         end
@@ -174,7 +171,7 @@ PLoop(function()
         function Layout(self, forceLayout)
             local width, height = self:GetSize()
             local changed =  math.abs(width - self:GetMeasuredWidth()) >= 0.01 or math.abs(height - self:GetMeasuredHeight()) >= 0.01
-
+            print(self:GetName(), "Layout", self:GetMeasuredWidth(), self:GetMeasuredHeight())
             if changed or forceLayout then
                 SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
                 -- A great opportunity to do something
@@ -266,7 +263,11 @@ PLoop(function()
 
         __Final__()
         function SetPoint(self, ...)
-            -- do nothing
+            local parent = self:GetParent()
+            -- only parent is blz's widget can use this api
+            if not parent or not IView.IsView(parent) then
+                self:SetViewPoint(...)
+            end
         end
 
         -- internal use
@@ -278,7 +279,8 @@ PLoop(function()
         __Final__()
         function SetFrameStrata(self, frameStrata)
             local parent = self:GetParent()
-            if ViewRoot.IsRootView(parent) then
+            -- only parent is not view or parent is root view can use this api
+            if not parent or not IView.IsView(parent) or ViewRoot.IsRootView(parent) then
                 self:SetViewFrameStrata(frameStrata)
             end
         end
@@ -292,7 +294,8 @@ PLoop(function()
         __Final__()
         function SetFrameLevel(self, level)
             local parent = self:GetParent()
-            if ViewRoot.IsRootView(parent) then
+            -- only parent is not view or parent is root view can use this api
+            if not parent or not IView.IsView(parent) or ViewRoot.IsRootView(parent) then
                 self:SetViewFrameLevel(level)
             end
         end
@@ -549,7 +552,6 @@ PLoop(function()
         -----------------------------------------
 
         function __init(self)
-            print("View __init", self:GetName())
             self.OnParentChanged = self.OnParentChanged + OnParentChanged
             -- check parent valid
             OnParentChanged(self, self:GetParent())

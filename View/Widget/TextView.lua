@@ -71,6 +71,7 @@ PLoop(function()
 
             measuredWidth = math.max(measuredWidth + paddingStart + paddingEnd, self.MinWidth)
             measuredHeight = math.max(measuredHeight + paddingTop + paddingBottom, self.MinHeight)
+            print(self:GetName(), "OnMeasure", measuredWidth, measuredHeight)
             self:SetMeasuredSize(measuredWidth, measuredHeight)
         end
 

@@ -4,6 +4,18 @@ PLoop(function()
 
     class "ViewGroup"(function()
         inherit "View"
+
+        -- auto add child or remove child
+        local function OnChildChanged(self, child, isAdded)
+            print(self:GetName(), "OnChildChanged", child:GetName(), isAdded)
+            if child then
+                if isAdded then
+                    self:AddView(child)
+                else
+                    self:RemoveView(child)
+                end
+            end
+        end
         
         -- Call this function to layout child. This function will automatically calculate the positions corresponding to different layout directions
         __Final__()
@@ -69,7 +81,6 @@ PLoop(function()
 
         function OnChildRemove(self, child)
             if child:GetParent() == self then
-                print("OnChildRemove", self:GetName(), child)
                 child:ClearAllPoints()
                 child:SetParent(nil)
             end
@@ -81,6 +92,7 @@ PLoop(function()
 
         __Arguments__{ IView, NonNegativeNumber/0 }
         function AddView(self, view, index)
+            print(self:GetName(), "AddView", view:GetName())
             if not tContains(self.__ChildViews, view) then
                 if index <= 0 then
                     index = #self.__ChildViews + 1
@@ -148,6 +160,7 @@ PLoop(function()
 
         function __ctor(self)
             self.__ChildViews = {}
+            self.OnChildChanged = self.OnChildChanged + OnChildChanged
         end
 
     end)
