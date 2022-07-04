@@ -56,7 +56,7 @@ Delay(5, function()
 end)
 
 Delay(10, function()
-    TestLinearLayout.LayoutDirection = LayoutDirection.RIGHT_TO_LEFT
+    TestLinearLayout.LayoutDirection = LayoutDirection.TOPRIGHT
     print(TestLinearLayout:GetEffectiveScale(), TestLinearLayout:GetSize())
 end)
 

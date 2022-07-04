@@ -24,11 +24,9 @@ PLoop(function()
                 oldParent:RemoveView(self)
             end
 
-            if parent ~= ViewRoot.Default and ViewRoot.Default then
-                if not parent or not IView.IsView(parent) then
-                    -- auto add to view root if no parent or parent is not view
-                    ViewRoot.Default:AddView(self)
-                end
+            if not ViewRoot.IsRootView(parent) and (not parent or not IView.IsView(parent)) then
+                -- auto add to view root if no parent or parent is not view
+                ViewManager.ViewRoot:AddView(self)
             end
 
             OnLayoutParamsChanged(self, self.LayoutParams, parent)
@@ -131,13 +129,13 @@ PLoop(function()
         
         -- Measure size
         __Final__()
-        function Measure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
+        function Measure(self, widthMeasureSpec, heightMeasureSpec)
             local specChanged = widthMeasureSpec ~= self.__OldWidthMeasureSpec or heightMeasureSpec ~= self.__OldHeightMeasureSpec
             local isSpecExactly = MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpec.EXACTLY and MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpec.EXACTLY
             local matchesSpecSize = self:GetMeasuredWidth() == MeasureSpec.GetSize(widthMeasureSpec) and self:GetMeasuredHeight() == MeasureSpec.GetSize(heightMeasureSpec)
 
-            if forceLayout or (specChanged and (not isSpecExactly or not matchesSpecSize)) then
-                self:OnMeasure(widthMeasureSpec, heightMeasureSpec, forceLayout)
+            if self:IsInLayout() or (specChanged and (not isSpecExactly or not matchesSpecSize)) then
+                self:OnMeasure(widthMeasureSpec, heightMeasureSpec)
             end
             
             self.__OldWidthMeasureSpec = widthMeasureSpec
@@ -146,7 +144,7 @@ PLoop(function()
 
         -- This function should call SetMeasuredSize to store measured width and measured height
         __Abstract__()
-        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
             self:SetMeasuredSize(IView.GetDefaultMeasureSize(self.MinWidth, widthMeasureSpec),
                 IView.GetDefaultMeasureSize(self.MinHeight, heightMeasureSpec))
         end
@@ -168,20 +166,20 @@ PLoop(function()
 
         -- Change size and goto it's location
         __Final__()
-        function Layout(self, forceLayout)
+        function Layout(self)
             local width, height = self:GetSize()
             local changed =  math.abs(width - self:GetMeasuredWidth()) >= 0.01 or math.abs(height - self:GetMeasuredHeight()) >= 0.01
             print(self:GetName(), "Layout", self:GetMeasuredWidth(), self:GetMeasuredHeight())
-            if changed or forceLayout then
+            if changed or self:IsInLayout() then
                 SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
                 -- A great opportunity to do something
-                self:OnLayout(forceLayout)
+                self:OnLayout()
             end
         end
 
         -- Viewgroup should override this function to call Layout function on each of it's children and place child to it's position
         __Abstract__()
-        function OnLayout(self, forceLayout)
+        function OnLayout(self)
         end
 
         __Final__()
@@ -199,17 +197,11 @@ PLoop(function()
             return Class.ValidateValue(IView, view, true) and true or false
         end
 
-        -- internal use
-        __Final__()
-        function RefreshViewRoot(self)
-            
-        end
-
         function RequestLayout(self)
-            if ViewRoot.IsRootView(self) then
-                self:LayoutPass()
-            else
-                ViewRoot.Default:LayoutPass()
+            self.__LayoutRequested = true
+            local parent = self:GetParent()
+            if parent then
+                parent:RequestLayout()
             end
         end
 
@@ -219,9 +211,33 @@ PLoop(function()
         function CheckLayoutParams(self, layoutParams)
         end
 
-        -- return this view whether animating
-        function IsAnimating(self)
-            return self.__Animating
+        -- return whether this view is in layout
+        function IsInLayout(self)
+            return self.__LayoutRequested
+        end
+
+        -- @see ViewGroup.LayoutChild
+        function GetLayoutPointAndOffsetSign(self)
+            local direction = self.LayoutDirection
+            local point, xSign, ySign
+            if direction == LayoutDirection.TOPLEFT then
+                point = "TOPLEFT"
+                xSign = 1
+                ySign = -1
+            elseif direction == LayoutDirection.TOPRIGHT then
+                point = "TOPRIGHT"
+                xSign = -1
+                ySign = -1
+            elseif direction == LayoutDirection.BOTTOMLEFT then
+                point = "BOTTOMLEFT"
+                xSign = 1
+                ySign = 1
+            else
+                point = "BOTTOMRIGHT"
+                xSign = -1
+                ySign = 1
+            end
+            return point, xSign, ySign
         end
 
         __Final__()
@@ -273,6 +289,15 @@ PLoop(function()
         -- internal use
         function SetViewPoint(self, ...)
             Frame.SetPoint(self, ...)
+        end
+
+        -- internal use
+        function SetViewPointByParent(self, point, relativeTo, relativePoint, offsetX, offsetY)
+            self.__LayoutPoint = point
+            self.__LayoutRelativeTo = relativeTo
+            self.__LayoutRelativePoint = relativePoint
+            self.__LayoutOffsetX = offsetX
+            self.__LayoutOffsetY = offsetY
         end
 
         -- Only direct children of the root view can set frame strata
@@ -547,11 +572,21 @@ PLoop(function()
             end
         }
 
+        property "LayoutDirection"  {
+            type                    = LayoutDirection,
+            default                 = LayoutDirection.TOPLEFT,
+            handler                 = function(self)
+                self:OnViewPropertyChanged()
+            end
+        }
+
         -----------------------------------------
         --              Constructor            --
         -----------------------------------------
 
         function __init(self)
+            -- default request layout
+            self.__LayoutRequested = true
             self.OnParentChanged = self.OnParentChanged + OnParentChanged
             -- check parent valid
             OnParentChanged(self, self:GetParent())

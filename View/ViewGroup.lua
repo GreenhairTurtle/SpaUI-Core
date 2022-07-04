@@ -21,26 +21,10 @@ PLoop(function()
         __Final__()
         __Arguments__{ IView, Number, Number }
         function LayoutChild(self, child, xOffset, yOffset)
-            local direction = self.LayoutDirection
+            local point, xSign, ySign = self:GetLayoutPointAndOffsetSign()
             local width, height = child:GetSize()
-            local point
-            if direction == LayoutDirection.TOPLEFT then
-                point = "TOPLEFT"
-                xOffset = xOffset + width/2
-                yOffset = -yOffset - height/2
-            elseif direction == LayoutDirection.TOPRIGHT then
-                point = "TOPRIGHT"
-                xOffset = -xOffset - width/2
-                yOffset = -yOffset - height/2
-            elseif direction == LayoutDirection.BOTTOMLEFT then
-                point = "BOTTOMLEFT"
-                xOffset = xOffset + width/2
-                yOffset = yOffset + height/2
-            else
-                point = "BOTTOMRIGHT"
-                xOffset = -xOffset - width/2
-                yOffset = yOffset + height/2
-            end
+            xOffset = xSign * xOffset + xSign * width/2
+            yOffset = ySign * yOffset + ySign * height/2
 
             child:ClearAllPoints()
             child:SetViewPoint("CENTER", self, point, xOffset, yOffset)
@@ -145,18 +129,6 @@ PLoop(function()
         function IsViewGroup(viewGroup)
             return Class.ValidateValue(ViewGroup, viewGroup, true) and true or false
         end
-
-        -----------------------------------------
-        --              Propertys              --
-        -----------------------------------------
-        
-        property "LayoutDirection"  {
-            type                    = LayoutDirection,
-            default                 = LayoutDirection.TOPLEFT,
-            handler                 = function(self)
-                self:OnViewPropertyChanged()
-            end
-        }
 
         function __ctor(self)
             self.__ChildViews = {}

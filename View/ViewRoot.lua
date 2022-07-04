@@ -2,7 +2,7 @@ PLoop(function()
 
     namespace "MeowMeow.Layout"
 
-    -- Note:Do not constructor this class, it can only has an instance which is ViewRoot.Default
+    -- Note:Do not constructor this class, it can only has an instance which is ViewManager.ViewRoot
     -- ViewRoot is a special frame layout, it set all widgets which no parent or parent is UIParent as it's child(use blz api, can access by Region:GetChildren()),
     -- but also store all widgets which parent is not view (see View.OnParentChanged)
     class "ViewRoot"(function()
@@ -18,10 +18,6 @@ PLoop(function()
 
         end)
 
-        function LayoutPass(self)
-            self.__RequestLayoutFlag = true
-        end
-
         -- @Override
         function OnChildAdd(self, child)
             -- only no parent or parent is UIParent will set parent(blz api) as view root
@@ -34,7 +30,7 @@ PLoop(function()
             child:SetViewFrameLevel(child.FrameLevel)
         end
 
-        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec, forceLayout)
+        function OnMeasure(self, widthMeasureSpec, heightMeasureSpec)
             local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
             local specWidth, specHeight = MeasureSpec.GetSize(widthMeasureSpec), MeasureSpec.GetSize(heightMeasureSpec)
             
@@ -46,28 +42,28 @@ PLoop(function()
                 
                 -- parent is view root
                 if childParent == self then
-                    print(self:GetName(), "OnMeasure", forceLayout)
+                    print(self:GetName(), "OnMeasure")
                     child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, usedWidth, child.Width, child.MaxWidth),
-                        IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight), forceLayout)
+                        IView.GetChildMeasureSpec(heightMeasureSpec, usedHeight, child.Height, child.MaxHeight))
                 else
                     widthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, math.max(childParent:GetWidth() - marginStart - marginEnd, 0))
                     heightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, math.max(childParent:GetHeight() - marginTop - marginBottom, 0))
                     child:Measure(IView.GetChildMeasureSpec(widthMeasureSpec, 0, child.Width, child.MaxWidth),
-                        IView.GetChildMeasureSpec(heightMeasureSpec, 0, child.Height, child.MaxHeight), forceLayout)
+                        IView.GetChildMeasureSpec(heightMeasureSpec, 0, child.Height, child.MaxHeight))
                 end
             end
 
             self:SetMeasuredSize(specWidth, specHeight)
         end
 
-        function OnLayout(self, forceLayout)
+        function OnLayout(self)
             local paddingStart, paddingTop, paddingEnd, paddingBottom = self.PaddingStart, self.PaddingTop, self.PaddingEnd, self.PaddingBottom
             local width, height = self:GetSize()
             local widthAvaliable = width - paddingStart - paddingEnd
             local heightAvaliable = height - paddingTop - paddingBottom
 
             for _, child in self:GetNonGoneChilds() do
-                child:Layout(forceLayout)
+                child:Layout()
 
                 local childParent = child:GetParent()
 
@@ -107,53 +103,93 @@ PLoop(function()
             end
         end
 
+        -- @Override
+        function RequestLayout(self)
+            ViewManager.Scheduler:LayoutPass()
+        end
+
         function CheckLayoutParams(self, layoutParams)
             if not layoutParams then return true end
 
             return Struct.ValidateValue(ViewRoot.LayoutParams, layoutParams, true) and true or false
         end
 
-        local function DoLayoutPass(self, forceLayout)
-            print("DoLayoutPass")
-            local widthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, self:GetWidth() - self.MarginStart - self.MarginEnd)
-            local heightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, self:GetHeight() - self.MarginTop - self.MarginBottom)
-            self:Measure(widthMeasureSpec, heightMeasureSpec, forceLayout)
-            self:Layout(forceLayout)
-            self:Refresh()
-        end
-
-        local function OnUpdate(self, elapsed)
-            if self.__RequestLayoutFlag then
-                DoLayoutPass(self, true)
-                self.__RequestLayoutFlag = false
-            end
+        __Static__()
+        function IsRootView(view)
+            return view and view == ViewManager.ViewRoot
         end
 
         -----------------------------------------
         --              Constructor            --
         -----------------------------------------
+
         function __ctor(self)
             super.__ctor(self)
-            self.__RequestLayoutFlag = true
-            self.OnUpdate = self.OnUpdate + OnUpdate
-        end
-
-        __Static__()
-        function IsRootView(view)
-            return view == ViewRoot.Default
+            self:RequestLayout()
         end
 
     end)
 
-    Class "ViewRoot"(function()
-                
+    -- This scheduler handles the timing pulse that is shared by all all views, animations, etc.
+    -- Schedule to do layout pass, animate and all other components which need time scheduling 
+    class "ViewScheduler" (function()
+        inherit "Frame"
+        
+        function LayoutPass(self)
+            self.__RequestLayoutFlag = true
+        end
+
+        function AddAnimation(self, animation)
+            tinsert(self.__Animations, animation)
+        end
+
+        function RemoveAnimation(self, animation)
+            tremove(self.__Animations, animation)
+        end
+
+        local function DoLayoutPass(self)
+            print("DoLayoutPass")
+            local root = ViewManger.ViewRoot
+            local widthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, root:GetWidth() - root.MarginStart - root.MarginEnd)
+            local heightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, root:GetHeight() - root.MarginTop - root.MarginBottom)
+            root:Measure(widthMeasureSpec, heightMeasureSpec)
+            root:Layout()
+            root:Refresh()
+        end
+
+        local function OnUpdate(self, elapsed)
+            if self.__RequestLayoutFlag then
+                DoLayoutPass(self)
+                self.__RequestLayoutFlag = false
+            end
+        end
+
+        function __ctor(self)
+            self.__RequestLayoutFlag = false
+            self.__Animations = {}
+            self.OnUpdate = self.OnUpdate + OnUpdate
+        end
+
+    end)
+
+    Class "ViewManager"(function()
+
+        -- create scheduler
+        DefaultViewScheduler = ViewScheduler("MeowMeowViewScheduler")
+
+        -- create view root
         DefaultViewRoot = ViewRoot("MeowMeowViewRoot")
         DefaultViewRoot:SetAllPoints(UIParent)
         
         __Static__()
-        property "Default" {
+        property "ViewRoot" {
             set             = false,
             default         = DefaultViewRoot
+        }
+
+        property "Scheduler"{
+            set             = false,
+            default         = DefaultViewScheduler
         }
 
     end)
