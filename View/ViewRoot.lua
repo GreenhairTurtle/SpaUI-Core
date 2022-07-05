@@ -140,11 +140,13 @@ PLoop(function()
         end
 
         function AddAnimation(self, animation)
-            tinsert(self.__Animations, animation)
+            self.__Animations[animation] = true
         end
 
         function RemoveAnimation(self, animation)
-            tremove(self.__Animations, animation)
+            if self.__Animations[animation] ~= nil then
+                self.__Animations[animation] = false
+            end
         end
 
         local function DoLayoutPass(self)
@@ -157,11 +159,26 @@ PLoop(function()
             root:Refresh()
         end
 
+        local function DoViewAnimations(self)
+            local currentTime = GetTime()
+            for animation, added in pairs(self.__Animations) do
+                if not added then
+                    self.__Animations[animation] = nil
+                    animation:RestoreView()
+                else
+                    animation:OnAnimate(currentTime)
+                end
+            end
+        end
+
         local function OnUpdate(self, elapsed)
             if self.__RequestLayoutFlag then
                 DoLayoutPass(self)
                 self.__RequestLayoutFlag = false
             end
+
+            -- view animation
+            DoViewAnimations(self)
         end
 
         function __ctor(self)

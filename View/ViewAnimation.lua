@@ -23,7 +23,7 @@ PLoop(function()
         property "RepeatCount"  {
             type                = NonNegativeNumber,
             require             = true,
-            default             = 1
+            default             = 0
         }
 
         property "RepeatMode"   {
@@ -45,6 +45,28 @@ PLoop(function()
         -- Indicates that the animation was canceled
         START_TIME_CANCELED = -2147483648
 
+        __Arguments__{ IView }
+        function Attach(self, view)
+            self.__View = view
+            self:Reset()
+        end
+
+        function Detach(self)
+            if self.__View then
+                self.__View:ApplyTransformation()
+            end
+            self.__View = nil
+            self:CancelScheduler()
+            self:Reset()
+        end
+
+        -- will be called in next frame after CancelScheduler be called
+        function RestoreView(self)
+            if self.__View then
+                self.__View:ApplyTransformation()
+            end
+        end
+
         function Start(self)
             self:Reset()
             self:StartInternal()
@@ -54,6 +76,8 @@ PLoop(function()
             ViewManager.Scheduler:AddAnimation(self)
         end
 
+        -- animate will continue in next frame, then be removed
+        -- @see ViewManager.RemoveAnimation
         function CancelScheduler(self)
             ViewManager.Scheduler:RemoveAnimation(self)
         end
@@ -90,7 +114,13 @@ PLoop(function()
                 self.__StartTime = currentTime
             end
 
-            local progress = (currentTime - self.__StartTime) / self.Duration
+            local progress
+            if self.Duration == 0 then
+                progress = (currentTime - self.__StartTime) / self.Duration
+            else
+                progress = currentTime < self.__StartTime and 0 or 1
+            end
+
             local canceled = self:IsCanceled()
             local expired = progress > 1 or canceled
             
@@ -112,8 +142,11 @@ PLoop(function()
                     progress = 1 - progress
                 end
 
-                local interpolatedTime = self.Interpolator:GetInterpolation(progress)
-                self:Apply(interpolatedTime, self.__Transformation)
+                if self.__View then
+                    local interpolatedTime = self.Interpolator:GetInterpolation(progress)
+                    self:Apply(interpolatedTime, self.__View:GetAnimationTransformation())
+                    self.__View:ApplyAnimationTransformation()
+                end
             end
             
             if expired then
@@ -121,7 +154,7 @@ PLoop(function()
                     if not self.__Ended then
                         self.__Ended = true
                         OnAnimationEnd(self)
-                        self:EndInternal()
+                        self:CancelScheduler()
                     end
                 else
                     -- repeat animation
@@ -141,15 +174,9 @@ PLoop(function()
         end
 
         -- interpolatedTime – The value of the normalized time (0 to 1) after it has been run through the interpolation function.
-        -- transformation - modify this object to do view's animation
         __Abstract__()
         function Apply(self, interpolatedTime, transformation)
 
-        end
-
-        -- Get animation transformation, will be used by view to do animation
-        function GetTransformation(self)
-            return self.__Transformation
         end
 
         function __ctor(self)

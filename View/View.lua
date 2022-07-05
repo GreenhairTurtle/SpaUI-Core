@@ -11,6 +11,13 @@ PLoop(function()
         MIN_NUMBER = -2147483648
         MAX_NUMBER = 2147483647
 
+        local function CreateTransformation(self)
+            local transformation = {}
+            transformation.alpha = self:GetAlpha()
+            transformation.scale = self:GetScale()
+            return transformation
+        end
+
         local function OnLayoutParamsChanged(self, layoutParams, parent)
             parent = parent or self:GetParent()
             if parent and ViewGroup.IsViewGroup(parent) and not parent:CheckLayoutParams(layoutParams) then
@@ -171,12 +178,13 @@ PLoop(function()
         function Layout(self)
             local width, height = self:GetSize()
             local changed =  math.abs(width - self:GetMeasuredWidth()) >= 0.01 or math.abs(height - self:GetMeasuredHeight()) >= 0.01
-            print(self:GetName(), "Layout", self:GetMeasuredWidth(), self:GetMeasuredHeight())
             if changed or self:IsInLayout() then
                 SetSizeInternal(self, self:GetMeasuredWidth(), self:GetMeasuredHeight())
                 -- A great opportunity to do something
                 self:OnLayout()
             end
+            -- layout complete
+            self.__LayoutRequested = false
         end
 
         -- Viewgroup should override this function to call Layout function on each of it's children and place child to it's position
@@ -371,9 +379,81 @@ PLoop(function()
             self.Visibility = Visibility.GONE
         end
 
+        function SetAlpha(self, alpha)
+            self.__Transformation.alpha = alpha
+            self:SetViewAlpha(alpha)
+        end
+
+        -- internal use
+        function SetViewAlpha(self, alpha)
+            Frame.SetAlpha(self, alpha)
+        end
+
+        function SetScale(self, scale)
+            self.__Transformation.scale = scale
+            self:SetViewScale(scale)
+        end
+
+        -- internal use
+        function SetViewScale(self, scale)
+            Frame.SetScale(self, scale)
+        end
+
         function OnVisibilityChanged(self, visibility, old)
             SetShownInternal(self, visibility == Visibility.VISIBLE)
             self:RequestLayout()
+        end
+
+        -- internal use
+        function ApplyTransformation(self)
+            self:SetViewAlpha(self.__Transformation.alpha)
+            self:SetViewScale(self.__Transformation.scale)
+        end
+        -----------------------------------------
+        --              Animation              --
+        -----------------------------------------
+
+        -- Set animation to this view
+        __Arguments__{ ViewAnimation/nil }
+        function SetAnimation(self, animation)
+            if self.__ViewAnimation then
+                self.__ViewAnimation:Detach()
+            end
+            
+            self.__ViewAnimation = animation
+
+            if animation then
+                animation:Attach(self)
+            end
+        end
+
+        -- Set animation to this view and start animation
+        __Arguments__{ ViewAnimation }
+        function StartAnimation(self, animation)
+            self:SetAnimation(animation)
+            animation:Start()
+        end
+
+        -- Get animation, may be nil
+        function GetAnimation(self)
+            return self.__ViewAnimation
+        end
+
+        -- internal use
+        function GetAnimationTransformation(self)
+            if not self.__AnimationTransformation then
+                self.__AnimationTransformation = Transformation()
+            end
+
+            return self.__AnimationTransformation
+        end
+
+        -- internal use
+        function ApplyAnimationTransformation(self)
+            if self.__AnimationTransformation then
+                self:SetAlpha(self.__AnimationTransformation.alpha)
+                self:SetScale(self.__AnimationTransformation.scale)
+            end
         end
 
         -----------------------------------------
@@ -587,6 +667,7 @@ PLoop(function()
         -----------------------------------------
 
         function __init(self)
+            self.__Transformation = CreateTransformation(self)
             -- default request layout
             self.__LayoutRequested = true
             self.OnParentChanged = self.OnParentChanged + OnParentChanged
