@@ -37,10 +37,9 @@ textView3.Width = 100
 -- linearLayout:AddView(textView2)
 -- linearLayout:AddView(textView3)
 
--- Delay(15, function()
---     print(imageView:GetFrameStrata(), imageView:GetFrameLevel(), imageView.FrameStrata)
---     linearLayout:RemoveView(imageView)
--- end)
+Delay(15, function()
+    print(textView:GetLeft(), textView:GetTop(), textView:GetRight(), textView:GetBottom())
+end)
 
 -- Delay(20, function()
 --     print(imageView:GetFrameStrata(), imageView:GetFrameLevel(), imageView.FrameStrata)

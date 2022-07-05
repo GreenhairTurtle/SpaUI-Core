@@ -123,10 +123,10 @@ PLoop(function()
         --              Constructor            --
         -----------------------------------------
 
-        function __ctor(self)
-            super.__ctor(self)
-            self:RequestLayout()
-        end
+        -- function __ctor(self)
+        --     super.__ctor(self)
+        --     self:RequestLayout()
+        -- end
 
     end)
 
@@ -149,7 +149,7 @@ PLoop(function()
 
         local function DoLayoutPass(self)
             print("DoLayoutPass")
-            local root = ViewManger.ViewRoot
+            local root = ViewManager.ViewRoot
             local widthMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, root:GetWidth() - root.MarginStart - root.MarginEnd)
             local heightMeasureSpec = MeasureSpec.MakeMeasureSpec(MeasureSpec.EXACTLY, root:GetHeight() - root.MarginTop - root.MarginBottom)
             root:Measure(widthMeasureSpec, heightMeasureSpec)
@@ -172,10 +172,7 @@ PLoop(function()
 
     end)
 
-    Class "ViewManager"(function()
-
-        -- create scheduler
-        DefaultViewScheduler = ViewScheduler("MeowMeowViewScheduler")
+    class "ViewManager" (function()
 
         -- create view root
         DefaultViewRoot = ViewRoot("MeowMeowViewRoot")
@@ -187,6 +184,10 @@ PLoop(function()
             default         = DefaultViewRoot
         }
 
+        -- create scheduler
+        DefaultViewScheduler = ViewScheduler("MeowMeowViewScheduler")
+
+        __Static__()
         property "Scheduler"{
             set             = false,
             default         = DefaultViewScheduler

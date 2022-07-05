@@ -26,7 +26,9 @@ PLoop(function()
 
             if not ViewRoot.IsRootView(parent) and (not parent or not IView.IsView(parent)) then
                 -- auto add to view root if no parent or parent is not view
-                ViewManager.ViewRoot:AddView(self)
+                if ViewManager.ViewRoot then
+                    ViewManager.ViewRoot:AddView(self)
+                end
             end
 
             OnLayoutParamsChanged(self, self.LayoutParams, parent)
